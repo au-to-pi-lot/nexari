@@ -31,7 +31,18 @@ async def on_message(message):
 
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         async with message.channel.typing():
-            prompt = f"Human: {message.content}\nAI:"
+            # Fetch the message history
+            history = []
+            async for msg in message.channel.history(limit=10):
+                if msg.author == bot.user:
+                    history.append(f"AI: {msg.content}")
+                else:
+                    history.append(f"Human: {msg.content}")
+            history.reverse()  # Reverse to get chronological order
+
+            # Construct the prompt with the entire conversation history
+            prompt = "\n".join(history) + f"\nHuman: {message.content}\nAI:"
+            
             response = llm(prompt, max_tokens=max_tokens, stop=stop_sequences, echo=False, temperature=temperature)
             ai_response = response['choices'][0]['text'].strip()
         
