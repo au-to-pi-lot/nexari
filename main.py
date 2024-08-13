@@ -33,7 +33,9 @@ Below is an instruction that describes a task. Write a response that appropriate
 You are {{ bot.user.display_name }}, a helpful AI assistant in a Discord chat. Respond to the following conversation:
 """
 
-prompt_template = system_prompt + """
+prompt_template = """
+{{ system_prompt }}
+
 {% for message in messages %}
 {{ message_template | format(role=message.role, content=message.content) }}
 {% endfor %}
