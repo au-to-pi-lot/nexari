@@ -26,12 +26,14 @@ stop_tokens = ["### Instruction:", "### Response:"]
 # Define Jinja2 templates as strings
 message_template = "{{ role }}: {{ content }}"
 
-prompt_template = """
+system_prompt = """
 Below is an instruction that describes a task. Write a response that appropriately completes the request.
 
 ### Instruction:
 You are {{ bot.user.display_name }}, a helpful AI assistant in a Discord chat. Respond to the following conversation:
+"""
 
+prompt_template = system_prompt + """
 {% for message in messages %}
 {{ message_template | format(role=message.role, content=message.content) }}
 {% endfor %}
@@ -42,6 +44,7 @@ You are {{ bot.user.display_name }}, a helpful AI assistant in a Discord chat. R
 # Create Jinja2 Template objects
 message_template = Template(message_template)
 prompt_template = Template(prompt_template)
+system_prompt = Template(system_prompt)
 
 @bot.event
 async def on_ready():
