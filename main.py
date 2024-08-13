@@ -54,9 +54,11 @@ async def on_message(message):
             # Render the prompt using the Jinja2 template
             prompt = template.render(messages=history, bot=bot)
             
-            response = llm(prompt, max_tokens=max_tokens, stop=stop_sequences, echo=False, temperature=temperature)
+            response = llm(prompt, max_tokens=max_tokens, stop=["### Instruction:", "### Response:"], echo=False, temperature=temperature)
             ai_response = response['choices'][0]['text'].strip()
         
+        # Remove any remaining "### Response:" from the beginning of the response
+        ai_response = ai_response.lstrip("### Response:").strip()
         await message.reply(ai_response)
 
     await bot.process_commands(message)

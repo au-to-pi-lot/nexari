@@ -1,4 +1,10 @@
+Below is an instruction that describes a task. Write a response that appropriately completes the request.
+
+### Instruction:
+You are {{ bot.user.display_name }}, a helpful AI assistant in a Discord chat. Respond to the following conversation:
+
 {% for message in messages %}
 {{ message.role }}: {{ message.content }}
 {% endfor %}
-{{ bot.user.display_name }} ({{ bot.user.id }}):
+
+### Response:
