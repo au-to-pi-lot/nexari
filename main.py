@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from llama_cpp import Llama
 from dotenv import load_dotenv
+from jinja2 import Template
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,10 @@ max_tokens = int(os.getenv('MAX_TOKENS', 100))
 stop_sequences = os.getenv('STOP_SEQUENCES', 'Human:,AI:').split(',')
 temperature = float(os.getenv('TEMPERATURE', 0.7))
 
+# Load Jinja2 template
+with open('prompt_template.j2', 'r') as file:
+    template = Template(file.read())
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -34,14 +39,20 @@ async def on_message(message):
             # Fetch the message history
             history = []
             async for msg in message.channel.history(limit=10):
-                if msg.author == bot.user:
-                    history.append(f"AI: {msg.content}")
-                else:
-                    history.append(f"Human: {msg.content}")
+                history.append({
+                    'role': 'AI' if msg.author == bot.user else 'Human',
+                    'content': msg.content
+                })
             history.reverse()  # Reverse to get chronological order
 
-            # Construct the prompt with the entire conversation history
-            prompt = "\n".join(history) + f"\nHuman: {message.content}\nAI:"
+            # Add the current message to history
+            history.append({
+                'role': 'Human',
+                'content': message.content
+            })
+
+            # Render the prompt using the Jinja2 template
+            prompt = template.render(messages=history)
             
             response = llm(prompt, max_tokens=max_tokens, stop=stop_sequences, echo=False, temperature=temperature)
             ai_response = response['choices'][0]['text'].strip()
