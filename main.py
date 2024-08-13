@@ -94,12 +94,30 @@ async def on_message(message):
 async def stream_tokens(prompt, message):
     response = ""
     sent_message = await message.reply("Thinking...")
+    current_paragraph = ""
     async for token in llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature, stream=True):
-        response += token['choices'][0]['text']
-        if len(response) % 20 == 0:  # Edit message every 20 characters
-            await sent_message.edit(content=response)
+        new_text = token['choices'][0]['text']
+        response += new_text
+        current_paragraph += new_text
+
+        if '\n\n' in current_paragraph:
+            # New paragraph detected
+            paragraphs = current_paragraph.split('\n\n')
+            for i, paragraph in enumerate(paragraphs[:-1]):
+                if i == 0:
+                    await sent_message.edit(content=paragraph.strip())
+                else:
+                    sent_message = await message.channel.send(paragraph.strip())
+            current_paragraph = paragraphs[-1]
+
+        if len(current_paragraph) % 20 == 0:  # Edit message every 20 characters
+            await sent_message.edit(content=current_paragraph)
             await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
-    await sent_message.edit(content=response)
+
+    # Send any remaining content
+    if current_paragraph.strip():
+        await sent_message.edit(content=current_paragraph.strip())
+
     return response
 
 # Get the bot token from the environment variable
