@@ -39,20 +39,24 @@ async def on_message(message):
         async with message.channel.typing():
             # Fetch the message history
             history = []
-            total_length = 0
+            total_tokens = 0
             async for msg in message.channel.history(limit=None):
                 msg_content = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
-                msg_length = len(msg_content)
-                if total_length + msg_length > context_length:
+                msg_tokens = llm.tokenize(msg_content.encode())
+                msg_token_count = len(msg_tokens)
+                if total_tokens + msg_token_count > context_length:
                     break
                 history.append({
                     'role': f"{msg.author.display_name} ({msg.author.id})",
                     'content': msg.content
                 })
-                total_length += msg_length
+                total_tokens += msg_token_count
             history.reverse()  # Reverse to get chronological order
 
             # Add the current message to history
+            current_msg_content = f"{message.author.display_name} ({message.author.id}): {message.content}"
+            current_msg_tokens = llm.tokenize(current_msg_content.encode())
+            current_msg_token_count = len(current_msg_tokens)
             history.append({
                 'role': f"{message.author.display_name} ({message.author.id})",
                 'content': message.content
