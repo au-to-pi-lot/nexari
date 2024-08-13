@@ -16,10 +16,11 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Initialize Llama model
 llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'))
 
-# Get other settings from environment variables
+# Get settings from environment variables
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
 stop_sequences = os.getenv('STOP_SEQUENCES', 'Human:,AI:').split(',')
 temperature = float(os.getenv('TEMPERATURE', 0.7))
+context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
 
 # Load Jinja2 template
 with open('prompt_template.j2', 'r') as file:
@@ -38,11 +39,17 @@ async def on_message(message):
         async with message.channel.typing():
             # Fetch the message history
             history = []
-            async for msg in message.channel.history(limit=10):
+            total_length = 0
+            async for msg in message.channel.history(limit=None):
+                msg_content = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
+                msg_length = len(msg_content)
+                if total_length + msg_length > context_length:
+                    break
                 history.append({
                     'role': f"{msg.author.display_name} ({msg.author.id})",
                     'content': msg.content
                 })
+                total_length += msg_length
             history.reverse()  # Reverse to get chronological order
 
             # Add the current message to history
