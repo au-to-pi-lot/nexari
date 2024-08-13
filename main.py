@@ -40,19 +40,19 @@ async def on_message(message):
             history = []
             async for msg in message.channel.history(limit=10):
                 history.append({
-                    'role': 'AI' if msg.author == bot.user else 'Human',
+                    'role': f"{msg.author.display_name} ({msg.author.id})",
                     'content': msg.content
                 })
             history.reverse()  # Reverse to get chronological order
 
             # Add the current message to history
             history.append({
-                'role': 'Human',
+                'role': f"{message.author.display_name} ({message.author.id})",
                 'content': message.content
             })
 
             # Render the prompt using the Jinja2 template
-            prompt = template.render(messages=history)
+            prompt = template.render(messages=history, bot=bot)
             
             response = llm(prompt, max_tokens=max_tokens, stop=stop_sequences, echo=False, temperature=temperature)
             ai_response = response['choices'][0]['text'].strip()

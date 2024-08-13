@@ -1,4 +1,4 @@
 {% for message in messages %}
 {{ message.role }}: {{ message.content }}
 {% endfor %}
-AI:
+{{ bot.user.display_name }} ({{ bot.user.id }}):
