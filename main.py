@@ -20,6 +20,7 @@ llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'))
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
 temperature = float(os.getenv('TEMPERATURE', 0.7))
 context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
+stop_tokens = ["### Instruction:", "### Response:"]
 
 # Define Jinja2 templates as strings
 message_template = "{{ role }}: {{ content }}"
@@ -82,7 +83,7 @@ async def on_message(message):
             # Render the prompt using the Jinja2 template
             prompt = prompt_template.render(messages=history, bot=bot)
             
-            response = llm(prompt, max_tokens=max_tokens, stop=["### Instruction:", "### Response:"], echo=False, temperature=temperature)
+            response = llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature)
             ai_response = response['choices'][0]['text'].strip()
         
         # Remove any remaining "### Response:" from the beginning of the response
