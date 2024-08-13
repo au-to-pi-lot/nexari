@@ -21,9 +21,25 @@ max_tokens = int(os.getenv('MAX_TOKENS', 100))
 temperature = float(os.getenv('TEMPERATURE', 0.7))
 context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
 
-# Load Jinja2 template
-with open('prompt_template.j2', 'r') as file:
-    template = Template(file.read())
+# Define Jinja2 templates as strings
+message_template = "{{ role }}: {{ content }}"
+
+prompt_template = """
+Below is an instruction that describes a task. Write a response that appropriately completes the request.
+
+### Instruction:
+You are {{ bot.user.display_name }}, a helpful AI assistant in a Discord chat. Respond to the following conversation:
+
+{% for message in messages %}
+{{ message_template | format(role=message.role, content=message.content) }}
+{% endfor %}
+
+### Response:
+"""
+
+# Create Jinja2 Template objects
+message_template = Template(message_template)
+prompt_template = Template(prompt_template)
 
 @bot.event
 async def on_ready():
@@ -40,29 +56,31 @@ async def on_message(message):
             history = []
             total_tokens = 0
             async for msg in message.channel.history(limit=None):
-                msg_content = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
+                msg_role = f"{msg.author.display_name} ({msg.author.id})"
+                msg_content = message_template.render(role=msg_role, content=msg.content)
                 msg_tokens = llm.tokenize(msg_content.encode())
                 msg_token_count = len(msg_tokens)
                 if total_tokens + msg_token_count > context_length:
                     break
                 history.append({
-                    'role': f"{msg.author.display_name} ({msg.author.id})",
+                    'role': msg_role,
                     'content': msg.content
                 })
                 total_tokens += msg_token_count
             history.reverse()  # Reverse to get chronological order
 
             # Add the current message to history
-            current_msg_content = f"{message.author.display_name} ({message.author.id}): {message.content}"
+            current_msg_role = f"{message.author.display_name} ({message.author.id})"
+            current_msg_content = message_template.render(role=current_msg_role, content=message.content)
             current_msg_tokens = llm.tokenize(current_msg_content.encode())
             current_msg_token_count = len(current_msg_tokens)
             history.append({
-                'role': f"{message.author.display_name} ({message.author.id})",
+                'role': current_msg_role,
                 'content': message.content
             })
 
             # Render the prompt using the Jinja2 template
-            prompt = template.render(messages=history, bot=bot)
+            prompt = prompt_template.render(messages=history, bot=bot)
             
             response = llm(prompt, max_tokens=max_tokens, stop=["### Instruction:", "### Response:"], echo=False, temperature=temperature)
             ai_response = response['choices'][0]['text'].strip()
