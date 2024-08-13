@@ -1,6 +1,11 @@
+import os
 import discord
 from discord.ext import commands
 from llama_cpp import Llama
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Discord bot
 intents = discord.Intents.default()
@@ -29,5 +34,5 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-# Replace 'YOUR_BOT_TOKEN' with your actual Discord bot token
-bot.run('YOUR_BOT_TOKEN')
+# Get the bot token from the environment variable
+bot.run(os.getenv('DISCORD_BOT_TOKEN'))

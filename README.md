@@ -25,9 +25,13 @@ This project implements a Discord chatbot using discord.py and llama.cpp. The bo
 
 ## Configuration
 
-1. Open `main.py` and replace `'YOUR_BOT_TOKEN'` with your actual Discord bot token.
+1. Create a `.env` file in the project root directory with the following content:
+   ```
+   DISCORD_BOT_TOKEN=your_discord_bot_token_here
+   ```
+   Replace `your_discord_bot_token_here` with your actual Discord bot token.
 
-2. In the same file, update the `model_path` in the Llama initialization:
+2. In `main.py`, update the `model_path` in the Llama initialization:
    ```python
    llm = Llama(model_path="path/to/your/llama/model.bin")
    ```
