@@ -18,7 +18,6 @@ llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'))
 
 # Get settings from environment variables
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
-stop_sequences = os.getenv('STOP_SEQUENCES', 'Human:,AI:').split(',')
 temperature = float(os.getenv('TEMPERATURE', 0.7))
 context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
 
