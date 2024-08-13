@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from discord.ext import commands
 from llama_cpp import Llama
@@ -14,7 +15,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Initialize Llama model
-llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'))
+llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'), verbose=False)
 
 # Get settings from environment variables
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
@@ -83,14 +84,23 @@ async def on_message(message):
             # Render the prompt using the Jinja2 template
             prompt = prompt_template.render(messages=history, bot=bot)
             
-            response = llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature)
-            ai_response = response['choices'][0]['text'].strip()
+            ai_response = await stream_tokens(prompt, message)
         
         # Remove any remaining "### Response:" from the beginning of the response
         ai_response = ai_response.lstrip("### Response:").strip()
-        await message.reply(ai_response)
 
     await bot.process_commands(message)
+
+async def stream_tokens(prompt, message):
+    response = ""
+    sent_message = await message.reply("Thinking...")
+    async for token in llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature, stream=True):
+        response += token['choices'][0]['text']
+        if len(response) % 20 == 0:  # Edit message every 20 characters
+            await sent_message.edit(content=response)
+            await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
+    await sent_message.edit(content=response)
+    return response
 
 # Get the bot token from the environment variable
 bot.run(os.getenv('DISCORD_BOT_TOKEN'))
