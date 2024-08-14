@@ -29,12 +29,7 @@ This project implements a Discord chatbot using discord.py and llama.cpp. The bo
 
    This script will create a Conda environment, install all required dependencies including the CUDA Toolkit, and compile llama-cpp-python with CUBLAS support for GPU acceleration.
 
-4. Activate the Conda environment:
-   ```
-   conda activate llm-discord-bot
-   ```
-
-5. Download a llama.cpp compatible model file and place it in a known location.
+4. Download a llama.cpp compatible model file and place it in a known location.
 
 Note: The setup script will install the CUDA Toolkit using Conda. Make sure you have an NVIDIA GPU with CUDA support for GPU acceleration.
 
