@@ -167,7 +167,9 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     return response
 
 async def update_message(message: discord.Message, content: str) -> None:
-    if len(message.content) + len(content) > 1900:
+    if message.content == "Thinking...":
+        await message.edit(content=content.strip())
+    elif len(message.content) + len(content) > 1900:
         message = await message.channel.send(content.strip())
     else:
         await message.edit(content=message.content + content)
