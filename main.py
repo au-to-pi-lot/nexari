@@ -59,6 +59,7 @@ llm = Llama(model_path=model_path, verbose=False)
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
 temperature = float(os.getenv('TEMPERATURE', 0.7))
 context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
+stop_tokens = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
 # Llama 3.1 prompt format:
 message_template = """\
 <|start_header_id|>{{ role }}<|end_header_id|>
@@ -139,7 +140,7 @@ async def stream_tokens(prompt, message):
     buffer = ""
     in_code_block = False
 
-    async for token in llm(prompt, max_tokens=max_tokens, echo=False, temperature=temperature, stream=True):
+    async for token in llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature, stream=True):
         new_text = token['choices'][0]['text']
         response += new_text
         buffer += new_text
