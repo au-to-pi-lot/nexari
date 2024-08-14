@@ -132,8 +132,6 @@ async def on_message(message):
                 ]
                 
                 ai_response = await stream_tokens(messages, message)
-            
-                # The response is already properly formatted, no need to remove "### Response:"
             except Exception as e:
                 print(f"An error occurred: {e}")
                 await message.channel.send("I apologize, but I encountered an error while processing your request.")
