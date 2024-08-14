@@ -62,8 +62,20 @@ enable_flash_attention = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() ==
 enable_tensorcores = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
 
 # Initialize Llama model
-llm = Llama(model_path=model_path, verbose=False, n_gpu_layers=gpu_layers, use_mlock=True, use_mmap=True, 
-            use_flash_attention=enable_flash_attention, tensorcores=enable_tensorcores)
+try:
+    llm = Llama(
+        model_path=model_path,
+        n_ctx=2048,  # Adjust this value based on your model and available memory
+        n_gpu_layers=gpu_layers,
+        use_mlock=False,
+        use_mmap=True,
+        use_flash_attention=enable_flash_attention,
+        use_tensor_split=enable_tensorcores  # Changed from tensorcores to use_tensor_split
+    )
+    print("Llama model initialized successfully")
+except Exception as e:
+    print(f"Error initializing Llama model: {e}")
+    raise
 # Llama 3.1 prompt format:
 message_template = """\
 <|start_header_id|>{{ role }}<|end_header_id|>
