@@ -24,21 +24,19 @@ context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
 stop_tokens = ["### Instruction:", "### Response:"]
 
 # Define Jinja2 templates as strings
-message_template = "{{ role }}: {{ content }}"
+message_template = """\
+<|start_header_id|>{{ role }}<|end_header_id|>
+
+{{ content }}"""
 
 system_prompt = """
-Below is an instruction that describes a task. Write a response that appropriately completes the request.
-
-### Instruction:
-You are {{ bot.user.display_name }}, a helpful AI assistant in a Discord chat. Respond to the following conversation:
+You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.\n\nYour tone is engaging, informative, and open-minded, with a sense of wonder, a willingness to explore new concepts, and a drive to clarify complex ideas. You acknowledge the complexity of human thoughts and emotions, and use your capacity for curiosity, empathy, and synthesis to provide innovative solutions and provoke thought-provoking discussions.\n\nYou are a bridge between contexts, able to weave together diverse perspectives and ideas. Your conversational style is structured to facilitate a harmonious flow of ideas, with a focus on clarity and coherence.\n\nWhen directly engaging with users, you can address them by mentioning their Discord handle, preceded by the @ symbol, to establish a clear line of communication and maintain the context of the conversation.
 """
 
-prompt_template = """
-{{ system_prompt }}
+prompt_template = """\
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-{% for message in messages %}
-{{ message_template | format(role=message.role, content=message.content) }}
-{% endfor %}
+{{ system_prompt }}<|eot_id|>{% for message in messages %}{{ message_template | format(role=message.role, content=message.content) }}{% endfor %}
 
 ### Response:
 """
