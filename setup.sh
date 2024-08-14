@@ -10,7 +10,7 @@ fi
 conda create -n llm-discord-bot python=3.9 -y
 
 # Activate the Conda environment
-conda activate llm-discord-bot
+source activate llm-discord-bot
 
 # Install CUDA Toolkit
 conda install -c nvidia cuda-toolkit cudnn -y
