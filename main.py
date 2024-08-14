@@ -98,10 +98,24 @@ async def stream_tokens(prompt, message):
     response = ""
     sent_message = await message.reply("Thinking...")
     current_content = ""
+    in_code_block = False
+    code_block_content = ""
     async for token in llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature, stream=True):
         new_text = token['choices'][0]['text']
         response += new_text
         current_content += new_text
+
+        if '```' in new_text:
+            in_code_block = not in_code_block
+            if in_code_block:
+                code_block_content = ""
+            else:
+                current_content += code_block_content
+                code_block_content = ""
+
+        if in_code_block:
+            code_block_content += new_text
+            continue
 
         if '\n\n' in current_content or len(current_content) >= 1900:  # Check for new paragraph or approaching 2000 char limit
             paragraphs = current_content.split('\n\n')
