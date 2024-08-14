@@ -16,12 +16,21 @@ This project implements a Discord chatbot using discord.py and llama.cpp. The bo
    cd llm-discord-bot
    ```
 
-2. Install the required dependencies:
+2. Make the setup script executable:
    ```
-   pip install -r requirements.txt
+   chmod +x setup.sh
    ```
 
-3. Download a llama.cpp compatible model file and place it in a known location.
+3. Run the setup script:
+   ```
+   ./setup.sh
+   ```
+
+   This script will create a virtual environment, install all required dependencies, and compile llama-cpp-python with CUBLAS support for GPU acceleration.
+
+4. Download a llama.cpp compatible model file and place it in a known location.
+
+Note: The setup script assumes you're using a Debian-based system (like Ubuntu) and have CUDA toolkit installed. If you're using a different system or don't have CUDA installed, you may need to modify the script accordingly.
 
 ## Configuration
 
