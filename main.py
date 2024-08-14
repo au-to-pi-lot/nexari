@@ -152,6 +152,8 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
             response += new_text
             buffer += new_text
 
+            print(response)
+
             if '```' in new_text:
                 in_code_block = not in_code_block
 
