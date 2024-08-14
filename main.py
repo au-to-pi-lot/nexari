@@ -5,6 +5,9 @@ from discord.ext import commands
 from llama_cpp import Llama
 from dotenv import load_dotenv
 from jinja2 import Template
+import requests
+from tqdm import tqdm
+import urllib.parse
 
 # Load environment variables
 load_dotenv()
@@ -14,8 +17,38 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Function to download model
+def download_model(url, save_path):
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    
+    response = requests.get(url, stream=True)
+    total_size = int(response.headers.get('content-length', 0))
+    
+    mode = 'ab' if os.path.exists(save_path) else 'wb'
+    
+    with open(save_path, mode) as file, tqdm(
+        desc=save_path,
+        total=total_size,
+        unit='iB',
+        unit_scale=True,
+        unit_divisor=1024,
+    ) as progress_bar:
+        for data in response.iter_content(chunk_size=1024):
+            size = file.write(data)
+            progress_bar.update(size)
+
+# Get model path or download if not available
+model_url = os.getenv('LLAMA_MODEL_URL')
+model_path = os.getenv('LLAMA_MODEL_PATH', 'models/model.bin')
+
+if not os.path.exists(model_path) and model_url:
+    print(f"Downloading model from {model_url}")
+    download_model(model_url, model_path)
+elif not os.path.exists(model_path):
+    raise ValueError("Model file not found and no URL provided for download.")
+
 # Initialize Llama model
-llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'), verbose=False)
+llm = Llama(model_path=model_path, verbose=False)
 
 # Get settings from environment variables
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
