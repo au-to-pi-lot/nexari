@@ -59,9 +59,11 @@ context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
 stop_tokens = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
 gpu_layers = int(os.getenv('GPU_LAYERS', 0))
 enable_flash_attention = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
+enable_tensorcores = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
 
 # Initialize Llama model
-llm = Llama(model_path=model_path, verbose=False, n_gpu_layers=gpu_layers, use_mlock=True, use_mmap=True, use_flash_attention=enable_flash_attention)
+llm = Llama(model_path=model_path, verbose=False, n_gpu_layers=gpu_layers, use_mlock=True, use_mmap=True, 
+            use_flash_attention=enable_flash_attention, tensorcores=enable_tensorcores)
 # Llama 3.1 prompt format:
 message_template = """\
 <|start_header_id|>{{ role }}<|end_header_id|>
