@@ -145,7 +145,9 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     buffer: str = ""
     in_code_block: bool = False
 
-    async for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
+    stream = llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True)
+    
+    for token in stream:
         new_text: str = token['choices'][0]['delta'].get('content', '')
         if new_text:
             response += new_text
@@ -157,6 +159,9 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
             if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
                 await update_message(sent_message, buffer)
                 buffer = ""
+
+        # Allow other tasks to run, minimizing GPU downtime
+        await asyncio.sleep(0)
 
     if buffer:
         await update_message(sent_message, buffer)
