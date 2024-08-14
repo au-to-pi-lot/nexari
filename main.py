@@ -72,9 +72,12 @@ try:
         use_mlock=False,
         use_mmap=True,
         use_flash_attention=enable_flash_attention,
-        chat_format=chat_template
+        chat_format=chat_template,
+        n_gqa=8,  # Enable 4-bit KV buffers
+        cache_capacity=4096,  # Use 4-bit cache to save VRAM
+        cache_type="f16"  # Use 16-bit float for cache
     )
-    print("Llama model initialized successfully")
+    print("Llama model initialized successfully with 4-bit KV buffers and 4-bit cache")
 except Exception as e:
     print(f"Error initializing Llama model: {e}")
     raise
