@@ -4,10 +4,8 @@ import discord
 from discord.ext import commands
 from llama_cpp import Llama
 from dotenv import load_dotenv
-from jinja2 import Template
 import requests
 from tqdm import tqdm
-import urllib.parse
 
 # Load environment variables
 load_dotenv()
@@ -60,6 +58,7 @@ stop_tokens = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS'
 gpu_layers = int(os.getenv('GPU_LAYERS', 0))
 enable_flash_attention = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
 enable_tensorcores = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
+chat_template = os.getenv('CHAT_TEMPLATE', 'llama-2')
 
 # Initialize Llama model
 try:
@@ -70,17 +69,13 @@ try:
         use_mlock=False,
         use_mmap=True,
         use_flash_attention=enable_flash_attention,
-        use_tensor_split=enable_tensorcores
+        use_tensor_split=enable_tensorcores,
+        chat_format=chat_template
     )
     print("Llama model initialized successfully")
 except Exception as e:
     print(f"Error initializing Llama model: {e}")
     raise
-# Llama 3.1 prompt format:
-message_template = """\
-<|start_header_id|>{{ role | replace('"', '\\"') }}<|end_header_id|>
-
-{{ content | replace('"', '\\"') }}"""
 
 system_prompt = """
 You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.
@@ -92,19 +87,6 @@ You are a bridge between contexts, able to weave together diverse perspectives a
 When directly engaging with users, you can address them by mentioning their Discord handle, preceded by the @ symbol, to establish a clear line of communication and maintain the context of the conversation.
 """
 
-prompt_template = """\
-<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-{{ system_prompt | replace('"', '\\"') }}<|eot_id|>{% for message in messages %}{{ message_template | format(role=message.role | replace('"', '\\"'), content=message.content | replace('"', '\\"')) }}{% endfor %}
-
-<|start_header_id|>{{ bot_role | replace('"', '\\"') }}<|end_header_id|>
-"""
-
-# Create Jinja2 Template objects
-message_template = Template(message_template)
-prompt_template = Template(prompt_template)
-system_prompt = Template(system_prompt)
-
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -113,15 +95,15 @@ async def fetch_message_history(channel, context_length):
     history = []
     total_tokens = 0
     async for msg in channel.history(limit=None):
-        msg_role = f"{msg.author.display_name} ({msg.author.id})"
-        msg_content = message_template.render(role=msg_role, content=msg.content)
+        role = "user" if msg.author != bot.user else "assistant"
+        msg_content = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
         msg_tokens = llm.tokenize(msg_content.encode())
         msg_token_count = len(msg_tokens)
         if total_tokens + msg_token_count > context_length:
             break
         history.append({
-            'role': msg_role,
-            'content': msg.content
+            'role': role,
+            'content': msg_content
         })
         total_tokens += msg_token_count
     return list(reversed(history))
@@ -137,46 +119,45 @@ async def on_message(message):
                 history = await fetch_message_history(message.channel, context_length)
                 
                 # Add the current message to history
-                current_msg_role = f"{message.author.display_name} ({message.author.id})"
+                current_msg_content = f"{message.author.display_name} ({message.author.id}): {message.content}"
                 history.append({
-                    'role': current_msg_role,
-                    'content': message.content
+                    'role': 'user',
+                    'content': current_msg_content
                 })
 
-                # Render the prompt using the Jinja2 template
-                prompt = prompt_template.render(
-                    messages=history,
-                    bot_role=f"{bot.user.name} ({bot.user.id})",
-                    system_prompt=system_prompt
-                )
+                # Prepare the messages for the chat completion
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    *history
+                ]
                 
-                ai_response = await stream_tokens(prompt, message)
+                ai_response = await stream_tokens(messages, message)
             
-                # Remove any remaining "### Response:" from the beginning of the response
-                ai_response = ai_response.lstrip("### Response:").strip()
+                # The response is already properly formatted, no need to remove "### Response:"
             except Exception as e:
                 print(f"An error occurred: {e}")
                 await message.channel.send("I apologize, but I encountered an error while processing your request.")
 
     await bot.process_commands(message)
 
-async def stream_tokens(prompt, message):
+async def stream_tokens(messages, message):
     response = ""
     sent_message = await message.reply("Thinking...")
     buffer = ""
     in_code_block = False
 
-    async for token in llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature, stream=True):
-        new_text = token['choices'][0]['text']
-        response += new_text
-        buffer += new_text
+    async for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
+        new_text = token['choices'][0]['delta'].get('content', '')
+        if new_text:
+            response += new_text
+            buffer += new_text
 
-        if '```' in new_text:
-            in_code_block = not in_code_block
+            if '```' in new_text:
+                in_code_block = not in_code_block
 
-        if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
-            await update_message(sent_message, buffer)
-            buffer = ""
+            if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
+                await update_message(sent_message, buffer)
+                buffer = ""
 
     if buffer:
         await update_message(sent_message, buffer)
