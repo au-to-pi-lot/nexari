@@ -23,7 +23,7 @@ temperature = float(os.getenv('TEMPERATURE', 0.7))
 context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
 stop_tokens = ["### Instruction:", "### Response:"]
 
-# Define Jinja2 templates as strings
+# Llama 3.1 prompt format:
 message_template = """\
 <|start_header_id|>{{ role }}<|end_header_id|>
 
