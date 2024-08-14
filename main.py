@@ -71,7 +71,7 @@ try:
         n_gpu_layers=gpu_layers,
         use_mlock=False,
         use_mmap=True,
-        use_flash_attention=enable_flash_attention,
+        flash_attn=enable_flash_attention,
         chat_format=chat_template,
         type_k=2,  # 4-bit KV
         type_v=2,
