@@ -7,7 +7,8 @@ from llama_cpp import Llama
 from dotenv import load_dotenv
 import requests
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
+import multiprocessing
+from multiprocessing import Queue
 
 # Load environment variables
 load_dotenv()
@@ -171,13 +172,23 @@ async def update_message(message: discord.Message, content: str) -> None:
         await message.edit(content=message.content + content)
     await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
 
+def process_chat_completion(llm: Llama, messages: List[Dict[str, str]], queue: Queue, **kwargs: Any) -> None:
+    for chunk in llm.create_chat_completion(messages, **kwargs):
+        queue.put(chunk)
+    queue.put(None)  # Signal that we're done
+
 async def async_create_chat_completion(llm: Llama, messages: List[Dict[str, str]], **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
-    loop = asyncio.get_running_loop()
-    with ThreadPoolExecutor() as pool:
-        for chunk in await loop.run_in_executor(
-            pool, lambda: llm.create_chat_completion(messages, **kwargs)
-        ):
-            yield chunk
+    queue = Queue()
+    process = multiprocessing.Process(target=process_chat_completion, args=(llm, messages, queue), kwargs=kwargs)
+    process.start()
+
+    while True:
+        chunk = await asyncio.get_event_loop().run_in_executor(None, queue.get)
+        if chunk is None:
+            break
+        yield chunk
+
+    process.join()
 
 # Get the bot token from the environment variable
 bot.run(os.getenv('DISCORD_BOT_TOKEN'))
