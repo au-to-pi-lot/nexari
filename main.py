@@ -1,5 +1,6 @@
 import os
 import asyncio
+import signal
 from typing import List, Dict, Optional, Union, Any, AsyncGenerator
 import discord
 from discord.ext import commands
@@ -182,13 +183,29 @@ async def async_create_chat_completion(llm: Llama, messages: List[Dict[str, str]
     process = multiprocessing.Process(target=process_chat_completion, args=(llm, messages, queue), kwargs=kwargs)
     process.start()
 
-    while True:
-        chunk = await asyncio.get_event_loop().run_in_executor(None, queue.get)
-        if chunk is None:
-            break
-        yield chunk
+    try:
+        while True:
+            try:
+                chunk = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, queue.get), timeout=0.1)
+                if chunk is None:
+                    break
+                yield chunk
+            except asyncio.TimeoutError:
+                if not process.is_alive():
+                    break
+    finally:
+        if process.is_alive():
+            process.terminate()
+        process.join()
 
-    process.join()
+def signal_handler(sig, frame):
+    print("Ctrl+C pressed. Shutting down gracefully...")
+    asyncio.create_task(bot.close())
+
+signal.signal(signal.SIGINT, signal_handler)
 
 # Get the bot token from the environment variable
-bot.run(os.getenv('DISCORD_BOT_TOKEN'))
+try:
+    bot.run(os.getenv('DISCORD_BOT_TOKEN'))
+except KeyboardInterrupt:
+    print("Bot stopped.")
