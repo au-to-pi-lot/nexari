@@ -25,8 +25,8 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 conda install -c conda-forge pip -y
 pip install -r requirements.txt
 
-# Install llama-cpp-python with CUBLAS support
-CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
+# Install llama-cpp-python with CUDA support
+CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
 
 echo "Setup completed successfully!"
 echo "To activate this environment, use:"
