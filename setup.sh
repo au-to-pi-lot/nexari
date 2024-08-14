@@ -26,7 +26,7 @@ conda install -c conda-forge pip -y
 pip install -r requirements.txt
 
 # Install llama-cpp-python with CUDA support
-CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_COMPILER=$CUDA_HOME/bin/nvcc" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=$CUDA_HOME" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
 
 echo "Setup completed successfully!"
 echo "To activate this environment, use:"
