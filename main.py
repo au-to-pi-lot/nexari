@@ -97,8 +97,8 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
     history: List[Dict[str, str]] = []
     total_tokens: int = 0
     async for msg in channel.history(limit=None):
-        role: str = "assistant" if msg.author == bot.user else "user"
-        msg_content: str = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
+        role: str = f"assistant ({bot.user.name})" if msg.author == bot.user else f"user ({msg.author.display_name} {msg.author.id})"
+        msg_content: str = msg.content
         msg_tokens: List[int] = llm.tokenize(msg_content.encode())
         msg_token_count: int = len(msg_tokens)
         if total_tokens + msg_token_count > context_length:
@@ -121,10 +121,9 @@ async def on_message(message: discord.Message) -> None:
                 history: List[Dict[str, str]] = await fetch_message_history(message.channel, context_length)
                 
                 # Add the current message to history
-                current_msg_content: str = f"{message.author.display_name} ({message.author.id}): {message.content}"
                 history.append({
-                    'role': 'user',
-                    'content': current_msg_content
+                    'role': f"user ({message.author.display_name} {message.author.id})",
+                    'content': message.content
                 })
 
                 # Prepare the messages for the chat completion
