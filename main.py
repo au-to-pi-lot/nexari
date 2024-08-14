@@ -8,8 +8,6 @@ from llama_cpp import Llama
 from dotenv import load_dotenv
 import requests
 from tqdm import tqdm
-import multiprocessing
-from multiprocessing import Queue
 
 # Load environment variables
 load_dotenv()
@@ -148,7 +146,7 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     buffer: str = ""
     in_code_block: bool = False
 
-    async for token in async_create_chat_completion(llm, messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
+    for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
         new_text: str = token['choices'][0]['delta'].get('content', '')
         if new_text:
             response += new_text
@@ -173,30 +171,6 @@ async def update_message(message: discord.Message, content: str) -> None:
         await message.edit(content=message.content + content)
     await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
 
-def process_chat_completion(llm: Llama, messages: List[Dict[str, str]], queue: Queue, **kwargs: Any) -> None:
-    for chunk in llm.create_chat_completion(messages, **kwargs):
-        queue.put(chunk)
-    queue.put(None)  # Signal that we're done
-
-async def async_create_chat_completion(llm: Llama, messages: List[Dict[str, str]], **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
-    queue = Queue()
-    process = multiprocessing.Process(target=process_chat_completion, args=(llm, messages, queue), kwargs=kwargs)
-    process.start()
-
-    try:
-        while True:
-            try:
-                chunk = await asyncio.wait_for(asyncio.get_event_loop().run_in_executor(None, queue.get), timeout=0.1)
-                if chunk is None:
-                    break
-                yield chunk
-            except asyncio.TimeoutError:
-                if not process.is_alive():
-                    break
-    finally:
-        if process.is_alive():
-            process.terminate()
-        process.join()
 
 def signal_handler(sig, frame):
     print("Ctrl+C pressed. Shutting down gracefully...")
