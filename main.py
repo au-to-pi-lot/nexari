@@ -1,6 +1,6 @@
 import os
 import asyncio
-from typing import List, Dict, Optional, Union, Any
+from typing import List, Dict, Optional, Union, Any, AsyncGenerator
 import discord
 from discord.ext import commands
 from llama_cpp import Llama
