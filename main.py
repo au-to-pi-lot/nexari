@@ -97,7 +97,9 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
     history: List[Dict[str, str]] = []
     total_tokens: int = 0
     async for msg in channel.history(limit=None):
-        role: str = f"assistant ({bot.user.name})" if msg.author == bot.user else f"user ({msg.author.display_name} {msg.author.id})"
+        role: str = f"{bot.user.name} (<@{bot.user.id}>)" \
+            if msg.author == bot.user \
+            else f"{msg.author.display_name} (@<{msg.author.id}>)"
         msg_content: str = msg.content
         msg_tokens: List[int] = llm.tokenize(msg_content.encode())
         msg_token_count: int = len(msg_tokens)
@@ -122,7 +124,7 @@ async def on_message(message: discord.Message) -> None:
                 
                 # Add the current message to history
                 history.append({
-                    'role': f"user ({message.author.display_name} {message.author.id})",
+                    'role': f"{message.author.display_name} (<@{message.author.id}>)",
                     'content': message.content
                 })
 
