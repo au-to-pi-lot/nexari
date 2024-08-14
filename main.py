@@ -158,14 +158,14 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
                 in_code_block = not in_code_block
 
             if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
-                sent_message = await update_message(sent_message, buffer)
+                sent_message = await send_message(sent_message.channel, buffer)
                 buffer = ""
             elif len(buffer) >= 20:  # Stream more frequently
-                await update_message(sent_message, buffer)
+                sent_message = await update_message(sent_message, buffer)
                 buffer = ""
 
     if buffer:
-        await update_message(sent_message, buffer)
+        await send_message(sent_message.channel, buffer)
 
     return response
 
@@ -173,10 +173,13 @@ async def update_message(message: discord.Message, content: str) -> discord.Mess
     if message.content == "Thinking...":
         return await message.edit(content=content.strip())
     elif len(message.content) + len(content) > 1900:
-        return await message.channel.send(content.strip())
+        return await send_message(message.channel, content.strip())
     else:
         await message.edit(content=message.content + content)
         return message
+
+async def send_message(channel: discord.TextChannel, content: str) -> discord.Message:
+    return await channel.send(content.strip())
 
 async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
     for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
