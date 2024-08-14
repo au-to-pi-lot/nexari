@@ -136,7 +136,8 @@ async def on_message(message: discord.Message) -> None:
                 
                 # Print the literal string prompt for debugging
                 print("Literal string prompt for LLM completion:")
-                print(llm.tokenize(llm.format_chat_prompt(messages)))
+                prompt = llm.tokenize(llm.create_chat_completion(messages, max_tokens=1)['choices'][0]['message']['content'].encode())
+                print(prompt)
                 
                 ai_response: str = await stream_tokens(messages, message)
             except Exception as e:
