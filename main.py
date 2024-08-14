@@ -134,6 +134,10 @@ async def on_message(message: discord.Message) -> None:
                     *history
                 ]
                 
+                # Print the literal string prompt for debugging
+                print("Literal string prompt for LLM completion:")
+                print(llm.tokenize(llm.format_chat_prompt(messages)))
+                
                 ai_response: str = await stream_tokens(messages, message)
             except Exception as e:
                 print(f"An error occurred: {e}")
