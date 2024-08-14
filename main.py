@@ -97,29 +97,35 @@ async def on_message(message):
 async def stream_tokens(prompt, message):
     response = ""
     sent_message = await message.reply("Thinking...")
-    current_paragraph = ""
+    current_content = ""
     async for token in llm(prompt, max_tokens=max_tokens, stop=stop_tokens, echo=False, temperature=temperature, stream=True):
         new_text = token['choices'][0]['text']
         response += new_text
-        current_paragraph += new_text
+        current_content += new_text
 
-        if '\n\n' in current_paragraph:
-            # New paragraph detected
-            paragraphs = current_paragraph.split('\n\n')
+        if '\n\n' in current_content or len(current_content) >= 1900:  # Check for new paragraph or approaching 2000 char limit
+            paragraphs = current_content.split('\n\n')
             for i, paragraph in enumerate(paragraphs[:-1]):
-                if i == 0:
-                    await sent_message.edit(content=paragraph.strip())
-                else:
+                if len(sent_message.content) + len(paragraph) > 1900:
                     sent_message = await message.channel.send(paragraph.strip())
-            current_paragraph = paragraphs[-1]
+                else:
+                    await sent_message.edit(content=sent_message.content + "\n\n" + paragraph.strip())
+            current_content = paragraphs[-1]
 
-        if len(current_paragraph) % 20 == 0:  # Edit message every 20 characters
-            await sent_message.edit(content=current_paragraph)
+            if len(current_content) >= 1900:
+                sent_message = await message.channel.send(current_content.strip())
+                current_content = ""
+
+        if len(current_content) % 20 == 0 and current_content.strip():  # Edit message every 20 characters
+            await sent_message.edit(content=sent_message.content + current_content)
             await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
 
     # Send any remaining content
-    if current_paragraph.strip():
-        await sent_message.edit(content=current_paragraph.strip())
+    if current_content.strip():
+        if len(sent_message.content) + len(current_content) > 1900:
+            sent_message = await message.channel.send(current_content.strip())
+        else:
+            await sent_message.edit(content=sent_message.content + "\n\n" + current_content.strip())
 
     return response
 
