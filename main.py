@@ -159,9 +159,6 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
                 await update_message(sent_message, buffer)
                 buffer = ""
 
-        # Allow other tasks to run, minimizing GPU downtime
-        await asyncio.sleep(0)
-
     if buffer:
         await update_message(sent_message, buffer)
 
@@ -174,12 +171,13 @@ async def update_message(message: discord.Message, content: str) -> None:
         await message.edit(content=message.content + content)
     await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
 
-async def async_create_chat_completion(llm: Llama, messages: List[Dict[str, str]], **kwargs: Any) -> Any:
+async def async_create_chat_completion(llm: Llama, messages: List[Dict[str, str]], **kwargs: Any) -> AsyncGenerator[Dict[str, Any], None]:
     loop = asyncio.get_running_loop()
     with ThreadPoolExecutor() as pool:
-        return await loop.run_in_executor(
+        for chunk in await loop.run_in_executor(
             pool, lambda: llm.create_chat_completion(messages, **kwargs)
-        )
+        ):
+            yield chunk
 
 # Get the bot token from the environment variable
 bot.run(os.getenv('DISCORD_BOT_TOKEN'))
