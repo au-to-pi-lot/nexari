@@ -26,6 +26,8 @@ conda install -c conda-forge pip -y
 pip install -r requirements.txt
 
 # Install llama-cpp-python with CUDA support
+export CUDA_PATH=$CUDA_HOME
+export CUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME
 CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
 
 echo "Setup completed successfully!"
