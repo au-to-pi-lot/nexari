@@ -21,7 +21,7 @@ llm = Llama(model_path=os.getenv('LLAMA_MODEL_PATH'), verbose=False)
 max_tokens = int(os.getenv('MAX_TOKENS', 100))
 temperature = float(os.getenv('TEMPERATURE', 0.7))
 context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
-stop_tokens = ["### Instruction:", "### Response:"]
+stop_tokens = ["<|eot_id|>"]
 
 # Llama 3.1 prompt format:
 message_template = """\
