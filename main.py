@@ -17,6 +17,11 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Get the bot's client ID from the environment variable
+client_id = os.getenv('DISCORD_CLIENT_ID')
+if not client_id:
+    raise ValueError("DISCORD_CLIENT_ID is not set in the environment variables.")
+
 # Function to download model
 def download_model(url, save_path):
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
