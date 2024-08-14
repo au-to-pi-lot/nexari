@@ -54,11 +54,15 @@ Note: The setup script will install the CUDA Toolkit using Conda. Make sure you 
 
 ## Running the Bot
 
-To start the bot, run:
+1. Make the start script executable:
+   ```
+   chmod +x start.sh
+   ```
 
-```
-python main.py
-```
+2. To start the bot, run:
+   ```
+   ./start.sh
+   ```
 
 The bot will connect to Discord and print a message when ready.
 
