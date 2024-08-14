@@ -38,7 +38,7 @@ prompt_template = """\
 
 {{ system_prompt }}<|eot_id|>{% for message in messages %}{{ message_template | format(role=message.role, content=message.content) }}{% endfor %}
 
-### Response:
+<|start_header_id|>{{ bot_role }}<|end_header_id|>
 """
 
 # Create Jinja2 Template objects
