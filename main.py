@@ -1,5 +1,6 @@
 import os
 import asyncio
+from typing import List, Dict, Optional, Union
 import discord
 from discord.ext import commands
 from llama_cpp import Llama
@@ -11,23 +12,23 @@ from tqdm import tqdm
 load_dotenv()
 
 # Initialize Discord bot
-intents = discord.Intents.default()
+intents: discord.Intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot: commands.Bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Get the bot's client ID from the environment variable
-client_id = os.getenv('DISCORD_CLIENT_ID')
+client_id: Optional[str] = os.getenv('DISCORD_CLIENT_ID')
 if not client_id:
     raise ValueError("DISCORD_CLIENT_ID is not set in the environment variables.")
 
 # Function to download model
-def download_model(url, save_path):
+def download_model(url: str, save_path: str) -> None:
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     
-    response = requests.get(url, stream=True)
-    total_size = int(response.headers.get('content-length', 0))
+    response: requests.Response = requests.get(url, stream=True)
+    total_size: int = int(response.headers.get('content-length', 0))
     
-    mode = 'ab' if os.path.exists(save_path) else 'wb'
+    mode: str = 'ab' if os.path.exists(save_path) else 'wb'
     
     with open(save_path, mode) as file, tqdm(
         desc=save_path,
@@ -37,12 +38,12 @@ def download_model(url, save_path):
         unit_divisor=1024,
     ) as progress_bar:
         for data in response.iter_content(chunk_size=1024):
-            size = file.write(data)
+            size: int = file.write(data)
             progress_bar.update(size)
 
 # Get model path or download if not available
-model_url = os.getenv('LLAMA_MODEL_URL')
-model_path = os.getenv('LLAMA_MODEL_PATH', 'models/model.bin')
+model_url: Optional[str] = os.getenv('LLAMA_MODEL_URL')
+model_path: str = os.getenv('LLAMA_MODEL_PATH', 'models/model.bin')
 
 if not os.path.exists(model_path) and model_url:
     print(f"Downloading model from {model_url}")
@@ -51,18 +52,18 @@ elif not os.path.exists(model_path):
     raise ValueError("Model file not found and no URL provided for download.")
 
 # Get settings from environment variables
-max_tokens = int(os.getenv('MAX_TOKENS', 100))
-temperature = float(os.getenv('TEMPERATURE', 0.7))
-context_length = int(os.getenv('CONTEXT_LENGTH', 1000))
-stop_tokens = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
-gpu_layers = int(os.getenv('GPU_LAYERS', 0))
-enable_flash_attention = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
-enable_tensorcores = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
-chat_template = os.getenv('CHAT_TEMPLATE', 'llama-2')
+max_tokens: int = int(os.getenv('MAX_TOKENS', 100))
+temperature: float = float(os.getenv('TEMPERATURE', 0.7))
+context_length: int = int(os.getenv('CONTEXT_LENGTH', 1000))
+stop_tokens: Optional[List[str]] = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
+gpu_layers: int = int(os.getenv('GPU_LAYERS', 0))
+enable_flash_attention: bool = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
+enable_tensorcores: bool = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
+chat_template: str = os.getenv('CHAT_TEMPLATE', 'llama-2')
 
 # Initialize Llama model
 try:
-    llm = Llama(
+    llm: Llama = Llama(
         model_path=model_path,
         n_ctx=context_length,
         n_gpu_layers=gpu_layers,
@@ -88,17 +89,17 @@ When directly engaging with users, you can address them by mentioning their Disc
 """
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     print(f'{bot.user} has connected to Discord!')
 
-async def fetch_message_history(channel, context_length):
-    history = []
-    total_tokens = 0
+async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMChannel], context_length: int) -> List[Dict[str, str]]:
+    history: List[Dict[str, str]] = []
+    total_tokens: int = 0
     async for msg in channel.history(limit=None):
-        role = "user" if msg.author != bot.user else "assistant"
-        msg_content = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
-        msg_tokens = llm.tokenize(msg_content.encode())
-        msg_token_count = len(msg_tokens)
+        role: str = "user" if msg.author != bot.user else "assistant"
+        msg_content: str = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
+        msg_tokens: List[int] = llm.tokenize(msg_content.encode())
+        msg_token_count: int = len(msg_tokens)
         if total_tokens + msg_token_count > context_length:
             break
         history.append({
@@ -109,43 +110,43 @@ async def fetch_message_history(channel, context_length):
     return list(reversed(history))
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message) -> None:
     if message.author == bot.user:
         return
 
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         async with message.channel.typing():
             try:
-                history = await fetch_message_history(message.channel, context_length)
+                history: List[Dict[str, str]] = await fetch_message_history(message.channel, context_length)
                 
                 # Add the current message to history
-                current_msg_content = f"{message.author.display_name} ({message.author.id}): {message.content}"
+                current_msg_content: str = f"{message.author.display_name} ({message.author.id}): {message.content}"
                 history.append({
                     'role': 'user',
                     'content': current_msg_content
                 })
 
                 # Prepare the messages for the chat completion
-                messages = [
+                messages: List[Dict[str, str]] = [
                     {"role": "system", "content": system_prompt},
                     *history
                 ]
                 
-                ai_response = await stream_tokens(messages, message)
+                ai_response: str = await stream_tokens(messages, message)
             except Exception as e:
                 print(f"An error occurred: {e}")
                 await message.channel.send("I apologize, but I encountered an error while processing your request.")
 
     await bot.process_commands(message)
 
-async def stream_tokens(messages, message):
-    response = ""
-    sent_message = await message.reply("Thinking...")
-    buffer = ""
-    in_code_block = False
+async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message) -> str:
+    response: str = ""
+    sent_message: discord.Message = await message.reply("Thinking...")
+    buffer: str = ""
+    in_code_block: bool = False
 
     async for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
-        new_text = token['choices'][0]['delta'].get('content', '')
+        new_text: str = token['choices'][0]['delta'].get('content', '')
         if new_text:
             response += new_text
             buffer += new_text
@@ -162,7 +163,7 @@ async def stream_tokens(messages, message):
 
     return response
 
-async def update_message(message, content):
+async def update_message(message: discord.Message, content: str) -> None:
     if len(message.content) + len(content) > 1900:
         message = await message.channel.send(content.strip())
     else:
