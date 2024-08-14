@@ -9,6 +9,6 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Install llama-cpp-python with CUBLAS support
-CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install --upgrade --force-reinstall llama-cpp-python
+CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install llama-cpp-python --force-reinstall --upgrade --no-cache-dir
 
 echo "Setup completed successfully!"
