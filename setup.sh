@@ -18,6 +18,7 @@ conda install -c nvidia cuda cuda-toolkit cudnn -y
 
 # Set up environment variables
 export CUDA_HOME=$CONDA_PREFIX
+export CUDA_TOOLKIT_INCLUDE_DIR=$CONDA_PREFIX/targets/x86_64-linux
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
@@ -26,7 +27,7 @@ conda install -c conda-forge pip -y
 pip install -r requirements.txt
 
 # Install llama-cpp-python with CUDA support
-CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=$CUDA_HOME" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
+CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=$CUDA_HOME -DCUDAToolkit_INCLUDE_DIR=$CUDA_TOOLKIT_INCLUDE_DIR" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
 
 echo "Setup completed successfully!"
 echo "To activate this environment, use:"
