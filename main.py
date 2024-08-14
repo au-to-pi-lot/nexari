@@ -158,7 +158,7 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
                 in_code_block = not in_code_block
 
             if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
-                await update_message(sent_message, buffer)
+                sent_message = await update_message(sent_message, buffer)
                 buffer = ""
 
     if buffer:
@@ -166,14 +166,13 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
 
     return response
 
-async def update_message(message: discord.Message, content: str) -> None:
+async def update_message(message: discord.Message, content: str) -> discord.Message:
     if message.content == "Thinking...":
-        await message.edit(content=content.strip())
+        return await message.edit(content=content.strip())
     elif len(message.content) + len(content) > 1900:
-        message = await message.channel.send(content.strip())
+        return await message.channel.send(content.strip())
     else:
-        await message.edit(content=message.content + content)
-    await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
+        return await message.edit(content=message.content + content)
 
 
 def signal_handler(sig, frame):
