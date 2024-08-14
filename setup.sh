@@ -14,7 +14,7 @@ eval "$(conda shell.bash hook)"
 conda activate llm-discord-bot
 
 # Install CUDA Toolkit
-conda install -c nvidia cuda-toolkit cudnn -y
+conda install -c nvidia cuda cuda-toolkit cudnn -y
 
 # Set up environment variables
 export CUDA_HOME=$CONDA_PREFIX
