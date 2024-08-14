@@ -65,12 +65,12 @@ enable_tensorcores = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
 try:
     llm = Llama(
         model_path=model_path,
-        n_ctx=2048,  # Adjust this value based on your model and available memory
+        n_ctx=context_length,
         n_gpu_layers=gpu_layers,
         use_mlock=False,
         use_mmap=True,
         use_flash_attention=enable_flash_attention,
-        use_tensor_split=enable_tensorcores  # Changed from tensorcores to use_tensor_split
+        use_tensor_split=enable_tensorcores
     )
     print("Llama model initialized successfully")
 except Exception as e:
