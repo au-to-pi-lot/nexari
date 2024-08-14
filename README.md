@@ -4,9 +4,10 @@ This project implements a Discord chatbot using discord.py and llama.cpp. The bo
 
 ## Prerequisites
 
-- Python 3.8 or higher
+- Conda (Miniconda or Anaconda)
 - A Discord bot token
 - A llama.cpp compatible model file
+- NVIDIA GPU with CUDA support (for GPU acceleration)
 
 ## Installation
 
@@ -26,11 +27,16 @@ This project implements a Discord chatbot using discord.py and llama.cpp. The bo
    ./setup.sh
    ```
 
-   This script will create a virtual environment, install all required dependencies, and compile llama-cpp-python with CUBLAS support for GPU acceleration.
+   This script will create a Conda environment, install all required dependencies including the CUDA Toolkit, and compile llama-cpp-python with CUBLAS support for GPU acceleration.
 
-4. Download a llama.cpp compatible model file and place it in a known location.
+4. Activate the Conda environment:
+   ```
+   conda activate llm-discord-bot
+   ```
 
-Note: The setup script assumes you're using a Debian-based system (like Ubuntu) and have CUDA toolkit installed. If you're using a different system or don't have CUDA installed, you may need to modify the script accordingly.
+5. Download a llama.cpp compatible model file and place it in a known location.
+
+Note: The setup script will install the CUDA Toolkit using Conda. Make sure you have an NVIDIA GPU with CUDA support for GPU acceleration.
 
 ## Configuration
 
