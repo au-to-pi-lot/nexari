@@ -179,7 +179,18 @@ async def send_message(channel: Union[discord.TextChannel, discord.DMChannel], c
     return await channel.send(content.strip())
 
 async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
-    for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
+    completion = llm.create_chat_completion(
+        messages,
+        max_tokens=max_tokens,
+        stop=stop_tokens,
+        temperature=temperature,
+        top_k=0,
+        top_p=0,
+        min_p=0.05,
+        repeat_penalty=1.05,
+        stream=True
+    )
+    for token in completion:
         yield token
         await asyncio.sleep(0.01)  # Small delay to allow other tasks to run
 
