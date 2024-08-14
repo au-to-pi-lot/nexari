@@ -1,12 +1,13 @@
 import os
 import asyncio
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 import discord
 from discord.ext import commands
 from llama_cpp import Llama
 from dotenv import load_dotenv
 import requests
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 # Load environment variables
 load_dotenv()
@@ -145,9 +146,7 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     buffer: str = ""
     in_code_block: bool = False
 
-    stream = llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True)
-    
-    for token in stream:
+    async for token in async_create_chat_completion(llm, messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
         new_text: str = token['choices'][0]['delta'].get('content', '')
         if new_text:
             response += new_text
@@ -174,6 +173,13 @@ async def update_message(message: discord.Message, content: str) -> None:
     else:
         await message.edit(content=message.content + content)
     await asyncio.sleep(0.5)  # Add a small delay to avoid rate limiting
+
+async def async_create_chat_completion(llm: Llama, messages: List[Dict[str, str]], **kwargs: Any) -> Any:
+    loop = asyncio.get_running_loop()
+    with ThreadPoolExecutor() as pool:
+        return await loop.run_in_executor(
+            pool, lambda: llm.create_chat_completion(messages, **kwargs)
+        )
 
 # Get the bot token from the environment variable
 bot.run(os.getenv('DISCORD_BOT_TOKEN'))
