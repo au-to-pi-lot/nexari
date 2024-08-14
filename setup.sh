@@ -17,7 +17,7 @@ conda activate llm-discord-bot
 conda install -c "nvidia/label/cuda-12.4.1" cuda cudnn -y
 
 # Set up environment variables
-export CUDA_HOME=$CONDA_PREFIX/targets/x86_64-linux
+export CUDA_HOME=$CONDA_PREFIX/
 export CUDA_TOOLKIT_INCLUDE_DIR=$CONDA_PREFIX/targets/x86_64-linux/include
 export PATH=$CONDA_PREFIX/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
