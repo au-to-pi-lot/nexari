@@ -146,7 +146,7 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     buffer: str = ""
     in_code_block: bool = False
 
-    for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
+    async for token in async_create_chat_completion(messages):
         new_text: str = token['choices'][0]['delta'].get('content', '')
         if new_text:
             response += new_text
@@ -160,6 +160,9 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
             if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
                 sent_message = await update_message(sent_message, buffer)
                 buffer = ""
+            elif len(buffer) >= 20:  # Stream more frequently
+                await update_message(sent_message, buffer)
+                buffer = ""
 
     if buffer:
         await update_message(sent_message, buffer)
@@ -172,7 +175,13 @@ async def update_message(message: discord.Message, content: str) -> discord.Mess
     elif len(message.content) + len(content) > 1900:
         return await message.channel.send(content.strip())
     else:
-        return await message.edit(content=message.content + content)
+        await message.edit(content=message.content + content)
+        return message
+
+async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
+    for token in llm.create_chat_completion(messages, max_tokens=max_tokens, stop=stop_tokens, temperature=temperature, stream=True):
+        yield token
+        await asyncio.sleep(0.01)  # Small delay to allow other tasks to run
 
 
 def signal_handler(sig, frame):
