@@ -61,7 +61,6 @@ context_length: int = int(os.getenv('CONTEXT_LENGTH', 1000))
 stop_tokens: Optional[List[str]] = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
 gpu_layers: int = int(os.getenv('GPU_LAYERS', 0))
 enable_flash_attention: bool = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
-enable_tensorcores: bool = os.getenv('ENABLE_TENSORCORES', 'false').lower() == 'true'
 chat_template: str = os.getenv('CHAT_TEMPLATE', 'llama-2')
 
 # Initialize Llama model
@@ -73,7 +72,6 @@ try:
         use_mlock=False,
         use_mmap=True,
         use_flash_attention=enable_flash_attention,
-        use_tensor_split=enable_tensorcores,
         chat_format=chat_template
     )
     print("Llama model initialized successfully")
