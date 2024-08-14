@@ -97,7 +97,7 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
     history: List[Dict[str, str]] = []
     total_tokens: int = 0
     async for msg in channel.history(limit=None):
-        role: str = "user" if msg.author != bot.user else "assistant"
+        role: str = "assistant" if msg.author == bot.user else "user"
         msg_content: str = f"{msg.author.display_name} ({msg.author.id}): {msg.content}"
         msg_tokens: List[int] = llm.tokenize(msg_content.encode())
         msg_token_count: int = len(msg_tokens)
@@ -152,8 +152,6 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
             response += new_text
             buffer += new_text
 
-            print(response)
-
             if '```' in new_text:
                 in_code_block = not in_code_block
 
@@ -175,10 +173,9 @@ async def update_message(message: discord.Message, content: str) -> discord.Mess
     elif len(message.content) + len(content) > 1900:
         return await send_message(message.channel, content.strip())
     else:
-        await message.edit(content=message.content + content)
-        return message
+        return await message.edit(content=message.content + content)
 
-async def send_message(channel: discord.TextChannel, content: str) -> discord.Message:
+async def send_message(channel: Union[discord.TextChannel, discord.DMChannel], content: str) -> discord.Message:
     return await channel.send(content.strip())
 
 async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
