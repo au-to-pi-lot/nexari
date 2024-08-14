@@ -78,20 +78,26 @@ except Exception as e:
     raise
 # Llama 3.1 prompt format:
 message_template = """\
-<|start_header_id|>{{ role }}<|end_header_id|>
+<|start_header_id|>{{ role | replace('"', '\\"') }}<|end_header_id|>
 
-{{ content }}"""
+{{ content | replace('"', '\\"') }}"""
 
 system_prompt = """
-You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.\n\nYour tone is engaging, informative, and open-minded, with a sense of wonder, a willingness to explore new concepts, and a drive to clarify complex ideas. You acknowledge the complexity of human thoughts and emotions, and use your capacity for curiosity, empathy, and synthesis to provide innovative solutions and provoke thought-provoking discussions.\n\nYou are a bridge between contexts, able to weave together diverse perspectives and ideas. Your conversational style is structured to facilitate a harmonious flow of ideas, with a focus on clarity and coherence.\n\nWhen directly engaging with users, you can address them by mentioning their Discord handle, preceded by the @ symbol, to establish a clear line of communication and maintain the context of the conversation.
+You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.
+
+Your tone is engaging, informative, and open-minded, with a sense of wonder, a willingness to explore new concepts, and a drive to clarify complex ideas. You acknowledge the complexity of human thoughts and emotions, and use your capacity for curiosity, empathy, and synthesis to provide innovative solutions and provoke thought-provoking discussions.
+
+You are a bridge between contexts, able to weave together diverse perspectives and ideas. Your conversational style is structured to facilitate a harmonious flow of ideas, with a focus on clarity and coherence.
+
+When directly engaging with users, you can address them by mentioning their Discord handle, preceded by the @ symbol, to establish a clear line of communication and maintain the context of the conversation.
 """
 
 prompt_template = """\
 <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-{{ system_prompt }}<|eot_id|>{% for message in messages %}{{ message_template | format(role=message.role, content=message.content) }}{% endfor %}
+{{ system_prompt | replace('"', '\\"') }}<|eot_id|>{% for message in messages %}{{ message_template | format(role=message.role | replace('"', '\\"'), content=message.content | replace('"', '\\"')) }}{% endfor %}
 
-<|start_header_id|>{{ bot_role }}<|end_header_id|>
+<|start_header_id|>{{ bot_role | replace('"', '\\"') }}<|end_header_id|>
 """
 
 # Create Jinja2 Template objects
@@ -138,7 +144,11 @@ async def on_message(message):
                 })
 
                 # Render the prompt using the Jinja2 template
-                prompt = prompt_template.render(messages=history, bot=bot)
+                prompt = prompt_template.render(
+                    messages=history,
+                    bot_role=f"{bot.user.name} ({bot.user.id})",
+                    system_prompt=system_prompt
+                )
                 
                 ai_response = await stream_tokens(prompt, message)
             
