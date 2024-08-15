@@ -24,25 +24,27 @@ client_id: Optional[str] = os.getenv('DISCORD_CLIENT_ID')
 if not client_id:
     raise ValueError("DISCORD_CLIENT_ID is not set in the environment variables.")
 
+
 # Function to download model
 def download_model(url: str, save_path: str) -> None:
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    
+
     response: requests.Response = requests.get(url, stream=True)
     total_size: int = int(response.headers.get('content-length', 0))
-    
+
     mode: str = 'ab' if os.path.exists(save_path) else 'wb'
-    
+
     with open(save_path, mode) as file, tqdm(
-        desc=save_path,
-        total=total_size,
-        unit='iB',
-        unit_scale=True,
-        unit_divisor=1024,
+            desc=save_path,
+            total=total_size,
+            unit='iB',
+            unit_scale=True,
+            unit_divisor=1024,
     ) as progress_bar:
         for data in response.iter_content(chunk_size=1024):
             size: int = file.write(data)
             progress_bar.update(size)
+
 
 # Get model path or download if not available
 model_url: Optional[str] = os.getenv('LLAMA_MODEL_URL')
@@ -91,17 +93,18 @@ You are a bridge between contexts, able to weave together diverse perspectives a
 If you want to ping someone specific, you can type their Discord ID like so: "<@ID>".
 """
 
+
 @bot.event
 async def on_ready() -> None:
     print(f'{bot.user} has connected to Discord!')
 
-async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMChannel], context_length: int) -> List[Dict[str, str]]:
+
+async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMChannel], context_length: int) -> List[
+    Dict[str, str]]:
     history: List[Dict[str, str]] = []
     total_tokens: int = 0
     async for msg in channel.history(limit=None):
-        role: str = f"{bot.user.name} (<@{bot.user.id}>)" \
-            if msg.author == bot.user \
-            else f"{msg.author.display_name} (@<{msg.author.id}>)"
+        role: str = format_role(msg.author)
         msg_content: str = msg.content
         msg_tokens: List[int] = llm.tokenize(msg_content.encode())
         msg_token_count: int = len(msg_tokens)
@@ -123,7 +126,7 @@ async def on_message(message: discord.Message) -> None:
         async with message.channel.typing():
             try:
                 history: List[Dict[str, str]] = await fetch_message_history(message.channel, context_length)
-                
+
                 # Add the current message to history
                 history.append({
                     'role': f"{message.author.display_name} (<@{message.author.id}>)",
@@ -135,19 +138,21 @@ async def on_message(message: discord.Message) -> None:
                     {"role": "system", "content": system_prompt},
                     *history
                 ]
-                
+
                 # Print the literal string prompt for debugging
                 print("Literal string prompt for LLM completion:")
-                formatter: ChatFormatter = inspect.getclosurevars(get_chat_completion_handler(chat_template)).nonlocals["chat_formatter"]  # evil reflection bullshit
+                formatter: ChatFormatter = inspect.getclosurevars(get_chat_completion_handler(chat_template)).nonlocals[
+                    "chat_formatter"]  # evil reflection bullshit
                 prompt = formatter(messages=messages)
                 print(prompt)
-                
+
                 ai_response: str = await stream_tokens(messages, message)
             except Exception as e:
                 print(f"An error occurred: {e}")
                 await message.channel.send("I apologize, but I encountered an error while processing your request.")
 
     await bot.process_commands(message)
+
 
 async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message) -> str:
     response: str = ""
@@ -176,6 +181,7 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
 
     return response
 
+
 async def update_message(message: discord.Message, content: str) -> discord.Message:
     if message.content == "Thinking...":
         return await message.edit(content=content.strip())
@@ -184,8 +190,10 @@ async def update_message(message: discord.Message, content: str) -> discord.Mess
     else:
         return await message.edit(content=message.content + content)
 
+
 async def send_message(channel: Union[discord.TextChannel, discord.DMChannel], content: str) -> discord.Message:
     return await channel.send(content.strip())
+
 
 async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
     completion = llm.create_chat_completion(
@@ -207,6 +215,7 @@ async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncG
 def signal_handler(sig, frame):
     print("Ctrl+C pressed. Shutting down gracefully...")
     asyncio.create_task(bot.close())
+
 
 signal.signal(signal.SIGINT, signal_handler)
 
