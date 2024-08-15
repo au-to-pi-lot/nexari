@@ -144,12 +144,6 @@ async def on_message(message: discord.Message) -> None:
             try:
                 history: List[Dict[str, str]] = await fetch_message_history(message.channel, context_length)
 
-                # Add the current message to history
-                history.append({
-                    'role': format_role(message.author),
-                    'content': message.content
-                })
-
                 # Prepare the messages for the chat completion
                 messages: List[Dict[str, str]] = [
                     {"role": "system", "content": system_prompt},
@@ -171,6 +165,8 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     in_code_block: bool = False
 
     prompt: str = format_prompt(messages)
+
+    print(prompt)
     
     async for token in async_create_completion(prompt):
         new_text: str = token['choices'][0]['text']
@@ -227,6 +223,8 @@ async def update_message(message: discord.Message, content: str, in_code_block: 
         paragraphs = content.split("\n\n")
         message = await message.edit(content=message.content + paragraphs[0])
         for paragraph in paragraphs[1:]:
+            if len(paragraph.strip()) == 0:
+                continue
             message = await message.channel.send(paragraph)
         return message
 
