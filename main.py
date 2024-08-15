@@ -171,8 +171,10 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
     buffer: str = ""
     in_code_block: bool = False
 
-    async for token in async_create_chat_completion(messages):
-        new_text: str = token['choices'][0]['delta'].get('content', '')
+    prompt: str = format_prompt(messages)
+    
+    async for token in async_create_completion(prompt):
+        new_text: str = token['choices'][0]['text']
         if new_text:
             response += new_text
             buffer += new_text
@@ -190,6 +192,23 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
         await update_message(sent_message, buffer)
 
     return response
+
+
+async def async_create_completion(prompt: str) -> AsyncGenerator[Dict[str, Any], None]:
+    completion = llm.create_completion(
+        prompt,
+        max_tokens=max_tokens,
+        stop=stop_tokens,
+        temperature=temperature,
+        top_k=0,
+        top_p=0,
+        min_p=0.05,
+        repeat_penalty=1.05,
+        stream=True
+    )
+    for token in completion:
+        yield token
+        await asyncio.sleep(0.01)  # Small delay to allow other tasks to run
 
 
 async def update_message(message: discord.Message, content: str, in_code_block: bool = False) -> discord.Message:
