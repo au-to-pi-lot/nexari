@@ -8,7 +8,7 @@ from discord.ext import commands
 from llama_cpp import Llama
 from dotenv import load_dotenv
 import requests
-from llama_cpp.llama_chat_format import ChatFormatter
+from llama_cpp.llama_chat_format import ChatFormatter, get_chat_completion_handler
 from tqdm import tqdm
 
 # Load environment variables
@@ -138,7 +138,7 @@ async def on_message(message: discord.Message) -> None:
                 
                 # Print the literal string prompt for debugging
                 print("Literal string prompt for LLM completion:")
-                formatter: ChatFormatter = inspect.getclosurevars(llm.chat_handler).nonlocals["chat_formatter"]  # evil reflection bullshit
+                formatter: ChatFormatter = inspect.getclosurevars(get_chat_completion_handler(chat_template)).nonlocals["chat_formatter"]  # evil reflection bullshit
                 prompt = formatter(messages=messages)
                 print(prompt)
                 
