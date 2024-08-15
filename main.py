@@ -108,7 +108,7 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
         msg_content: str = msg.content
         msg_tokens: List[int] = llm.tokenize(msg_content.encode())
         msg_token_count: int = len(msg_tokens)
-        if total_tokens + msg_token_count > context_length:
+        if total_tokens + msg_token_count > context_length // 2:
             break
         history.append({
             'role': role,
