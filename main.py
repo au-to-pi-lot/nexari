@@ -188,32 +188,42 @@ async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message
             buffer += new_text
 
             if '```' in new_text:
+                sent_message = await update_message(sent_message, buffer, in_code_block=in_code_block)
+                buffer = ""
                 in_code_block = not in_code_block
 
-            if not in_code_block and ('\n\n' in buffer or len(buffer) >= 1900):
-                sent_message = await send_message(sent_message.channel, buffer)
-                buffer = ""
-            elif len(buffer) >= 20:  # Stream more frequently
-                sent_message = await update_message(sent_message, buffer)
+            if len(buffer) >= 20:
+                sent_message = await update_message(sent_message, buffer, in_code_block=in_code_block)
                 buffer = ""
 
     if buffer:
-        await send_message(sent_message.channel, buffer)
+        await update_message(sent_message, buffer)
 
     return response
 
 
-async def update_message(message: discord.Message, content: str) -> discord.Message:
-    if message.content == "Thinking...":
+async def update_message(message: discord.Message, content: str, in_code_block: bool = False) -> discord.Message:
+    if message.content == "Thinking..." and message.edited_at is None:
         return await message.edit(content=content.strip())
+
     elif len(message.content) + len(content) > 1900:
-        return await send_message(message.channel, content.strip())
+        if in_code_block:
+            # finish code block in current message
+            await message.edit(content=message.content + "\n```")
+            # continue code block in next message
+            return await message.channel.send("```\n" + content.strip())
+
+        return await message.channel.send(content.strip())
+
+    elif "\n\n" in content and not in_code_block:
+        paragraphs = content.split("\n\n")
+        message = await message.edit(content=message.content + paragraphs[0])
+        for paragraph in paragraphs[1:]:
+            message = await message.channel.send(paragraph)
+        return message
+
     else:
         return await message.edit(content=message.content + content)
-
-
-async def send_message(channel: Union[discord.TextChannel, discord.DMChannel], content: str) -> discord.Message:
-    return await channel.send(content.strip())
 
 
 async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
