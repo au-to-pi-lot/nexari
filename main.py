@@ -1,3 +1,4 @@
+import inspect
 import os
 import asyncio
 import signal
@@ -7,6 +8,7 @@ from discord.ext import commands
 from llama_cpp import Llama
 from dotenv import load_dotenv
 import requests
+from llama_cpp.llama_chat_format import ChatFormatter
 from tqdm import tqdm
 
 # Load environment variables
@@ -136,7 +138,8 @@ async def on_message(message: discord.Message) -> None:
                 
                 # Print the literal string prompt for debugging
                 print("Literal string prompt for LLM completion:")
-                prompt = llm.tokenize(llm.create_chat_completion(messages, max_tokens=1)['choices'][0]['message']['content'].encode())
+                formatter: ChatFormatter = inspect.getclosurevars(llm.chat_handler).nonlocals["chat_formatter"]  # evil reflection bullshit
+                prompt = formatter(messages=messages)
                 print(prompt)
                 
                 ai_response: str = await stream_tokens(messages, message)
