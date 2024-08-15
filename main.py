@@ -117,6 +117,27 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
         total_tokens += msg_token_count
     return list(reversed(history))
 
+
+def format_prompt(messages: List[Dict[str, str]], begin_next_message: bool = True) -> str:
+    start_of_text = "<|begin_of_text|>"
+    message_template = "<|start_header_id|>{role}<|end_header_id|>\n\n{content}"
+    stop_token = "<|eot_id|>"
+
+    prompt = start_of_text + "".join((
+        message_template.format(**message) + stop_token
+        for message in messages
+    ))
+
+    if begin_next_message:
+        prompt += message_template.format(role=format_role(bot.user), content="")
+
+    return prompt
+
+
+def format_role(user: discord.User) -> str:
+    return f"{user.name} (<@{user.id}>)"
+
+
 @bot.event
 async def on_message(message: discord.Message) -> None:
     if message.author == bot.user:
