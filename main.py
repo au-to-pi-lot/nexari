@@ -150,7 +150,7 @@ async def on_message(message: discord.Message) -> None:
 
                 # Add the current message to history
                 history.append({
-                    'role': f"{message.author.display_name} (<@{message.author.id}>)",
+                    'role': format_role(message.author),
                     'content': message.content
                 })
 
