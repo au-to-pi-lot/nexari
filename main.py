@@ -63,6 +63,8 @@ context_length: int = int(os.getenv('CONTEXT_LENGTH', 1000))
 stop_tokens: Optional[List[str]] = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
 gpu_layers: int = int(os.getenv('GPU_LAYERS', 0))
 enable_flash_attention: bool = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
+n_threads: int = int(os.getenv('N_THREADS', 4))
+n_threads_batch: int = int(os.getenv('N_THREADS_BATCH', 4))
 # Initialize Llama model
 try:
     llm: Llama = Llama(
@@ -74,8 +76,10 @@ try:
         flash_attn=enable_flash_attention,
         type_k=2,  # 4-bit KV
         type_v=2,
+        n_threads=n_threads,
+        n_threads_batch=n_threads_batch,
     )
-    print("Llama model initialized successfully with 4-bit KV buffers and 4-bit cache")
+    print(f"Llama model initialized successfully with 4-bit KV buffers and 4-bit cache, using {n_threads} threads and {n_threads_batch} batch threads")
 except Exception as e:
     print(f"Error initializing Llama model: {e}")
     raise
