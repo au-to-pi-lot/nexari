@@ -80,6 +80,9 @@ except Exception as e:
     print(f"Error initializing Llama model: {e}")
     raise
 
+# Get thinking message from environment variable
+thinking_message: str = os.getenv('THINKING_MESSAGE', 'Thinking...')
+
 system_prompt = """
 You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.
 
@@ -160,7 +163,7 @@ async def on_message(message: discord.Message) -> None:
 
 async def stream_tokens(messages: List[Dict[str, str]], message: discord.Message) -> str:
     response: str = ""
-    sent_message: discord.Message = await message.reply("Thinking...")
+    sent_message: discord.Message = await message.reply(thinking_message)
     buffer: str = ""
     in_code_block: bool = False
 
@@ -207,7 +210,7 @@ async def async_create_completion(prompt: str) -> AsyncGenerator[Dict[str, Any],
 
 
 async def update_message(message: discord.Message, content: str, in_code_block: bool = False) -> discord.Message:
-    if message.content == "Thinking..." and message.edited_at is None:
+    if message.content == thinking_message and message.edited_at is None:
         return await message.edit(content=content.strip())
 
     elif len(message.content) + len(content) > 1900:
