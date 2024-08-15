@@ -63,8 +63,6 @@ context_length: int = int(os.getenv('CONTEXT_LENGTH', 1000))
 stop_tokens: Optional[List[str]] = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
 gpu_layers: int = int(os.getenv('GPU_LAYERS', 0))
 enable_flash_attention: bool = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
-chat_template: str = os.getenv('CHAT_TEMPLATE', 'llama-2')
-
 # Initialize Llama model
 try:
     llm: Llama = Llama(
@@ -74,7 +72,6 @@ try:
         use_mlock=False,
         use_mmap=True,
         flash_attn=enable_flash_attention,
-        chat_format=chat_template,
         type_k=2,  # 4-bit KV
         type_v=2,
     )
@@ -159,13 +156,6 @@ async def on_message(message: discord.Message) -> None:
                     {"role": "system", "content": system_prompt},
                     *history
                 ]
-
-                # Print the literal string prompt for debugging
-                print("Literal string prompt for LLM completion:")
-                formatter: ChatFormatter = inspect.getclosurevars(get_chat_completion_handler(chat_template)).nonlocals[
-                    "chat_formatter"]  # evil reflection bullshit
-                prompt = formatter(messages=messages)
-                print(prompt)
 
                 ai_response: str = await stream_tokens(messages, message)
             except Exception as e:
