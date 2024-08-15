@@ -116,11 +116,10 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
 
 
 def format_prompt(messages: List[Dict[str, str]], begin_next_message: bool = True) -> str:
-    start_of_text = "<|begin_of_text|>"
     message_template = "<|start_header_id|>{role}<|end_header_id|>\n\n{content}"
     stop_token = "<|eot_id|>"
 
-    prompt = start_of_text + "".join((
+    prompt = "".join((
         message_template.format(**message) + stop_token
         for message in messages
     ))
@@ -234,22 +233,6 @@ async def update_message(message: discord.Message, content: str, in_code_block: 
     else:
         return await message.edit(content=message.content + content)
 
-
-async def async_create_chat_completion(messages: List[Dict[str, str]]) -> AsyncGenerator[Dict[str, Any], None]:
-    completion = llm.create_chat_completion(
-        messages,
-        max_tokens=max_tokens,
-        stop=stop_tokens,
-        temperature=temperature,
-        top_k=0,
-        top_p=0,
-        min_p=0.05,
-        repeat_penalty=1.05,
-        stream=True
-    )
-    for token in completion:
-        yield token
-        await asyncio.sleep(0.01)  # Small delay to allow other tasks to run
 
 
 def signal_handler(sig, frame):
