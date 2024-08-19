@@ -88,11 +88,6 @@ async def generate_response(messages: List[Dict[str, str]]) -> str:
         print(f"Error in generate_response: {e}")
         raise
 
-def signal_handler(sig, frame):
-    print("Ctrl+C pressed. Shutting down gracefully...")
-    asyncio.create_task(bot.close())
-
-signal.signal(signal.SIGINT, signal_handler)
 
 # Get the bot token from the configuration
 bot_token = config['discord']['bot_token']
