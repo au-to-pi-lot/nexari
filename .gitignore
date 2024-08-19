@@ -1,3 +1,5 @@
 .aider*
 .env
 models/
+# Configuration
+config.yml

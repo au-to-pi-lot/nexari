@@ -35,17 +35,20 @@ Note: The setup script will install the CUDA Toolkit using Conda. Make sure you 
 
 ## Configuration
 
-1. Copy the `example.env` file to a new file named `.env`:
+1. Copy the `config-example.yml` file to a new file named `config.yml`:
    ```
-   cp example.env .env
+   cp config-example.yml config.yml
    ```
 
-2. Open the `.env` file and update the values:
+2. Open the `config.yml` file and update the values:
    - Replace `your_discord_bot_token_here` with your actual Discord bot token.
-   - Update `path/to/your/llama/model.bin` with the actual path to your model file.
+   - Replace `your_discord_client_id_here` with your actual Discord client ID.
+   - Update `models/model.bin` with the actual path to your model file.
    - Adjust other settings as needed (see comments in the file for explanations).
 
-3. The `example.env` file contains explanations for all available settings. Refer to it for more information on configuring your bot.
+3. The `config-example.yml` file contains explanations for all available settings. Refer to it for more information on configuring your bot.
+
+Note: The `config.yml` file is gitignored to prevent accidental commits of sensitive information.
 
 ## Running the Bot
 

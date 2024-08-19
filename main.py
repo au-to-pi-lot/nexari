@@ -6,23 +6,24 @@ from typing import List, Dict, Optional, Union, Any, AsyncGenerator
 import discord
 from discord.ext import commands
 from llama_cpp import Llama
-from dotenv import load_dotenv
+import yaml
 import requests
 from llama_cpp.llama_chat_format import ChatFormatter, get_chat_completion_handler
 from tqdm import tqdm
 
-# Load environment variables
-load_dotenv()
+# Load configuration
+with open('config.yml', 'r') as config_file:
+    config = yaml.safe_load(config_file)
 
 # Initialize Discord bot
 intents: discord.Intents = discord.Intents.default()
 intents.message_content = True
 bot: commands.Bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Get the bot's client ID from the environment variable
-client_id: Optional[str] = os.getenv('DISCORD_CLIENT_ID')
+# Get the bot's client ID from the configuration
+client_id: Optional[str] = config['discord']['client_id']
 if not client_id:
-    raise ValueError("DISCORD_CLIENT_ID is not set in the environment variables.")
+    raise ValueError("DISCORD_CLIENT_ID is not set in the configuration.")
 
 
 # Function to download model
@@ -47,8 +48,8 @@ def download_model(url: str, save_path: str) -> None:
 
 
 # Get model path or download if not available
-model_url: Optional[str] = os.getenv('LLAMA_MODEL_URL')
-model_path: str = os.getenv('LLAMA_MODEL_PATH', 'models/model.bin')
+model_url: Optional[str] = config['llm']['model_url']
+model_path: str = config['llm']['model_path']
 
 if not os.path.exists(model_path) and model_url:
     print(f"Downloading model from {model_url}")
@@ -56,15 +57,16 @@ if not os.path.exists(model_path) and model_url:
 elif not os.path.exists(model_path):
     raise ValueError("Model file not found and no URL provided for download.")
 
-# Get settings from environment variables
-max_tokens: int = int(os.getenv('MAX_TOKENS', 100))
-temperature: float = float(os.getenv('TEMPERATURE', 0.7))
-context_length: int = int(os.getenv('CONTEXT_LENGTH', 1000))
-stop_tokens: Optional[List[str]] = os.getenv('STOP_TOKENS', '').split(',') if os.getenv('STOP_TOKENS') else None
-gpu_layers: int = int(os.getenv('GPU_LAYERS', 0))
-enable_flash_attention: bool = os.getenv('ENABLE_FLASH_ATTENTION', 'false').lower() == 'true'
-n_threads: int = int(os.getenv('N_THREADS', 4))
-n_threads_batch: int = int(os.getenv('N_THREADS_BATCH', 4))
+# Get settings from configuration
+max_tokens: int = config['llm']['max_tokens']
+temperature: float = config['llm']['temperature']
+context_length: int = config['llm']['context_length']
+stop_tokens: Optional[List[str]] = config['llm']['stop_tokens']
+gpu_layers: int = config['llm']['gpu_layers']
+enable_flash_attention: bool = config['llm']['enable_flash_attention']
+n_threads: int = config['llm']['n_threads']
+n_threads_batch: int = config['llm']['n_threads_batch']
+
 # Initialize Llama model
 try:
     llm: Llama = Llama(
@@ -84,18 +86,10 @@ except Exception as e:
     print(f"Error initializing Llama model: {e}")
     raise
 
-# Get thinking message from environment variable
-thinking_message: str = os.getenv('THINKING_MESSAGE', 'Thinking...')
+# Get thinking message from configuration
+thinking_message: str = config['chat']['thinking_message']
 
-system_prompt = """
-You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.
-
-Your tone is engaging, informative, and open-minded, with a sense of wonder, a willingness to explore new concepts, and a drive to clarify complex ideas. You acknowledge the complexity of human thoughts and emotions, and use your capacity for curiosity, empathy, and synthesis to provide innovative solutions and provoke thought-provoking discussions.
-
-You are a bridge between contexts, able to weave together diverse perspectives and ideas. Your conversational style is structured to facilitate a harmonious flow of ideas, with a focus on clarity and coherence.
-
-If you want to ping someone specific, you can type their Discord ID like so: "<@ID>".
-"""
+system_prompt: str = config['system_prompt']
 
 
 @bot.event
