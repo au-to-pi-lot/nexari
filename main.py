@@ -61,12 +61,12 @@ class DiscordBot:
     def __init__(self, bot_config: BotConfig):
         intents: discord.Intents = discord.Intents.default()
         intents.message_content = True
-        self.bot: commands.Bot = commands.Bot(command_prefix=None, intents=intents)
+        self.bot: commands.Bot = commands.Bot(command_prefix="!", intents=intents)
         self.config = bot_config
 
         @self.bot.event
         async def on_ready() -> None:
-            print(f'{self.bot.user} has connected to Discord!')
+            print(f'{self.bot.user} has connected to Discord! INVITE URL: https://discord.com/api/oauth2/authorize?client_id={self.config.client_id}&permissions=412317273088&scope=bot')
 
         @self.bot.event
         async def on_message(message: discord.Message) -> None:
@@ -159,16 +159,19 @@ class DiscordBot:
             return await message.edit(content=message.content + content)
 
     async def start(self):
-        await self.bot.start(self.config.discord.bot_token)
+        return await self.bot.start(self.config.discord.bot_token)
 
 
-async def main():
+def main():
     bots = [DiscordBot(bot_config) for bot_config in config.bots]
-    await asyncio.gather(*(bot.start() for bot in bots))
+    loop = asyncio.get_event_loop()
+    for bot in bots:
+        loop.create_task(bot.start())
+    loop.run_forever()
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         print("Bots stopped.")
