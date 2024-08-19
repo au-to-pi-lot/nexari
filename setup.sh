@@ -7,7 +7,7 @@ if ! command -v conda &> /dev/null; then
 fi
 
 # Create a new Conda environment
-conda create -n llm-discord-bot python=3.9 -y
+conda create -n llm-discord-bot python=3.12.4 -y
 
 # Activate the Conda environment
 eval "$(conda shell.bash hook)"
