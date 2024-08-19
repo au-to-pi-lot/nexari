@@ -109,6 +109,7 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
     total_tokens: int = 0
     async for msg in channel.history(limit=None):
         role: str = format_role(msg.author)
+        name: str = format_name(msg.author)
         msg_content: str = msg.content
         msg_tokens: List[int] = llm.tokenize(msg_content.encode())
         msg_token_count: int = len(msg_tokens)
@@ -116,6 +117,7 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
             break
         history.append({
             'role': role,
+            'name': name,
             'content': msg_content
         })
         total_tokens += msg_token_count
@@ -123,7 +125,7 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
 
 
 def format_prompt(messages: List[Dict[str, str]], begin_next_message: bool = True) -> str:
-    message_template = "<|start_header_id|>{role}<|end_header_id|>\n\n{content}"
+    message_template = "<|start_header_id|>{role}<|end_header_id|>\n\n{name}{content}"
     stop_token = "<|eot_id|>"
 
     prompt = "".join((
@@ -132,19 +134,22 @@ def format_prompt(messages: List[Dict[str, str]], begin_next_message: bool = Tru
     ))
 
     if begin_next_message:
-        prompt += message_template.format(role=format_role(bot.user), content="")
+        prompt += message_template.format(role=format_role(bot.user), name=format_name(bot.user), content="")
 
     return prompt
 
 
 def format_role(user: discord.User) -> str:
-    return f"{user.name} (<@{user.id}>)"
+    return "assistant" if user == bot.user else "user"
 
+def format_name(user: discord.User) -> str:
+    return f"{user.name} (<@{user.id}>): "
 
 @bot.event
 async def on_message(message: discord.Message) -> None:
     if message.author == bot.user:
         return
+
 
     if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
         async with message.channel.typing():
@@ -153,7 +158,7 @@ async def on_message(message: discord.Message) -> None:
 
                 # Prepare the messages for the chat completion
                 messages: List[Dict[str, str]] = [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "name": "", "content": system_prompt},
                     *history
                 ]
 
@@ -205,7 +210,8 @@ async def async_create_completion(prompt: str) -> AsyncGenerator[Dict[str, Any],
         top_k=0,
         top_p=0,
         min_p=0.05,
-        repeat_penalty=1.05,
+        repeat_penalty=1.5,
+
         stream=True
     )
     for token in completion:
