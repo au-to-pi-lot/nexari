@@ -112,47 +112,52 @@ async def generate_response(messages: List[Dict[str, str]], bot_config: BotConfi
         print(f"Error in generate_response: {e}")
         raise
 
-def create_bot(bot_config: BotConfig) -> commands.Bot:
-    intents: discord.Intents = discord.Intents.default()
-    intents.message_content = True
-    bot: commands.Bot = commands.Bot(command_prefix='!', intents=intents)
-    bot.config = bot_config
+class DiscordBot:
+    def __init__(self, bot_config: BotConfig):
+        intents: discord.Intents = discord.Intents.default()
+        intents.message_content = True
+        self.bot: commands.Bot = commands.Bot(command_prefix='!', intents=intents)
+        self.bot.config = bot_config
 
-    @bot.event
-    async def on_ready() -> None:
-        print(f'{bot.user} has connected to Discord!')
+        @self.bot.event
+        async def on_ready() -> None:
+            print(f'{self.bot.user} has connected to Discord!')
 
-    @bot.event
-    async def on_message(message: discord.Message) -> None:
-        if message.author == bot.user:
+        @self.bot.event
+        async def on_message(message: discord.Message) -> None:
+            await self.handle_message(message)
+
+    async def handle_message(self, message: discord.Message) -> None:
+        if message.author == self.bot.user:
             return
 
-        if bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
+        if self.bot.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
             async with message.channel.typing():
                 try:
-                    history: List[Dict[str, str]] = await fetch_message_history(message.channel, bot.config.chat.context_length)
+                    history: List[Dict[str, str]] = await fetch_message_history(message.channel, self.bot.config.chat.context_length)
 
                     messages: List[Dict[str, str]] = [
-                        {"role": "system", "content": bot.config.system_prompt},
+                        {"role": "system", "content": self.bot.config.system_prompt},
                         *history,
                     ]
 
-                    await stream_llm_response(messages=messages, trigger_message=message, thinking_message=bot.config.chat.thinking_message)
+                    await stream_llm_response(messages=messages, trigger_message=message, thinking_message=self.bot.config.chat.thinking_message)
                 except Exception as e:
                     print(f"An error occurred: {e}")
                     await message.channel.send("I apologize, but I encountered an error while processing your request.")
 
-        await bot.process_commands(message)
+        await self.bot.process_commands(message)
 
-    return bot
+    async def start(self):
+        await self.bot.start(self.bot.config.discord.bot_token)
 
 async def main():
     bots = []
     for bot_config in config.bots:
-        bot = create_bot(bot_config)
+        bot = DiscordBot(bot_config)
         bots.append(bot)
 
-    await asyncio.gather(*(bot.start(bot.config.discord.bot_token) for bot in bots))
+    await asyncio.gather(*(bot.start() for bot in bots))
 
 if __name__ == "__main__":
     try:
