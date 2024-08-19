@@ -13,25 +13,10 @@ conda create -n llm-discord-bot python=3.9 -y
 eval "$(conda shell.bash hook)"
 conda activate llm-discord-bot
 
-# Install CUDA Toolkit
-conda install -c "nvidia/label/cuda-12.4.1" cuda cudnn -y
-
-# Set up environment variables
-export CUDA_HOME=$CONDA_PREFIX/
-export PATH=$CONDA_PREFIX/bin:$PATH
-export LD_LIBRARY_PATH=$CUDA_HOME/lib:$LD_LIBRARY_PATH
-
 # Install dependencies
 conda install -c conda-forge pip -y
 pip install -r requirements.txt
 
-# Install llama-cpp-python with CUDA support
-CMAKE_ARGS="-DGGML_CUDA=on -DCUDA_PATH=$CUDA_HOME" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir
-
 echo "Setup completed successfully!"
 echo "To activate this environment, use:"
 echo "conda activate llm-discord-bot"
-echo "You may need to set these environment variables in your shell:"
-echo "export CUDA_HOME=$CONDA_PREFIX"
-echo "export PATH=\$CUDA_HOME/bin:\$PATH"
-echo "export LD_LIBRARY_PATH=\$CUDA_HOME/lib64:\$LD_LIBRARY_PATH"

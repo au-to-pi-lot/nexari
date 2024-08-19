@@ -3,23 +3,18 @@ discord:
   bot_token: your_discord_bot_token_here
   client_id: your_discord_client_id_here
 
-# LLM Configuration
-llm:
-  model_path: models/model.bin
-  model_url: https://example.com/path/to/your/model.bin
+# LiteLLM Configuration
+litellm:
+  api_base: https://api.openai.com/v1  # Replace with your API endpoint
+  model_name: gpt-3.5-turbo  # Replace with your desired model
+  api_key: your_api_key_here
   max_tokens: 100
   temperature: 0.7
-  context_length: 1000
-  stop_tokens: []
-  gpu_layers: 0
-  enable_flash_attention: false
-  n_threads: 4
-  n_threads_batch: 4
 
 # Chat Configuration
 chat:
-  template: llama-3
   thinking_message: "Thinking..."
+  context_length: 1000
 
 # System Prompt
 system_prompt: |
