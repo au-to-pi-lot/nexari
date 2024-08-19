@@ -18,7 +18,6 @@ class LiteLLMConfig(BaseModel):
 
 
 class ChatConfig(BaseModel):
-    thinking_message: str
     context_length: int
 
 
@@ -96,7 +95,7 @@ Your Discord ID: {self.user.id}
                         *history,
                     ]
 
-                    await self.stream_llm_response(messages=messages, trigger_message=message)
+                    await self.stream_llm_response(messages=messages, channel=message.channel)
                 except Exception as e:
                     print(f"An error occurred: {e}")
                     await message.channel.send("I apologize, but I encountered an error while processing your request.")
@@ -116,9 +115,9 @@ Your Discord ID: {self.user.id}
             print(f"Error in generate_response: {e}")
             raise
 
-    async def stream_llm_response(self, messages: List[Dict[str, str]], trigger_message: discord.Message) -> str:
+    async def stream_llm_response(self, messages: List[Dict[str, str]], channel: discord.TextChannel) -> str:
         response: str = ""
-        sent_message: discord.Message = await trigger_message.channel.send(self.config.chat.thinking_message)
+        sent_message: Optional[discord.Message] = None
         buffer: str = ""
         in_code_block: bool = False
 
@@ -131,25 +130,25 @@ Your Discord ID: {self.user.id}
                     buffer += chunk
 
                     if '```' in chunk:
-                        sent_message = await self.update_message(sent_message, buffer, in_code_block=in_code_block)
+                        sent_message = await self.update_message(sent_message, buffer, channel, in_code_block=in_code_block)
                         buffer = ""
                         in_code_block = not in_code_block
 
                     if len(buffer) >= 20:
-                        sent_message = await self.update_message(sent_message, buffer, in_code_block=in_code_block)
+                        sent_message = await self.update_message(sent_message, buffer, channel, in_code_block=in_code_block)
                         buffer = ""
 
             if buffer:
-                await self.update_message(sent_message, buffer)
+                await self.update_message(sent_message, buffer, channel)
         else:
             print(f"{self.config.name}: {response.choices[0].message.content}")
-            await self.update_message(sent_message, response.choices[0].message.content)
+            await self.update_message(sent_message, response.choices[0].message.content, channel)
 
         return response
 
-    async def update_message(self, message: discord.Message, content: str, in_code_block: bool = False) -> discord.Message:
-        if message.content == self.config.chat.thinking_message and message.edited_at is None:
-            return await self.edit_message(message=message, new_content=content.strip(), in_code_block=in_code_block)
+    async def update_message(self, message: Optional[discord.Message], content: str, channel: discord.TextChannel, in_code_block: bool = False) -> discord.Message:
+        if message is None:
+            return await channel.send(content.strip())
         else:
             return await self.edit_message(message=message, new_content=message.content + content, in_code_block=in_code_block)
 
