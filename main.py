@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import List, Dict, Union
 
 import discord
@@ -51,7 +52,8 @@ async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMCh
         role: str = "assistant" if msg.author.bot else "user"
         history.append({
             'role': role,
-            'content': msg.content
+            'content': f"<metadata>{msg.author.name} (Author ID: {msg.author.id}, Created At: {msg.created_at.isoformat()})</metadata>\n\n<content>{msg.content}</content>"
+
         })
     return list(reversed(history))
 
@@ -70,11 +72,24 @@ class DiscordBot(discord.Client):
         if message.author == self.user:
             return
 
-        if self.user.mentioned_in(message) or isinstance(message.channel, discord.DMChannel):
+        print(f'{message.author.name} sent message: {message.content}')
+
+        if self.user.mentioned_in(message):
             async with message.channel.typing():
                 try:
                     history: List[Dict[str, str]] = await fetch_message_history(message.channel,
                                                                                 self.config.chat.context_length)
+
+                    system_prompt = f"""\
+{self.config.system_prompt}
+
+Current Time: {datetime.now().isoformat()}
+Current Discord Guild: {message.guild.name}
+Current Discord Channel: {message.channel.name}
+Your Discord ID: {self.user.id}
+"""
+
+                    print(system_prompt)
 
                     messages: List[Dict[str, str]] = [
                         {"role": "system", "content": self.config.system_prompt},
@@ -95,7 +110,6 @@ class DiscordBot(discord.Client):
                 temperature=self.config.litellm.temperature,
                 api_base=self.config.litellm.api_base,
                 api_key=self.config.litellm.api_key,
-                stream=True
             )
             return response
         except Exception as e:
@@ -104,52 +118,61 @@ class DiscordBot(discord.Client):
 
     async def stream_llm_response(self, messages: List[Dict[str, str]], trigger_message: discord.Message) -> str:
         response: str = ""
-        sent_message: discord.Message = await trigger_message.reply(self.config.chat.thinking_message)
+        sent_message: discord.Message = await trigger_message.channel.send(self.config.chat.thinking_message)
         buffer: str = ""
         in_code_block: bool = False
 
-        async for chunk in await self.generate_response(messages):
-            if chunk:
-                response += chunk
-                buffer += chunk
+        response = await self.generate_response(messages)
 
-                if '```' in chunk:
-                    sent_message = await self.update_message(sent_message, buffer, in_code_block=in_code_block)
-                    buffer = ""
-                    in_code_block = not in_code_block
+        if isinstance(response, CustomStreamWrapper):
+            async for chunk in response:
+                if chunk:
+                    response += chunk
+                    buffer += chunk
 
-                if len(buffer) >= 20:
-                    sent_message = await self.update_message(sent_message, buffer, in_code_block=in_code_block)
-                    buffer = ""
+                    if '```' in chunk:
+                        sent_message = await self.update_message(sent_message, buffer, in_code_block=in_code_block)
+                        buffer = ""
+                        in_code_block = not in_code_block
 
-        if buffer:
-            await self.update_message(sent_message, buffer)
+                    if len(buffer) >= 20:
+                        sent_message = await self.update_message(sent_message, buffer, in_code_block=in_code_block)
+                        buffer = ""
+
+            if buffer:
+                await self.update_message(sent_message, buffer)
+        else:
+            print(f"{self.config.name}: {response.choices[0].message.content}")
+            await self.update_message(sent_message, response.choices[0].message.content)
 
         return response
 
     async def update_message(self, message: discord.Message, content: str, in_code_block: bool = False) -> discord.Message:
         if message.content == self.config.chat.thinking_message and message.edited_at is None:
-            return await message.edit(content=content.strip())
+            return await self.edit_message(message=message, new_content=content.strip(), in_code_block=in_code_block)
+        else:
+            return await self.edit_message(message=message, new_content=message.content + content, in_code_block=in_code_block)
 
-        elif len(message.content) + len(content) > 1900:
-            if in_code_block:
-                await message.edit(content=message.content + "\n```")
-                return await message.channel.send("```\n" + content.strip())
-
-            return await message.channel.send(content.strip())
-
-        elif "\n\n" in content and not in_code_block:
-            paragraphs = content.split("\n\n")
-            message = await message.edit(content=message.content + paragraphs[0])
+    async def edit_message(self, message: discord.Message, new_content: str, in_code_block: bool = False):
+        if "\n\n" in new_content and not in_code_block:
+            paragraphs = new_content.split("\n\n")
+            message = await self.edit_message(message=message, new_content=paragraphs[0])
             for paragraph in paragraphs[1:]:
                 if len(paragraph.strip()) == 0:
                     continue
                 message = await message.channel.send(paragraph)
             return message
 
-        else:
-            return await message.edit(content=message.content + content)
+        if len(new_content) > 1900:
+            if in_code_block:
+                await message.edit(content=message.content + "\n```")
+                # assumes that message after code block is less than the discord message length limit
+                return await message.channel.send("```\n" + new_content.strip())
 
+            return await message.channel.send(new_content.strip())
+
+        else:
+            return await message.edit(content=new_content)
 
 def main():
     bots = [DiscordBot(bot_config) for bot_config in config.bots]
