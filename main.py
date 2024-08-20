@@ -123,49 +123,31 @@ Sent at: {msg.created_at}
 
     async def stream_llm_response(self, messages: List[Dict[str, str]], channel: discord.TextChannel) -> str:
         response = await self.generate_response(messages)
-        sent_message: Optional[discord.Message] = None
-
         response_str = response.choices[0].message.content
 
         if "<content>" in response_str:
             response_str = response_str.split("<content>", 1)[1]
 
         print(f"{self.config.name}: {response_str}")
-        await self.update_message(sent_message, response_str, channel)
+        await self.send_message(response_str, channel)
 
         return response
 
-    async def update_message(self, message: Optional[discord.Message], content: str, channel: discord.TextChannel, in_code_block: bool = False) -> Optional[discord.Message]:
+    async def send_message(self, content: str, channel: discord.TextChannel) -> None:
         content = content.strip()
 
         if not content:
             return None
 
-        if message is None:
-            return await channel.send(content)
-        else:
-            return await self.edit_message(message=message, new_content=message.content + content, in_code_block=in_code_block)
+        messages = [
+            nonempty_message
+            for paragraph in content.split("\n\n")
+            for message in textwrap.wrap(paragraph, width=DISCORD_MESSAGE_MAX_CHARS)
+            if (nonempty_message := message.strip())
+        ]
 
-    async def edit_message(self, message: discord.Message, new_content: str, in_code_block: bool = False):
-        if "\n\n" in new_content and not in_code_block:
-            paragraphs = new_content.split("\n\n")
-            message = await self.edit_message(message=message, new_content=paragraphs[0])
-            for paragraph in paragraphs[1:]:
-                if len(paragraph.strip()) == 0:
-                    continue
-                message = await message.channel.send(paragraph)
-            return message
-
-        if len(new_content) > 1900:
-            if in_code_block:
-                await message.edit(content=message.content + "\n```")
-                # assumes that message after code block is less than the discord message length limit
-                return await message.channel.send("```\n" + new_content.strip())
-
-            return await message.channel.send(new_content.strip())
-
-        else:
-            return await message.edit(content=new_content)
+        for message in messages:
+            await channel.send(message)
 
 def main():
     bots = [DiscordBot(bot_config) for bot_config in config.bots]
