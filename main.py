@@ -44,19 +44,6 @@ with open('config.yml', 'r') as config_file:
     config = Config(**config_dict)
 
 
-async def fetch_message_history(channel: Union[discord.TextChannel, discord.DMChannel], context_length: int) -> List[
-    Dict[str, str]]:
-    history: List[Dict[str, str]] = []
-    async for msg in channel.history(limit=context_length):
-        role: str = "assistant" if msg.author.bot else "user"
-        history.append({
-            'role': role,
-            'content': f"<metadata>{msg.author.name} (Author ID: {msg.author.id}, Created At: {msg.created_at.isoformat()})</metadata>\n\n<content>{msg.content}</content>"
-
-        })
-    return list(reversed(history))
-
-
 class DiscordBot(discord.Client):
     def __init__(self, bot_config: BotConfig):
         intents: discord.Intents = discord.Intents.default()
@@ -76,7 +63,7 @@ class DiscordBot(discord.Client):
         if self.user.mentioned_in(message):
             async with message.channel.typing():
                 try:
-                    history: List[Dict[str, str]] = await fetch_message_history(message.channel,
+                    history: List[Dict[str, str]] = await self.fetch_message_history(message.channel,
                                                                                 self.config.chat.context_length)
 
                     system_prompt = f"""\
@@ -91,7 +78,7 @@ Your Discord ID: {self.user.id}
                     print(system_prompt)
 
                     messages: List[Dict[str, str]] = [
-                        {"role": "system", "content": self.config.system_prompt},
+                        {"role": "system", "content": system_prompt},
                         *history,
                     ]
 
@@ -99,6 +86,28 @@ Your Discord ID: {self.user.id}
                 except Exception as e:
                     print(f"An error occurred: {e}")
                     await message.channel.send("I apologize, but I encountered an error while processing your request.")
+
+    async def fetch_message_history(self, channel: Union[discord.TextChannel, discord.DMChannel],
+                                    context_length: int) -> List[
+        Dict[str, str]]:
+        history: List[Dict[str, str]] = []
+        async for msg in channel.history(limit=context_length):
+            role: str = "assistant" if msg.author == self.user else "user"
+            history.append({
+                'role': role,
+                'content': f"""\
+<content>
+{msg.content}
+</content>
+<metadata>
+Author: {msg.author.name}
+Author ID: {msg.author.id}
+Sent at: {msg.created_at}
+</metadata>
+"""
+
+            })
+        return list(reversed(history))
 
     async def generate_response(self, messages: List[Dict[str, str]]) -> Union[ModelResponse, CustomStreamWrapper]:
         try:
@@ -109,6 +118,7 @@ Your Discord ID: {self.user.id}
                 temperature=self.config.litellm.temperature,
                 api_base=self.config.litellm.api_base,
                 api_key=self.config.litellm.api_key,
+                stop=["</content>"]
             )
             return response
         except Exception as e:
@@ -116,39 +126,27 @@ Your Discord ID: {self.user.id}
             raise
 
     async def stream_llm_response(self, messages: List[Dict[str, str]], channel: discord.TextChannel) -> str:
-        response: str = ""
-        sent_message: Optional[discord.Message] = None
-        buffer: str = ""
-        in_code_block: bool = False
-
         response = await self.generate_response(messages)
+        sent_message: Optional[discord.Message] = None
 
-        if isinstance(response, CustomStreamWrapper):
-            async for chunk in response:
-                if chunk:
-                    response += chunk
-                    buffer += chunk
+        response_str = response.choices[0].message.content
 
-                    if '```' in chunk:
-                        sent_message = await self.update_message(sent_message, buffer, channel, in_code_block=in_code_block)
-                        buffer = ""
-                        in_code_block = not in_code_block
+        if "<content>" in response_str:
+            response_str = response_str.split("<content>", 1)[1]
 
-                    if len(buffer) >= 20:
-                        sent_message = await self.update_message(sent_message, buffer, channel, in_code_block=in_code_block)
-                        buffer = ""
-
-            if buffer:
-                await self.update_message(sent_message, buffer, channel)
-        else:
-            print(f"{self.config.name}: {response.choices[0].message.content}")
-            await self.update_message(sent_message, response.choices[0].message.content, channel)
+        print(f"{self.config.name}: {response_str}")
+        await self.update_message(sent_message, response_str, channel)
 
         return response
 
-    async def update_message(self, message: Optional[discord.Message], content: str, channel: discord.TextChannel, in_code_block: bool = False) -> discord.Message:
+    async def update_message(self, message: Optional[discord.Message], content: str, channel: discord.TextChannel, in_code_block: bool = False) -> Optional[discord.Message]:
+        content = content.strip()
+
+        if not content:
+            return None
+
         if message is None:
-            return await channel.send(content.strip())
+            return await channel.send(content)
         else:
             return await self.edit_message(message=message, new_content=message.content + content, in_code_block=in_code_block)
 
