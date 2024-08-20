@@ -8,6 +8,7 @@ from litellm import acompletion, CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
+DISCORD_MESSAGE_MAX_CHARS = 2000
 
 class LiteLLMConfig(BaseModel):
     api_base: str
