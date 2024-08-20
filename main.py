@@ -74,6 +74,7 @@ class DiscordBot(discord.Client):
                     system_prompt = f"""\
 {self.config.system_prompt}
 
+You are: {self.user.name}
 Current Time: {datetime.now().isoformat()}
 Current Discord Guild: {message.guild.name}
 Current Discord Channel: {message.channel.name}
