@@ -38,6 +38,10 @@ class BotConfig(BaseModel):
 class Config(BaseModel):
     bots: List[BotConfig]
 
+class LiteLLMMessage(BaseModel):
+    role: str
+    content: str
+
 
 # Load configuration
 with open('config.yml', 'r') as config_file:
