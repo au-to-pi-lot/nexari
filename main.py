@@ -32,6 +32,7 @@ class BotConfig(BaseModel):
     litellm: LiteLLMConfig
     chat: ChatConfig
     system_prompt: str
+    message_limit: int
 
 
 class Config(BaseModel):
@@ -83,27 +84,34 @@ Your Discord ID: {self.user.id}
                     print(f"An error occurred: {e}")
                     await message.channel.send("I apologize, but I encountered an error while processing your request.")
 
-    async def fetch_message_history(self, channel: Union[discord.TextChannel, discord.DMChannel],
-                                    context_length: int) -> List[
-        Dict[str, str]]:
-        history: List[Dict[str, str]] = []
-        async for msg in channel.history(limit=context_length):
-            role: str = "assistant" if msg.author == self.user else "user"
-            history.append({
-                'role': role,
-                'content': f"""\
+    async def fetch_message_history(self, channel: Union[discord.TextChannel, discord.DMChannel]) -> List[LiteLLMMessage]:
+        discord_history: Iterable[discord.Message] = reversed([
+            message
+            async for message in channel.history(limit=self.config.message_limit)
+        ])
+
+        # group adjacent messages from the same user
+        # this saves some tokens on repeated metadata
+        history = []
+        for message_group in groupby(discord_history, lambda a: a.author):
+            message_group = list(message_group)
+            first_message = message_group[0]
+            role: str = "assistant" if first_message.author == self.user else "user"
+            msg_content = "\n\n".join((message.content for message in message_group))
+            content = f"""\
 <content>
-{msg.content}
+{msg_content}
 </content>
 <metadata>
-Author: {msg.author.name}
-Author ID: {msg.author.id}
-Sent at: {msg.created_at}
+Author: {first_message.author.name}
+Author ID: {first_message.author.id}
+Sent at: {first_message.created_at}
 </metadata>
 """
 
-            })
-        return list(reversed(history))
+            history.append(LiteLLMMessage(role=role, content=content))
+
+        return history
 
     async def generate_response(self, messages: List[Dict[str, str]]) -> Union[ModelResponse, CustomStreamWrapper]:
         try:
