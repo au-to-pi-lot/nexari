@@ -89,7 +89,7 @@ Your Discord ID: {self.user.id}
                     await self.stream_llm_response(messages=messages, channel=message.channel)
                 except Exception as e:
                     print(f"An error occurred: {e}")
-                    await message.channel.send("I apologize, but I encountered an error while processing your request.")
+                    await message.channel.send(f"[Script error: {e}]")
 
     async def fetch_message_history(self, channel: Union[discord.TextChannel, discord.DMChannel]) -> List[LiteLLMMessage]:
         discord_history: Iterable[discord.Message] = reversed([
