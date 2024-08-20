@@ -58,8 +58,6 @@ class DiscordBot(discord.Client):
         if message.author == self.user:
             return
 
-        print(f'{message.author.name} sent message: {message.content}')
-
         if self.user.mentioned_in(message):
             async with message.channel.typing():
                 try:
@@ -74,8 +72,6 @@ Current Discord Guild: {message.guild.name}
 Current Discord Channel: {message.channel.name}
 Your Discord ID: {self.user.id}
 """
-
-                    print(system_prompt)
 
                     messages: List[Dict[str, str]] = [
                         {"role": "system", "content": system_prompt},
