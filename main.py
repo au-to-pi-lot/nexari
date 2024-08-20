@@ -131,7 +131,7 @@ Sent at: {msg.created_at}
         print(f"{self.config.name}: {response_str}")
         await self.send_message(response_str, channel)
 
-        return response
+        return response_str
 
     async def send_message(self, content: str, channel: discord.TextChannel) -> None:
         content = content.strip()
