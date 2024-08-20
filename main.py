@@ -69,8 +69,7 @@ class DiscordBot(discord.Client):
         if self.user.mentioned_in(message):
             async with message.channel.typing():
                 try:
-                    history: List[Dict[str, str]] = await self.fetch_message_history(message.channel,
-                                                                                self.config.chat.context_length)
+                    history: List[LiteLLMMessage] = await self.fetch_message_history(message.channel)
 
                     system_prompt = f"""\
 {self.config.system_prompt}
