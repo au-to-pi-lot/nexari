@@ -13,6 +13,7 @@ bots:
     chat:
       thinking_message: "Thinking..."
       context_length: 1000
+    message_limit: 20
     system_prompt: |
       You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.
 
@@ -35,6 +36,7 @@ bots:
     chat:
       thinking_message: "Processing..."
       context_length: 1500
+    message_limit: 30
     system_prompt: |
       You are Claude, an AI assistant created by Anthropic to be helpful, harmless, and honest.
 
