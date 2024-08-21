@@ -5,4 +5,4 @@ eval "$(conda shell.bash hook)"
 conda activate llm-discord-bot
 
 # Run the main.py script
-python main.py
+python src/main.py
