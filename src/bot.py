@@ -157,7 +157,6 @@ Sent at: {first_message.created_at}
                     if (nonempty_message := message.strip())
                 ])
             elif block.block_type == "code":
-
                 lines = block.content.split("\n")
                 message_lines = []
                 current_length = 0

@@ -18,6 +18,11 @@ def test_break_messages_breaks_on_double_newlines():
     expected_result = original_text.split("\n\n")
     assert DiscordBot.break_messages(original_text) == expected_result
 
+def test_break_messages_breaks_on_triple_newlines():
+    original_text = "hello world\n\n\nhello_universe\n\n\nhello multiverse"
+    expected_result = original_text.split("\n\n\n")
+    assert DiscordBot.break_messages(original_text) == expected_result
+
 
 def test_break_messages_breaks_long_text():
     original_text = " ".join(["test"] * 10000)
