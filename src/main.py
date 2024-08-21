@@ -10,46 +10,15 @@ from litellm import acompletion, CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
+from config import config, BotConfig
+
 DISCORD_MESSAGE_MAX_CHARS = 2000
 
-class LiteLLMConfig(BaseModel):
-    api_base: str
-    model_name: str
-    api_key: str
-    max_tokens: int
-    temperature: float
 
-
-class ChatConfig(BaseModel):
-    context_length: int
-
-
-class DiscordConfig(BaseModel):
-    bot_token: str
-    client_id: str
-
-
-class BotConfig(BaseModel):
-    name: str
-    discord: DiscordConfig
-    litellm: LiteLLMConfig
-    chat: ChatConfig
-    system_prompt: str
-    message_limit: int
-
-
-class Config(BaseModel):
-    bots: List[BotConfig]
 
 class LiteLLMMessage(BaseModel):
     role: str
     content: str
-
-
-# Load configuration
-with open('../config.yml', 'r') as config_file:
-    config_dict = yaml.safe_load(config_file)
-    config = Config(**config_dict)
 
 
 class DiscordBot(discord.Client):
