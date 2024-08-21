@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 class LiteLLMConfig(BaseModel):
     api_base: str
-    model_name: str
+    llm_name: str
     api_key: str
     max_tokens: int
     temperature: float

@@ -90,7 +90,7 @@ Sent at: {first_message.created_at}
     async def generate_response(self, messages: List[Dict[str, str]]) -> Union[ModelResponse, CustomStreamWrapper]:
         try:
             response = await acompletion(
-                model=self.config.litellm.model_name,
+                model=self.config.litellm.llm_name,
                 messages=messages,
                 max_tokens=self.config.litellm.max_tokens,
                 temperature=self.config.litellm.temperature,
