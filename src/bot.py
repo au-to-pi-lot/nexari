@@ -130,10 +130,29 @@ Sent at: {first_message.created_at}
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
-        messages = [
-            nonempty_message
-            for paragraph in content.split("\n\n")
-            for message in textwrap.wrap(paragraph, width=DISCORD_MESSAGE_MAX_CHARS)
-            if (nonempty_message := message.strip())
-        ]
-        return messages
+        def split_code_block(block: str) -> List[str]:
+            if len(block) <= DISCORD_MESSAGE_MAX_CHARS:
+                return [block]
+            lines = block.split('\n')
+            chunks = []
+            current_chunk = []
+            current_length = 0
+            for line in lines:
+                if current_length + len(line) + 1 > DISCORD_MESSAGE_MAX_CHARS - 7:  # 7 for ```\n and \n```
+                    chunks.append('\n'.join(current_chunk))
+                    current_chunk = []
+                    current_length = 0
+                current_chunk.append(line)
+                current_length += len(line) + 1
+            if current_chunk:
+                chunks.append('\n'.join(current_chunk))
+            return [f"```\n{chunk}\n```" for chunk in chunks]
+
+        paragraphs = content.split("\n\n")
+        messages = []
+        for paragraph in paragraphs:
+            if paragraph.startswith("```") and paragraph.endswith("```"):
+                messages.extend(split_code_block(paragraph))
+            else:
+                messages.extend(textwrap.wrap(paragraph, width=DISCORD_MESSAGE_MAX_CHARS))
+        return [msg for msg in messages if msg.strip()]
