@@ -77,7 +77,7 @@ Your Discord ID: {self.user.id}
 {msg_content}
 </content>
 <metadata>
-Author: {first_message.author.name}
+Author: {first_message.author.display_name + ("" if first_message.author.bot else f" ({first_message.author.name})") }
 Author ID: {first_message.author.id}
 Sent at: {first_message.created_at}
 </metadata>
