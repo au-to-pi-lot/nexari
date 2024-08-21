@@ -1,5 +1,5 @@
-from src.bot import DiscordBot
-from src.const import DISCORD_MESSAGE_MAX_CHARS
+from bot import DiscordBot
+from const import DISCORD_MESSAGE_MAX_CHARS
 
 
 def test_break_messages_preserves_single_newlines():
