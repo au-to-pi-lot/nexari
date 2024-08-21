@@ -156,15 +156,21 @@ Sent at: {first_message.created_at}
         if not content:
             return None
 
+        messages = self.break_messages(content)
+
+        for message in messages:
+            await channel.send(message)
+
+    @staticmethod
+    def break_messages(content: str) -> List[str]:
         messages = [
             nonempty_message
             for paragraph in content.split("\n\n")
             for message in textwrap.wrap(paragraph, width=DISCORD_MESSAGE_MAX_CHARS)
             if (nonempty_message := message.strip())
         ]
+        return messages
 
-        for message in messages:
-            await channel.send(message)
 
 def main():
     bots = [DiscordBot(bot_config) for bot_config in config.bots]
