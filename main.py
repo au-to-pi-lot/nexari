@@ -142,6 +142,8 @@ Sent at: {first_message.created_at}
 
         if "<content>" in response_str:
             response_str = response_str.split("<content>", 1)[1]
+        if "</content>" in response_str:
+            response_str = response_str.split("</content>", 1)[0]
 
         print(f"{self.config.name}: {response_str}")
         await self.send_message(response_str, channel)
