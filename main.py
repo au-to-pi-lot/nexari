@@ -100,7 +100,7 @@ Your Discord ID: {self.user.id}
         # group adjacent messages from the same user
         # this saves some tokens on repeated metadata
         history = []
-        for message_group in groupby(discord_history, lambda a: a.author):
+        for _, message_group in groupby(discord_history, lambda a: a.author):
             message_group = list(message_group)
             first_message = message_group[0]
             role: str = "assistant" if first_message.author == self.user else "user"
