@@ -5,9 +5,11 @@ from src.bot import DiscordBot
 
 
 def main():
-    bots = (DiscordBot(bot_config) for bot_config in config.bots)
-    bot_coroutines = (bot.start(bot.config.discord.bot_token) for bot in bots)
-    asyncio.gather(*bot_coroutines)
+    bots = [DiscordBot(bot_config) for bot_config in config.bots]
+    loop = asyncio.get_event_loop()
+    for bot in bots:
+        loop.create_task(bot.start(bot.config.discord.bot_token))
+    loop.run_forever()
 
 
 if __name__ == "__main__":
