@@ -34,6 +34,6 @@ class Config(BaseModel):
     bots: List[BotConfig]
 
 
-with open('../config.yml', 'r') as config_file:
+with open('config.yml', 'r') as config_file:
     config_dict = yaml.safe_load(config_file)
     config = Config(**config_dict)
