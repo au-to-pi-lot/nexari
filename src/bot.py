@@ -1,7 +1,7 @@
 import textwrap
 from datetime import datetime
-from itertools import groupby
-from typing import List, Dict, Union, Iterable
+from itertools import groupby, cycle
+from typing import List, Dict, Union, Iterable, Literal, Optional
 
 import discord
 from litellm import CustomStreamWrapper, acompletion
@@ -130,29 +130,60 @@ Sent at: {first_message.created_at}
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
-        def split_code_block(block: str) -> List[str]:
-            if len(block) <= DISCORD_MESSAGE_MAX_CHARS:
-                return [block]
-            lines = block.split('\n')
-            chunks = []
-            current_chunk = []
-            current_length = 0
-            for line in lines:
-                if current_length + len(line) + 1 > DISCORD_MESSAGE_MAX_CHARS - 7:  # 7 for ```\n and \n```
-                    chunks.append('\n'.join(current_chunk))
-                    current_chunk = []
-                    current_length = 0
-                current_chunk.append(line)
-                current_length += len(line) + 1
-            if current_chunk:
-                chunks.append('\n'.join(current_chunk))
-            return [f"```\n{chunk}\n```" for chunk in chunks]
+        class CharBlocks(BaseModel):
+            content: str
+            block_type: Literal['text', 'code']
+            block_start_newline: Optional[bool]
+            block_end_newline: Optional[bool]
 
-        paragraphs = content.split("\n\n")
+        char_blocks = (
+            CharBlocks(content=content, block_type=block_type, block_start_newline=content.startswith("\n"), block_end_newline=content.endswith("\n"))
+            for content, block_type in zip(content.split("```"), cycle(["text", "code"]))
+            if content
+        )
+
         messages = []
-        for paragraph in paragraphs:
-            if paragraph.startswith("```") and paragraph.endswith("```"):
-                messages.extend(split_code_block(paragraph))
-            else:
-                messages.extend(textwrap.wrap(paragraph, width=DISCORD_MESSAGE_MAX_CHARS))
-        return [msg for msg in messages if msg.strip()]
+        for block in char_blocks:
+            if block.block_type == "text":
+                messages.extend([
+                    nonempty_message
+                    for paragraph in block.content.split("\n\n")
+                    for message in textwrap.wrap(
+                        paragraph,
+                        width=DISCORD_MESSAGE_MAX_CHARS,
+                        expand_tabs=False,
+                        replace_whitespace=False
+                    )
+                    if (nonempty_message := message.strip())
+                ])
+            elif block.block_type == "code":
+
+                lines = block.content.split("\n")
+                message_lines = []
+                current_length = 0
+                count = 0
+                for index, line in enumerate(lines):
+                    first_line = index == 0
+                    last_line = index == len(lines) - 1
+
+                    if current_length + len(line) + len("```\n") + len("\n```") + 1 <= DISCORD_MESSAGE_MAX_CHARS:
+                        message_lines.append(line)
+                        current_length += len(line) + 1
+                    else:
+                        messages.append(
+                            ("```" if first_line and block.block_start_newline else "```\n")
+                            + "\n".join(message_lines)
+                            + ("```" if last_line and block.block_end_newline else "\n```")
+                        )
+                        message_lines = []
+                        current_length = 0
+                        count += 1
+
+                if message_lines:
+                    messages.append(
+                        ("```" if len(message_lines) == len(lines) and block.block_start_newline else "```\n")
+                        + "\n".join(message_lines)
+                        + ("```" if block.block_end_newline else "\n```")
+                    )
+
+        return messages

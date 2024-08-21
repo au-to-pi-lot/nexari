@@ -2,6 +2,11 @@ from src.bot import DiscordBot
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 
 
+def test_break_messages_strips_regular_whitespace():
+    original_text = "    hello world!\n   "
+    expected_result = [original_text.strip()]
+    assert DiscordBot.break_messages(original_text) == expected_result
+
 def test_break_messages_preserves_single_newlines():
     original_text = "hello world\nhello universe\nhello multiverse"
     expected_result = [original_text]
@@ -29,7 +34,8 @@ import antigravity
 antigravity.engage()
 ```
 """
-    assert DiscordBot.break_messages(original_text) == original_text
+    expected_result = [original_text.strip()]
+    assert DiscordBot.break_messages(original_text) == expected_result
 
 def test_break_messages_inserts_backticks_around_breaks_in_long_code_blocks():
     newline = "\n"  # necessary for syntax reasons
@@ -42,3 +48,26 @@ def test_break_messages_inserts_backticks_around_breaks_in_long_code_blocks():
     for result in result:
         assert result.startswith("```\n")
         assert result.endswith("\n```")
+
+def test_break_messages_preserves_number_of_newlines_within_code_block():
+    original_text = f"""\
+```
+
+
+
+```
+"""
+    expected_result = [original_text.strip()]
+    assert DiscordBot.break_messages(original_text) == expected_result
+
+
+def test_break_messages_strips_whitespace_around_code_blocks():
+    original_text = f"""\
+test
+
+```
+
+```
+"""
+    expected_result = ["test", "```\n\n```"]
+    assert DiscordBot.break_messages(original_text) == expected_result
