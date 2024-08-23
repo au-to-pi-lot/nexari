@@ -25,6 +25,8 @@ class LiteLLMConfig(BaseModel):
 
 class ChatConfig(BaseModel):
     context_length: int
+    system_prompt: str
+    message_limit: int
 
 
 class DiscordConfig(BaseModel):
@@ -37,8 +39,6 @@ class BotConfig(BaseModel):
     discord: DiscordConfig
     litellm: LiteLLMConfig
     chat: ChatConfig
-    system_prompt: str
-    message_limit: int
 
 
 class Config(BaseModel):

@@ -20,7 +20,7 @@ bots:
         top_a: 0.0  # Consider tokens with probability > (max_prob * top_a) (0.0 to 1.0, 0.0 means off)
     chat:
       context_length: 1000  # The number of tokens the LLM is capable of holding in context
-    message_limit: 20  # The maximum number of messages to fetch for context
-    system_prompt: ""  # Instructions for the LLM
+      message_limit: 20  # The maximum number of messages to fetch for context
+      system_prompt: ""  # Instructions for the LLM
 
 # You can add more bot configurations as needed by following the structure above
