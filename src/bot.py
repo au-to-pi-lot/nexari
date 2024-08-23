@@ -271,7 +271,6 @@ Sent at: {first_message.created_at}
                 if lines:
                     message_lines = []
                     current_length = 0
-                    count = 0
                     for index, line in enumerate(lines):
                         if current_length + len(line) + len("```\n") + len("\n```") + 1 <= DISCORD_MESSAGE_MAX_CHARS:
                             message_lines.append(line)
@@ -284,7 +283,6 @@ Sent at: {first_message.created_at}
                             )
                             message_lines = []
                             current_length = 0
-                            count += 1
 
                     if message_lines:
                         messages.append(
