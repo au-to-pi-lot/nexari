@@ -1,11 +1,11 @@
 import textwrap
 from datetime import datetime
 from itertools import groupby, cycle
-from typing import List, Dict, Union, Iterable, Literal, Optional
+from typing import List, Union, Iterable, Literal
 
 import discord
 import litellm
-from litellm import CustomStreamWrapper, acompletion
+from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
@@ -72,8 +72,8 @@ Current Discord Channel: {message.channel.name}
 Your Discord ID: {self.user.id}
 """
 
-                    messages: List[Dict[str, str]] = [
-                        {"role": "system", "content": system_prompt},
+                    messages: List[LiteLLMMessage] = [
+                        LiteLLMMessage(role="system", content=system_prompt),
                         *history,
                     ]
 
