@@ -101,7 +101,7 @@ Sent at: {first_message.created_at}
                 temperature=self.config.litellm.temperature,
                 api_base=self.config.litellm.api_base,
                 api_key=self.config.litellm.api_key,
-                stop=["</content>"]
+                stop=["</content>", "<metadata>"]
             )
             return response
         except Exception as e:
