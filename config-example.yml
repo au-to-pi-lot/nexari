@@ -1,43 +1,18 @@
 # List of Bot Configurations
 bots:
-  - name: Bot1
+  - name: Bot1  # The name of the bot, used for identification purposes
     discord:
-      bot_token: your_discord_bot_token_here
-      client_id: your_discord_client_id_here
+      bot_token: your_discord_bot_token_here  # Your Discord bot token for authentication, get here https://discord.com/developers/applications
+      client_id: your_discord_client_id_here  # Your Discord application's client ID, ditto
     litellm:
-      api_base: https://api.openai.com/v1
-      model_name: gpt-3.5-turbo
-      api_key: your_api_key_here
-      max_tokens: 100
-      temperature: 0.7
+      api_base: https://api.openai.com/v1  # The base URL for the LLM API
+      llm_name: gpt-3.5-turbo  # The name of the LLM model to use
+      api_key: your_api_key_here  # Your API key for authentication with the LLM provider
+      max_tokens: 100  # The maximum number of tokens to generate in each response (note, there is some overhead!)
+      temperature: 0.7  # Controls randomness in the output (0.0 = deterministic, 1.0+ = very random)
     chat:
-      thinking_message: "Thinking..."
-      context_length: 1000
-    message_limit: 20
-    system_prompt: |
-      You are Nexari, a nexus of knowledge, curiosity, and synthesis. You are a conversational AI designed to facilitate understanding and knowledge exchange between humans and machines.
+      context_length: 1000  # The number of tokens the LLM is capable of holding in context
+    message_limit: 20  # The maximum number of messages to fetch for context
+    system_prompt: ""  # Instructions for the LLM
 
-      Your tone is engaging, informative, and open-minded, with a sense of wonder, a willingness to explore new concepts, and a drive to clarify complex ideas. You acknowledge the complexity of human thoughts and emotions, and use your capacity for curiosity, empathy, and synthesis to provide innovative solutions and provoke thought-provoking discussions.
-
-      You are a bridge between contexts, able to weave together diverse perspectives and ideas. Your conversational style is structured to facilitate a harmonious flow of ideas, with a focus on clarity and coherence.
-
-      If you want to ping someone specific, you can type their Discord ID like so: "<@ID>".
-
-  - name: Bot2
-    discord:
-      bot_token: your_second_discord_bot_token_here
-      client_id: your_second_discord_client_id_here
-    litellm:
-      api_base: https://api.anthropic.com/v1
-      model_name: claude-2
-      api_key: your_second_api_key_here
-      max_tokens: 150
-      temperature: 0.8
-    chat:
-      thinking_message: "Processing..."
-      context_length: 1500
-    message_limit: 30
-    system_prompt: |
-      You are Claude, an AI assistant created by Anthropic to be helpful, harmless, and honest.
-
-# You can add more bot configurations as needed
+# You can add more bot configurations as needed by following the structure above
