@@ -140,18 +140,26 @@ Sent at: {first_message.created_at}
             Exception: If an error occurs during response generation.
         """
         try:
+            sampling_config = self.config.litellm.sampling
             response = await acompletion(
                 model=self.config.litellm.llm_name,
                 messages=messages,
                 max_tokens=self.config.litellm.max_tokens,
-                temperature=self.config.litellm.temperature,
+                temperature=sampling_config.temperature,
+                top_p=sampling_config.top_p,
+                top_k=sampling_config.top_k,
+                frequency_penalty=sampling_config.frequency_penalty,
+                presence_penalty=sampling_config.presence_penalty,
+                repetition_penalty=sampling_config.repetition_penalty,
+                min_p=sampling_config.min_p,
+                top_a=sampling_config.top_a,
                 api_base=self.config.litellm.api_base,
                 api_key=self.config.litellm.api_key,
                 stop=["</content>", "<metadata>"]
             )
             return response
         except Exception as e:
-            print(f"Error in generate_response: {e.message}")
+            print(f"Error in generate_response: {str(e)}")
             raise
 
     async def post_llm_response(self, messages: List[LiteLLMMessage], channel: discord.TextChannel) -> str:
