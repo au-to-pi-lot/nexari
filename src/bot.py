@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from src.config import BotConfig
 from src.const import DISCORD_MESSAGE_MAX_CHARS
+from src.util import drop_both_ends
 
 
 class LiteLLMMessage(BaseModel):
@@ -163,31 +164,42 @@ Sent at: {first_message.created_at}
                 ])
             elif block.block_type == "code":
                 lines = block.content.split("\n")
-                message_lines = []
-                current_length = 0
-                count = 0
-                for index, line in enumerate(lines):
-                    first_line = index == 0
-                    last_line = index == len(lines) - 1
 
-                    if current_length + len(line) + len("```\n") + len("\n```") + 1 <= DISCORD_MESSAGE_MAX_CHARS:
-                        message_lines.append(line)
-                        current_length += len(line) + 1
-                    else:
+                potential_language_marker = None
+                if lines[0] != "":
+                    potential_language_marker = lines[0]
+                    lines = lines[1:]
+
+                lines = drop_both_ends(lambda ln: ln == "", lines)
+
+                if not lines and potential_language_marker:
+                    lines = [potential_language_marker]
+
+                if lines:
+                    message_lines = []
+                    current_length = 0
+                    count = 0
+                    for index, line in enumerate(lines):
+                        if current_length + len(line) + len("```\n") + len("\n```") + 1 <= DISCORD_MESSAGE_MAX_CHARS:
+                            message_lines.append(line)
+                            current_length += len(line) + 1
+                        else:
+                            messages.append(
+                                "```\n"
+                                + "\n".join(message_lines)
+                                + "\n```"
+                            )
+                            message_lines = []
+                            current_length = 0
+                            count += 1
+
+                    if message_lines:
                         messages.append(
-                            ("```" if first_line and block.block_start_newline else "```\n")
+                            "```\n"
                             + "\n".join(message_lines)
-                            + ("```" if last_line and block.block_end_newline else "\n```")
+                            + "\n```"
                         )
-                        message_lines = []
-                        current_length = 0
-                        count += 1
-
-                if message_lines:
-                    messages.append(
-                        ("```" if len(message_lines) == len(lines) and block.block_start_newline else "```\n")
-                        + "\n".join(message_lines)
-                        + ("```" if block.block_end_newline else "\n```")
-                    )
+                else:
+                    messages.append("```\n```")
 
         return messages
