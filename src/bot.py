@@ -100,7 +100,7 @@ Your Discord ID: {self.user.id}
         """
         discord_history: Iterable[discord.Message] = reversed([
             message
-            async for message in channel.history(limit=self.config.message_limit)
+            async for message in channel.history(limit=self.config.chat.message_limit)
         ])
 
         # group adjacent messages from the same user
