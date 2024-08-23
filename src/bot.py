@@ -135,14 +135,14 @@ Sent at: {first_message.created_at}
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
-        class CharBlocks(BaseModel):
+        class CharBlock(BaseModel):
             content: str
             block_type: Literal['text', 'code']
             block_start_newline: Optional[bool]
             block_end_newline: Optional[bool]
 
         char_blocks = (
-            CharBlocks(content=content, block_type=block_type, block_start_newline=content.startswith("\n"), block_end_newline=content.endswith("\n"))
+            CharBlock(content=content, block_type=block_type, block_start_newline=content.startswith("\n"), block_end_newline=content.endswith("\n"))
             for content, block_type in zip(content.split("```"), cycle(["text", "code"]))
             if content
         )
