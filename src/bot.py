@@ -113,13 +113,10 @@ Sent at: {first_message.created_at}
         response = await self.generate_response(messages)
         response_str = response.choices[0].message.content
 
-        if "<content>" in response_str:
-            response_str = response_str.split("<content>", 1)[1]
-        if "</content>" in response_str:
-            response_str = response_str.split("</content>", 1)[0]
+        content = self.parse_llm_response(response_str)
 
-        print(f"{self.config.name}: {response_str}")
-        await self.send_message(response_str, channel)
+        print(f"{self.config.name}: {content}")
+        await self.send_message(content, channel)
 
         return response_str
 
@@ -133,6 +130,16 @@ Sent at: {first_message.created_at}
 
         for message in messages:
             await channel.send(message)
+
+    @staticmethod
+    def parse_llm_response(content: str) -> str:
+        if "<content>" in content:
+            content = content.split("<content>", 1)[1]
+        if "</content>" in content:
+            content = content.split("</content>", 1)[0]
+        if "<metadata>" in content:
+            content = content.split("<metadata>", 1)[0]
+        return content.strip()
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
