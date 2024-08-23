@@ -63,7 +63,7 @@ class DiscordBot(discord.Client):
                     history: List[LiteLLMMessage] = await self.fetch_message_history(message.channel)
 
                     system_prompt = f"""\
-{self.config.system_prompt}
+{self.config.chat.system_prompt}
 
 You are: {self.user.name}
 Current Time: {datetime.now().isoformat()}
