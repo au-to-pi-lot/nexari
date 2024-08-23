@@ -4,6 +4,7 @@ from itertools import groupby, cycle
 from typing import List, Dict, Union, Iterable, Literal, Optional
 
 import discord
+import litellm
 from litellm import CustomStreamWrapper, acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from src.config import BotConfig
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.util import drop_both_ends
 
+litellm.set_verbose = True
 
 class LiteLLMMessage(BaseModel):
     role: str
@@ -189,7 +191,7 @@ Sent at: {first_message.created_at}
                     for index, line in enumerate(lines):
                         if current_length + len(line) + len("```\n") + len("\n```") + 1 <= DISCORD_MESSAGE_MAX_CHARS:
                             message_lines.append(line)
-                            current_length += len(line) + 1
+                            current_length += len(line) + 1  # plus one for newline
                         else:
                             messages.append(
                                 "```\n"
@@ -206,7 +208,7 @@ Sent at: {first_message.created_at}
                             + "\n".join(message_lines)
                             + "\n```"
                         )
-                else:
+                else:  # empty code block
                     messages.append("```\n```")
 
         return messages
