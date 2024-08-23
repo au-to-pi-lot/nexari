@@ -54,8 +54,13 @@ Your Discord ID: {self.user.id}
 
                     await self.stream_llm_response(messages=messages, channel=message.channel)
                 except Exception as e:
-                    print(f"An error occurred: {e}")
-                    await message.channel.send(f"[Script error: {e}]")
+                    if hasattr(e, 'message'):
+                        error_message = e.message
+                    else:
+                        error_message = e
+
+                    print(f"An error occurred: {error_message}")
+                    await message.channel.send(f"[Script error: {error_message}]")
 
     async def fetch_message_history(self, channel: Union[discord.TextChannel, discord.DMChannel]) -> List[
         LiteLLMMessage]:
@@ -100,7 +105,7 @@ Sent at: {first_message.created_at}
             )
             return response
         except Exception as e:
-            print(f"Error in generate_response: {e}")
+            print(f"Error in generate_response: {e.message}")
             raise
 
     async def stream_llm_response(self, messages: List[Dict[str, str]], channel: discord.TextChannel) -> str:
