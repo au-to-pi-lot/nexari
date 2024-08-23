@@ -19,7 +19,7 @@ class LiteLLMMessage(BaseModel):
     """
     A message in the LiteLLM format.
     """
-    role: str
+    role: Literal["user", "assistant", "system"]
     content: str
 
 
