@@ -1,8 +1,7 @@
-from typing import Optional, Tuple
+from typing import Optional
 
-from sqlalchemy import create_engine, Column, Integer, Text, ForeignKey, UniqueConstraint, \
-    Float, CheckConstraint
-from sqlalchemy.orm import sessionmaker, Mapped, mapped_column, DeclarativeBase, validates
+from sqlalchemy import Column, Integer, Text, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, validates
 
 
 class Base(DeclarativeBase):
@@ -14,11 +13,15 @@ class LanguageModel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True)
+    api_base: Mapped[str] = mapped_column(Text)
+    model_name: Mapped[str] = mapped_column(Text)
+    api_key: Mapped[str] = mapped_column(Text)
+    max_tokens: Mapped[int]
+    system_prompt: Mapped[str] = mapped_column(Text)
+    context_length: Mapped[int]
+    message_limit: Mapped[int]
+    sampling_config: Mapped[int] = mapped_column(ForeignKey('sampling_config.id'), nullable=False, unique=True)
 
-class SamplingConfig(Base):
-    __tablename__ = 'sampling_config'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
     temperature: Mapped[float] = mapped_column(nullable=False)
     top_p: Mapped[Optional[float]]
     top_k: Mapped[Optional[int]]
@@ -70,6 +73,12 @@ class SamplingConfig(Base):
             raise ValueError(f'`top_a` must be non-negative: {top_a}.')
         return top_a
 
+class SamplingConfig(Base):
+    __tablename__ = 'sampling_config'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+
 
 class Channel(Base):
     __tablename__ = "channel"
@@ -78,7 +87,7 @@ class Channel(Base):
 
 
 class Webhook(Base):
-    __tablename__ = 'webhooks'
+    __tablename__ = 'webhook'
 
     id = Column(Integer, primary_key=True)
     token = Column(Text, nullable=False)
@@ -86,27 +95,3 @@ class Webhook(Base):
     language_model = Column(Integer, ForeignKey('language_model.id'), nullable=False)
 
     unique_channel_model = UniqueConstraint("channel_id", "language_model")
-
-class WebhookDB:
-    def __init__(self, db_name: str = 'webhooks.db'):
-        self.engine = create_engine(f'sqlite:///{db_name}')
-        self.Session = sessionmaker(bind=self.engine)
-
-    def init_db(self):
-        Base.metadata.create_all(self.engine)
-
-    def get_webhook_info(self, name: str) -> Optional[Tuple[int, str]]:
-        with self.Session() as session:
-            webhook = session.query(Webhook).filter_by(name=name).first()
-            if webhook:
-                return webhook.webhook_id, webhook.webhook_token
-        return None
-
-    def save_webhook_info(self, name: str, webhook_id: int, webhook_token: str):
-        with self.Session() as session:
-            webhook = Webhook(name=name, webhook_id=webhook_id, webhook_token=webhook_token)
-            session.merge(webhook)
-            session.commit()
-
-# Create a global instance of WebhookDB
-webhook_db = WebhookDB()
