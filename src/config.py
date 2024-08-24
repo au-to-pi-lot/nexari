@@ -41,8 +41,7 @@ class DiscordConfig(BaseModel):
 class BotConfig(BaseModel):
     discord: DiscordConfig
     chat: ChatConfig
-    llms: Dict[str, LLMConfig]
-    webhooks: Dict[str, Dict[str, WebhookConfig]]
+    llms: List[LLMConfig]
 
 
 class Config(BaseModel):
