@@ -25,7 +25,6 @@ class LiteLLMConfig(BaseModel):
 
 class ChatConfig(BaseModel):
     context_length: int
-    system_prompt: str
     message_limit: int
 
 
@@ -34,15 +33,21 @@ class DiscordConfig(BaseModel):
     client_id: str
 
 
-class BotConfig(BaseModel):
+class WebhookConfig(BaseModel):
     name: str
-    discord: DiscordConfig
+    channel_id: int
+    system_prompt: str
     litellm: LiteLLMConfig
+
+
+class BotConfig(BaseModel):
+    discord: DiscordConfig
     chat: ChatConfig
+    webhooks: List[WebhookConfig]
 
 
 class Config(BaseModel):
-    bots: List[BotConfig]
+    bot: BotConfig
 
 
 with open('config.yml', 'r') as config_file:

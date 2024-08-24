@@ -6,15 +6,15 @@ from src.bot import DiscordBot
 
 def main():
     """
-    Main function to start the Discord bots.
+    Main function to start the Discord bot.
 
-    This function creates DiscordBot instances for each bot configuration,
-    starts them in the event loop, and runs the loop indefinitely.
+    This function creates a DiscordBot instance with the bot configuration,
+    starts it in the event loop, and runs the loop indefin
+itely.
     """
-    bots = [DiscordBot(bot_config) for bot_config in config.bots]
+    bot = DiscordBot(config.bot)
     loop = asyncio.get_event_loop()
-    for bot in bots:
-        loop.create_task(bot.start(bot.config.discord.bot_token))
+    loop.create_task(bot.start(bot.config.discord.bot_token))
     loop.run_forever()
 
 
@@ -22,4 +22,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("Bots stopped.")
+        print("Bot stopped.")
