@@ -15,7 +15,7 @@ class SamplingConfig(BaseModel):
     top_a: Optional[float] = Field(default=None, ge=0.0)
 
 
-class LiteLLMConfig(BaseModel):
+class LLMConfig(BaseModel):
     api_base: str
     llm_name: str
     api_key: str
@@ -35,9 +35,8 @@ class DiscordConfig(BaseModel):
 
 class WebhookConfig(BaseModel):
     name: str
-    channel_id: int
     system_prompt: str
-    litellm: LiteLLMConfig
+    llm: LLMConfig
 
 
 class BotConfig(BaseModel):

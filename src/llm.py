@@ -7,6 +7,7 @@ from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
 from src.config import WebhookConfig
+from src.db import get_webhook_info, save_webhook_info
 
 class LiteLLMMessage(BaseModel):
     """
@@ -18,18 +19,20 @@ class LiteLLMMessage(BaseModel):
 class LLMHandler:
     def __init__(self, webhook_config: WebhookConfig):
         self.webhook_config = webhook_config
-        self.discord_webhook: discord.Webhook = None
 
-    async def setup_webhook(self, bot: discord.Client):
-        channel = bot.get_channel(self.webhook_config.channel_id)
-        if channel:
-            self.discord_webhook = await channel.create_webhook(name=self.webhook_config.name)
-            print(f"Created webhook {self.webhook_config.name} in channel {channel.name}")
+    async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
+        webhook_info = get_webhook_info(self.webhook_config.name)
+        if webhook_info:
+            webhook_id, webhook_token = webhook_info
+            return discord.Webhook.partial(webhook_id, webhook_token, client=bot)
         else:
-            print(f"Could not find channel with ID {self.webhook_config.channel_id}")
+            new_webhook = await channel.create_webhook(name=self.webhook_config.name)
+            save_webhook_info(self.webhook_config.name, new_webhook.id, new_webhook.token)
+            print(f"Created new webhook {self.webhook_config.name} in channel {channel.name}")
+            return new_webhook
 
     async def generate_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
-        litellm_config = self.webhook_config.litellm
+        litellm_config = self.webhook_config.llm
         try:
             sampling_config = litellm_config.sampling
             response = await acompletion(
@@ -55,9 +58,6 @@ Current Time: {datetime.now().isoformat()}
 Current Discord Guild: {guild_name}
 Current Discord Channel: {channel_name}
 """
-
-    def get_discord_webhook(self) -> discord.Webhook:
-        return self.discord_webhook
 
     @staticmethod
     def parse_llm_response(content: str) -> str:
