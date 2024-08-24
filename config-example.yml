@@ -10,6 +10,8 @@ bots:
       api_key: your_api_key_here  # Your API key for authentication with the LLM provider
       max_tokens: 100  # The maximum number of tokens to generate in each response (note, there is some overhead!)
       sampling:
+        # Not all APIs support all sampling parameters. Comment out any which result in errors.
+
         temperature: 0.7  # Controls randomness in the output (0.0 = deterministic, 1.0+ = very random)
         top_p: 1.0  # Nucleus sampling: only consider the top p% of probability mass (default: 1.0, i.e., off)
         top_k: 0  # Only consider the top k most likely tokens (default: 0, use 0 to turn off)
