@@ -1,13 +1,12 @@
 # LLM-backed Discord Chatbot
 
-This project implements a Discord chatbot using discord.py and llama.cpp. The bot responds to mentions and direct messages using a local LLM (Language Model) powered by llama.cpp.
+This project implements a Discord chatbot using discord.py and LiteLLM. The bot responds to mentions and direct messages using a Language Model (LLM) powered by LiteLLM.
 
 ## Prerequisites
 
-- Conda (Miniconda or Anaconda)
+- Python 3.12 or higher
 - A Discord bot token
-- A llama.cpp compatible model file
-- NVIDIA GPU with CUDA support (for GPU acceleration)
+- An API key for your chosen LLM provider (e.g., OpenAI)
 
 ## Installation
 
@@ -17,21 +16,16 @@ This project implements a Discord chatbot using discord.py and llama.cpp. The bo
    cd llm-discord-bot
    ```
 
-2. Make the setup script executable:
+2. Create a virtual environment and activate it:
    ```
-   chmod +x setup.sh
-   ```
-
-3. Run the setup script:
-   ```
-   ./setup.sh
+   python -m venv venv
+   source venv/bin/activate
    ```
 
-   This script will create a Conda environment, install all required dependencies including the CUDA Toolkit, and compile llama-cpp-python with CUBLAS support for GPU acceleration.
-
-4. Download a llama.cpp compatible model file and place it in a known location.
-
-Note: The setup script will install the CUDA Toolkit using Conda. Make sure you have an NVIDIA GPU with CUDA support for GPU acceleration.
+3. Install the required dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
 
 ## Configuration
 
@@ -43,7 +37,7 @@ Note: The setup script will install the CUDA Toolkit using Conda. Make sure you 
 2. Open the `config.yml` file and update the values:
    - Replace `your_discord_bot_token_here` with your actual Discord bot token.
    - Replace `your_discord_client_id_here` with your actual Discord client ID.
-   - Update `models/model.bin` with the actual path to your model file.
+   - Update the `llms` section with your chosen LLM provider's details.
    - Adjust other settings as needed (see comments in the file for explanations).
 
 3. The `config-example.yml` file contains explanations for all available settings. Refer to it for more information on configuring your bot.
@@ -52,22 +46,23 @@ Note: The `config.yml` file is gitignored to prevent accidental commits of sensi
 
 ## Running the Bot
 
-1. Make the start script executable:
-   ```
-   chmod +x start.sh
-   ```
-
-2. To start the bot, run:
-   ```
-   ./start.sh
-   ```
+To start the bot, run:
+```
+python src/main.py
+```
 
 The bot will connect to Discord and print a message when ready.
 
 ## Usage
 
 - Mention the bot or send it a direct message to get a response.
-- The bot will use the LLM to generate responses based on the input.
+- The bot will use the configured LLM to generate responses based on the input.
+
+## Development
+
+- To run tests: `pytest tests/`
+- To apply database migrations: `alembic upgrade head`
+- To create a new migration: `alembic revision -m "Description of changes"`
 
 ## Note
 
