@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import yaml
 from pydantic import BaseModel, Field
@@ -23,6 +23,11 @@ class LLMConfig(BaseModel):
     sampling: SamplingConfig
 
 
+class WebhookConfig(BaseModel):
+    name: str
+    system_prompt: str
+
+
 class ChatConfig(BaseModel):
     context_length: int
     message_limit: int
@@ -33,16 +38,11 @@ class DiscordConfig(BaseModel):
     client_id: str
 
 
-class WebhookConfig(BaseModel):
-    name: str
-    system_prompt: str
-    llm: LLMConfig
-
-
 class BotConfig(BaseModel):
     discord: DiscordConfig
     chat: ChatConfig
-    webhooks: List[WebhookConfig]
+    llms: Dict[str, LLMConfig]
+    webhooks: Dict[str, Dict[str, WebhookConfig]]
 
 
 class Config(BaseModel):

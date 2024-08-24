@@ -27,7 +27,10 @@ class DiscordBot(discord.Client):
         intents.message_content = True
         super().__init__(intents=intents)
         self.config = bot_config
-        self.llm_handlers = {webhook.name: LLMHandler(webhook) for webhook in bot_config.webhooks}
+        self.llm_handlers = {}
+        for llm_name, llm_config in bot_config.llms.items():
+            for webhook_name, webhook_config in bot_config.webhooks[llm_name].items():
+                self.llm_handlers[webhook_name] = LLMHandler(llm_config, webhook_config)
 
     async def add_llm_handler(self, webhook_config: WebhookConfig) -> None:
         """

@@ -17,7 +17,8 @@ class LiteLLMMessage(BaseModel):
     content: str
 
 class LLMHandler:
-    def __init__(self, webhook_config: WebhookConfig):
+    def __init__(self, llm_config: LLMConfig, webhook_config: WebhookConfig):
+        self.llm_config = llm_config
         self.webhook_config = webhook_config
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
@@ -32,16 +33,15 @@ class LLMHandler:
             return new_webhook
 
     async def generate_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
-        litellm_config = self.webhook_config.llm
         try:
-            sampling_config = litellm_config.sampling
+            sampling_config = self.llm_config.sampling
             response = await acompletion(
-                model=litellm_config.llm_name,
+                model=self.llm_config.llm_name,
                 messages=messages,
-                max_tokens=litellm_config.max_tokens,
+                max_tokens=self.llm_config.max_tokens,
                 **{key: val for key, val in sampling_config.dict().items() if val is not None},
-                api_base=litellm_config.api_base,
-                api_key=litellm_config.api_key,
+                api_base=self.llm_config.api_base,
+                api_key=self.llm_config.api_key,
                 stop=["<|begin_metadata|>"],
             )
             return response
