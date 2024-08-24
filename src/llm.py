@@ -6,7 +6,7 @@ from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
-from src.config import WebhookConfig
+from src.config import WebhookConfig, LLMConfig
 from src.db import webhook_db
 
 class LiteLLMMessage(BaseModel):
