@@ -112,14 +112,12 @@ Your Discord ID: {self.user.id}
             role: str = "assistant" if first_message.author == self.user else "user"
             msg_content = "\n\n".join((message.content for message in message_group))
             content = f"""\
-<content>
 {msg_content}
-</content>
-<metadata>
+<|begin_metadata|>
 Author: {first_message.author.display_name + ("" if first_message.author.bot else f" ({first_message.author.name})") }
 Author ID: {first_message.author.id}
 Sent at: {first_message.created_at}
-</metadata>
+<|end_metadata|>
 """
 
             history.append(LiteLLMMessage(role=role, content=content))
@@ -155,7 +153,8 @@ Sent at: {first_message.created_at}
                 top_a=sampling_config.top_a,
                 api_base=self.config.litellm.api_base,
                 api_key=self.config.litellm.api_key,
-                stop=["</content>", "<metadata>"]
+                stop=["<|begin_metadata|>"],
+
             )
             return response
         except Exception as e:
@@ -212,12 +211,8 @@ Sent at: {first_message.created_at}
         Returns:
             str: The parsed response.
         """
-        if "<content>" in content:
-            content = content.split("<content>", 1)[1]
-        if "</content>" in content:
-            content = content.split("</content>", 1)[0]
-        if "<metadata>" in content:
-            content = content.split("<metadata>", 1)[0]
+        if "<|begin_metadata|>" in content:
+            content = content.split("<|begin_metadata|>", 1)[0]
         return content.strip()
 
     @staticmethod
