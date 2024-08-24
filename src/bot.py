@@ -9,6 +9,7 @@ from src.config import BotConfig
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.util import drop_both_ends
 from src.llm import LLMHandler, LiteLLMMessage
+from src.config import WebhookConfig
 
 class DiscordBot(discord.Client):
     """
@@ -27,6 +28,54 @@ class DiscordBot(discord.Client):
         super().__init__(intents=intents)
         self.config = bot_config
         self.llm_handlers = {webhook.name: LLMHandler(webhook) for webhook in bot_config.webhooks}
+
+    async def add_llm_handler(self, webhook_config: WebhookConfig) -> None:
+        """
+        Add a new LLMHandler at runtime.
+
+        Args:
+            webhook_config (WebhookConfig): Configuration for the new webhook.
+        """
+        if webhook_config.name in self.llm_handlers:
+            raise ValueError(f"LLMHandler with name '{webhook_config.name}' already exists.")
+        
+        llm_handler = LLMHandler(webhook_config)
+        await llm_handler.setup_webhook(self)
+        self.llm_handlers[webhook_config.name] = llm_handler
+        print(f"Added new LLMHandler: {webhook_config.name}")
+
+    def remove_llm_handler(self, name: str) -> None:
+        """
+        Remove an LLMHandler at runtime.
+
+        Args:
+            name (str): The name of the LLMHandler to remove.
+        """
+        if name not in self.llm_handlers:
+            raise ValueError(f"LLMHandler with name '{name}' does not exist.")
+        
+        del self.llm_handlers[name]
+        print(f"Removed LLMHandler: {name}")
+
+    async def modify_llm_handler(self, name: str, new_webhook_config: WebhookConfig) -> None:
+        """
+        Modify an existing LLMHandler at runtime.
+
+        Args:
+            name (str): The name of the LLMHandler to modify.
+            new_webhook_config (WebhookConfig): The new configuration for the webhook.
+        """
+        if name not in self.llm_handlers:
+            raise ValueError(f"LLMHandler with name '{name}' does not exist.")
+        
+        # Remove the old handler
+        del self.llm_handlers[name]
+        
+        # Create and add the new handler
+        llm_handler = LLMHandler(new_webhook_config)
+        await llm_handler.setup_webhook(self)
+        self.llm_handlers[new_webhook_config.name] = llm_handler
+        print(f"Modified LLMHandler: {name} -> {new_webhook_config.name}")
 
     async def on_ready(self):
         """
