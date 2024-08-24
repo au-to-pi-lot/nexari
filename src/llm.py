@@ -7,7 +7,7 @@ from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 
 from src.config import WebhookConfig
-from src.db import get_webhook_info, save_webhook_info
+from src.db import webhook_db
 
 class LiteLLMMessage(BaseModel):
     """
@@ -21,13 +21,13 @@ class LLMHandler:
         self.webhook_config = webhook_config
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
-        webhook_info = get_webhook_info(self.webhook_config.name)
+        webhook_info = webhook_db.get_webhook_info(self.webhook_config.name)
         if webhook_info:
             webhook_id, webhook_token = webhook_info
             return discord.Webhook.partial(webhook_id, webhook_token, client=bot)
         else:
             new_webhook = await channel.create_webhook(name=self.webhook_config.name)
-            save_webhook_info(self.webhook_config.name, new_webhook.id, new_webhook.token)
+            webhook_db.save_webhook_info(self.webhook_config.name, new_webhook.id, new_webhook.token)
             print(f"Created new webhook {self.webhook_config.name} in channel {channel.name}")
             return new_webhook
 

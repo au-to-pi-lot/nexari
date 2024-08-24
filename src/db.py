@@ -33,3 +33,6 @@ class WebhookDB:
             self.cursor.execute("INSERT OR REPLACE INTO webhooks (name, webhook_id, webhook_token) VALUES (?, ?, ?)",
                                 (name, webhook_id, webhook_token))
             self.conn.commit()
+
+# Create a global instance of WebhookDB
+webhook_db = WebhookDB()
