@@ -20,32 +20,55 @@ class SamplingConfig(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     temperature: Mapped[float] = mapped_column(nullable=False)
+    top_p: Mapped[Optional[float]]
+    top_k: Mapped[Optional[int]]
+    frequency_penalty: Mapped[Optional[float]]
+    presence_penalty: Mapped[Optional[float]]
+    repetition_penalty: Mapped[Optional[float]]
+    min_p: Mapped[Optional[float]]
+    top_a: Mapped[Optional[float]]
 
     @validates('temperature')
-    def validate_temperature(self, temperature: float) -> float:
-        temp_min = 0.0
-        temp_max = 2.0
-        if not temp_min <= temperature <= temp_max:
-            raise ValueError(f'`temperature` out of range: {temperature}. Value must be between {temp_min} and {temp_max} inclusive.')
+    def validate_temperature(self, key, temperature: float) -> float:
+        if not 0.0 <= temperature <= 2.0:
+            raise ValueError(f'`temperature` out of range: {temperature}. Value must be between 0.0 and 2.0 inclusive.')
         return temperature
 
-    top_p: Mapped[float]
-
     @validates('top_p')
-    def validate_top_p(self, top_p: Optional[float]) -> Optional[float]:
-        top_p_min = 0.0
-        top_p_max = 1.0
-        if top_p is not None and not top_p_min <= top_p <= top_p_max:
-            raise ValueError(
-                f'`top_p` out of range: {top_p}. Value must be between {top_p_min} and {top_p_max} inclusive.')
+    def validate_top_p(self, key, top_p: Optional[float]) -> Optional[float]:
+        if top_p is not None and not 0.0 <= top_p <= 1.0:
+            raise ValueError(f'`top_p` out of range: {top_p}. Value must be between 0.0 and 1.0 inclusive.')
         return top_p
 
-    top_k: Mapped[float]
-    frequency_penalty: Mapped[float]
-    presence_penalty: Mapped[float]
-    repetition_penalty: Mapped[float]
-    min_p: Mapped[float]
-    top_a: Mapped[float]
+    @validates('top_k')
+    def validate_top_k(self, key, top_k: Optional[int]) -> Optional[int]:
+        if top_k is not None and top_k < 0:
+            raise ValueError(f'`top_k` must be non-negative: {top_k}.')
+        return top_k
+
+    @validates('frequency_penalty', 'presence_penalty')
+    def validate_penalty(self, key, value: Optional[float]) -> Optional[float]:
+        if value is not None and not -2.0 <= value <= 2.0:
+            raise ValueError(f'`{key}` out of range: {value}. Value must be between -2.0 and 2.0 inclusive.')
+        return value
+
+    @validates('repetition_penalty')
+    def validate_repetition_penalty(self, key, value: Optional[float]) -> Optional[float]:
+        if value is not None and value < 0.0:
+            raise ValueError(f'`repetition_penalty` must be non-negative: {value}.')
+        return value
+
+    @validates('min_p')
+    def validate_min_p(self, key, min_p: Optional[float]) -> Optional[float]:
+        if min_p is not None and not 0.0 <= min_p <= 1.0:
+            raise ValueError(f'`min_p` out of range: {min_p}. Value must be between 0.0 and 1.0 inclusive.')
+        return min_p
+
+    @validates('top_a')
+    def validate_top_a(self, key, top_a: Optional[float]) -> Optional[float]:
+        if top_a is not None and top_a < 0.0:
+            raise ValueError(f'`top_a` must be non-negative: {top_a}.')
+        return top_a
 
 
 class Channel(Base):
