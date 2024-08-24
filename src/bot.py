@@ -82,8 +82,6 @@ class DiscordBot(discord.Client):
         Called when the bot is ready and connected to Discord.
         """
         print(f'{self.user} has connected to Discord!')
-        for llm_handler in self.llm_handlers.values():
-            await llm_handler.setup_webhook(self)
 
     async def on_message(self, message: discord.Message):
         """
@@ -191,14 +189,9 @@ Sent at: {first_message.created_at}
 
         messages = self.break_messages(content)
 
-        webhook = llm_handler.get_discord_webhook()
-        if webhook:
-            for message in messages:
-                await webhook.send(content=message)
-        else:
-            print(f"Webhook {llm_handler.webhook_config.name} not found. Sending message as bot instead.")
-            for message in messages:
-                await channel.send(message)
+        webhook = await llm_handler.get_webhook(self, channel)
+        for message in messages:
+            await webhook.send(content=message)
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
