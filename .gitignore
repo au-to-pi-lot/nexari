@@ -4,3 +4,4 @@ models/
 venv/
 # Configuration
 config.yml
+data.db
