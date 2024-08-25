@@ -1,11 +1,11 @@
 import textwrap
 from itertools import groupby, cycle
 from typing import List, Union, Iterable, Literal, Dict
-from src.db.models import LanguageModel
+from src.db.models import LanguageModel, Webhook
 
 import discord
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from src.config import Config
 from src.const import DISCORD_MESSAGE_MAX_CHARS
@@ -49,7 +49,8 @@ class DiscordBot(discord.Client):
 
     async def remove_llm_handler(self, identifier: Union[int, LanguageModel]) -> None:
         """
-        Remove an LLMHandler at runtime and delete the corresponding database entry.
+        Remove an LLMHandler at runtime, delete the corresponding database entry,
+        and remove all associated Discord webhooks.
 
         Args:
             identifier (Union[int, LanguageModel]): Either the ID of the LanguageModel to remove,
@@ -74,13 +75,27 @@ class DiscordBot(discord.Client):
             if language_model.name not in self.llm_handlers:
                 raise ValueError(f"LLMHandler with name '{language_model.name}' does not exist.")
 
+            # Fetch all associated webhooks
+            webhook_query = select(Webhook).where(Webhook.language_model_id == language_model.id)
+            webhooks = await session.execute(webhook_query)
+            webhooks = webhooks.scalars().all()
+
+            # Delete Discord webhooks
+            for webhook in webhooks:
+                discord_webhook = await discord.Webhook.partial(webhook.id, webhook.token, client=self).fetch()
+                await discord_webhook.delete()
+
+            # Delete all associated webhooks from the database
+            delete_query = delete(Webhook).where(Webhook.language_model_id == language_model.id)
+            await session.execute(delete_query)
+
             # Delete the LanguageModel from the database
             await session.delete(language_model)
             await session.commit()
 
         # Remove the LLMHandler from the local dictionary
         del self.llm_handlers[language_model.name]
-        print(f"Removed LLMHandler: {language_model.name}")
+        print(f"Removed LLMHandler and associated webhooks: {language_model.name}")
 
     async def modify_llm_handler(self, transient_language_model: LanguageModel) -> None:
         """
