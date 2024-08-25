@@ -59,25 +59,32 @@ class DiscordBot(discord.Client):
         del self.llm_handlers[name]
         print(f"Removed LLMHandler: {name}")
 
-    async def modify_llm_handler(self) -> None:
+    async def modify_llm_handler(self, transient_language_model: LanguageModel) -> None:
         """
-        Modify an existing LLMHandler at runtime.
+        Modify an existing LLMHandler at runtime using a transient SQLAlchemy object.
 
         Args:
-            name (str): The name of the LLMHandler to modify.
-            new_webhook_config (WebhookConfig): The new configuration for the webhook.
+            transient_language_model (LanguageModel): A transient SQLAlchemy object with updated data.
+
+        Raises:
+            ValueError: If no existing LanguageModel with the given primary key is found.
         """
-        if name not in self.llm_handlers:
-            raise ValueError(f"LLMHandler with name '{name}' does not exist.")
-        
-        # Remove the old handler
-        del self.llm_handlers[name]
-        
-        # Create and add the new handler
-        llm_handler = LLMHandler(new_webhook_config)
-        await llm_handler.setup_webhook(self)
-        self.llm_handlers[new_webhook_config.name] = llm_handler
-        print(f"Modified LLMHandler: {name} -> {new_webhook_config.name}")
+        async with Session() as session:
+            # Attempt to merge the transient object with the existing database object
+            merged_model = await session.merge(transient_language_model)
+            
+            # Check if the merge resulted in an existing object or created a new one
+            if merged_model not in session.new:
+                # The object existed and was updated
+                await session.commit()
+                
+                # Update the LLMHandler
+                self.llm_handlers[merged_model.name] = LLMHandler(merged_model)
+                print(f"Modified LLMHandler: {merged_model.name}")
+            else:
+                # The merge created a new object, which means no existing object was found
+                await session.rollback()
+                raise ValueError(f"No existing LanguageModel found with id: {transient_language_model.id}")
 
     async def on_ready(self):
         """
