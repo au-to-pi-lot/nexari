@@ -21,7 +21,7 @@ class LanguageModel(Base):
     context_length: Mapped[int]
     message_limit: Mapped[int]
 
-    temperature: Mapped[float] = mapped_column(nullable=False)
+    temperature: Mapped[float] = mapped_column(nullable=False, defauailt=1.0)
     top_p: Mapped[Optional[float]]
     top_k: Mapped[Optional[int]]
     frequency_penalty: Mapped[Optional[float]]
