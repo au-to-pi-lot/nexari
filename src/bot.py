@@ -32,20 +32,19 @@ class DiscordBot(discord.Client):
         self.llm_handlers: Dict[str, LLMHandler] = {}
 
 
-    async def add_llm_handler(self) -> None:
+    async def add_llm_handler(self, language_model: LanguageModel) -> None:
         """
         Add a new LLMHandler at runtime.
 
         Args:
             webhook_config (WebhookConfig): Configuration for the new webhook.
         """
-        if webhook_config.name in self.llm_handlers:
-            raise ValueError(f"LLMHandler with name '{webhook_config.name}' already exists.")
+        if language_model.id in self.llm_handlers:
+            raise ValueError(f"LLMHandler with name '{language_model.name}' already exists.")
         
-        llm_handler = LLMHandler(webhook_config)
-        await llm_handler.setup_webhook(self)
-        self.llm_handlers[webhook_config.name] = llm_handler
-        print(f"Added new LLMHandler: {webhook_config.name}")
+        llm_handler = LLMHandler(language_model)
+        self.llm_handlers[language_model.name] = llm_handler
+        print(f"Added new LLMHandler: {language_model.name}")
 
     def remove_llm_handler(self, name: str) -> None:
         """
@@ -60,7 +59,7 @@ class DiscordBot(discord.Client):
         del self.llm_handlers[name]
         print(f"Removed LLMHandler: {name}")
 
-    async def modify_llm_handler(self, name: str) -> None:
+    async def modify_llm_handler(self) -> None:
         """
         Modify an existing LLMHandler at runtime.
 
