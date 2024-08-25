@@ -35,14 +35,30 @@ class DiscordBot(discord.Client):
 
     async def add_llm_handler(self, language_model: LanguageModel) -> None:
         """
-        Add a new LLMHandler at runtime.
+        Add a new LLMHandler at runtime and save the transient language_model to the database.
 
         Args:
-            webhook_config (WebhookConfig): Configuration for the new webhook.
+            language_model (LanguageModel): Transient LanguageModel object to be added.
+
+        Raises:
+            ValueError: If an LLMHandler with the same name already exists.
         """
-        if language_model.id in self.llm_handlers:
-            raise ValueError(f"LLMHandler with name '{language_model.name}' already exists.")
-        
+        async with Session() as session:
+            # Check if an LLMHandler with the same name already exists
+            existing_model = await session.execute(
+                select(LanguageModel).where(LanguageModel.name == language_model.name)
+            )
+            if existing_model.scalar_one_or_none():
+                raise ValueError(f"LLMHandler with name '{language_model.name}' already exists.")
+
+            # Add the language_model to the session and commit to save it to the database
+            session.add(language_model)
+            await session.commit()
+            
+            # Refresh the language_model to ensure it has the database-assigned ID
+            await session.refresh(language_model)
+
+        # Create and add the LLMHandler
         llm_handler = LLMHandler(language_model)
         self.llm_handlers[language_model.name] = llm_handler
         print(f"Added new LLMHandler: {language_model.name}")
