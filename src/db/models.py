@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import Column, Integer, Text, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, validates
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, validates, relationship
 
 
 class Base(DeclarativeBase):
@@ -20,7 +20,6 @@ class LanguageModel(Base):
     system_prompt: Mapped[str] = mapped_column(Text)
     context_length: Mapped[int]
     message_limit: Mapped[int]
-    sampling_config: Mapped[int] = mapped_column(ForeignKey('sampling_config.id'), nullable=False, unique=True)
 
     temperature: Mapped[float] = mapped_column(nullable=False)
     top_p: Mapped[Optional[float]]
@@ -30,6 +29,9 @@ class LanguageModel(Base):
     repetition_penalty: Mapped[Optional[float]]
     min_p: Mapped[Optional[float]]
     top_a: Mapped[Optional[float]]
+
+    webhooks: Mapped[List["Webhook"]] = relationship(back_populates="language_model")
+    channels: Mapped[List["Channel"]] = relationship(secondary="webhook", back_populates="language_models")
 
     @validates('temperature')
     def validate_temperature(self, key, temperature: float) -> float:
@@ -73,25 +75,24 @@ class LanguageModel(Base):
             raise ValueError(f'`top_a` must be non-negative: {top_a}.')
         return top_a
 
-class SamplingConfig(Base):
-    __tablename__ = 'sampling_config'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-
 
 class Channel(Base):
     __tablename__ = "channel"
 
-    id = Column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel")
+    language_models: Mapped[List["LanguageModel"]] = relationship(secondary="webhook", back_populates="channels")
 
 
 class Webhook(Base):
-    __tablename__ = 'webhook'
+    __tablename__ = "webhook"
 
-    id = Column(Integer, primary_key=True)
-    token = Column(Text, nullable=False)
-    channel_id = Column(Integer, ForeignKey('channel.id'), nullable=False)
-    language_model = Column(Integer, ForeignKey('language_model.id'), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    token: Mapped[str] = mapped_column(Text, nullable=False)
+    channel_id: Mapped[int] = mapped_column(ForeignKey("channel.id"), nullable=False)
+    language_model_id: Mapped[int] = mapped_column(ForeignKey("language_model.id"), nullable=False)
+
+    channel: Mapped["Channel"] = relationship(back_populates="webhooks")
+    language_model: Mapped["LanguageModel"] = relationship(back_populates="webhooks")
 
     unique_channel_model = UniqueConstraint("channel_id", "language_model")

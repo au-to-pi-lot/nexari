@@ -1,38 +1,38 @@
 import textwrap
 from itertools import groupby, cycle
-from typing import List, Union, Iterable, Literal
+from typing import List, Union, Iterable, Literal, Dict
 
 import discord
 from pydantic import BaseModel
+from sqlalchemy import select
 
-from src.config import BotConfig
+from src.config import Config
 from src.const import DISCORD_MESSAGE_MAX_CHARS
+from src.db.engine import Session
+from src.db.models import LanguageModel
 from src.util import drop_both_ends
 from src.llm import LLMHandler, LiteLLMMessage
-from src.config import WebhookConfig
 
 class DiscordBot(discord.Client):
     """
     A Discord bot that manages multiple webhooks and uses LiteLLM for generating responses.
     """
 
-    def __init__(self, bot_config: BotConfig):
+    def __init__(self, config: Config):
         """
         Initialize the DiscordBot.
 
         Args:
-            bot_config (BotConfig): Configuration for the bot.
+            config (BotConfig): Configuration for the bot.
         """
         intents: discord.Intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
-        self.config = bot_config
-        self.llm_handlers = {}
-        for llm_name, llm_config in bot_config.llms.items():
-            for webhook_name, webhook_config in bot_config.webhooks[llm_name].items():
-                self.llm_handlers[webhook_name] = LLMHandler(llm_config, webhook_config)
+        self.config = config
+        self.llm_handlers: Dict[str, LLMHandler] = {}
 
-    async def add_llm_handler(self, webhook_config: WebhookConfig) -> None:
+
+    async def add_llm_handler(self) -> None:
         """
         Add a new LLMHandler at runtime.
 
@@ -60,7 +60,7 @@ class DiscordBot(discord.Client):
         del self.llm_handlers[name]
         print(f"Removed LLMHandler: {name}")
 
-    async def modify_llm_handler(self, name: str, new_webhook_config: WebhookConfig) -> None:
+    async def modify_llm_handler(self, name: str) -> None:
         """
         Modify an existing LLMHandler at runtime.
 
@@ -86,6 +86,12 @@ class DiscordBot(discord.Client):
         """
         print(f'{self.user} has connected to Discord!')
 
+        with Session() as session:
+            query = select(LanguageModel)
+            language_models = await session.scalars(query).all()
+        for language_model in language_models:
+            self.llm_handlers[language_model.name] = LLMHandler(language_model)
+
     async def on_message(self, message: discord.Message):
         """
         Called when a message is received.
@@ -96,105 +102,33 @@ class DiscordBot(discord.Client):
         if message.author == self.user:
             return
 
-        for webhook_name, llm_handler in self.llm_handlers.items():
-            if webhook_name.lower() in message.content.lower():
-                async with message.channel.typing():
+        channel = message.channel
+
+        for llm_name, llm_handler in self.llm_handlers.items():
+            if llm_name.lower() in message.content.lower():
+                async with channel.typing():
                     try:
-                        history: List[LiteLLMMessage] = await self.fetch_message_history(message.channel)
+                        history: List[LiteLLMMessage] = await llm_handler.fetch_message_history(self, channel)
 
                         system_prompt = llm_handler.get_system_prompt(
                             message.guild.name,
-                            message.channel.name
+                            channel.name
                         )
 
-                        messages: List[LiteLLMMessage] = [
+                        history = [
                             LiteLLMMessage(role="system", content=system_prompt),
                             *history,
                         ]
 
-                        await self.post_llm_response(messages=messages, channel=message.channel, llm_handler=llm_handler)
+                        response_str = await llm_handler.get_response(history)
+                        webhook = await llm_handler.get_webhook(self, channel)
+                        messages = DiscordBot.break_messages(response_str)
+
+                        await DiscordBot.send_messages(messages, webhook)
                     except Exception as e:
                         error_message = str(e)
                         print(f"An error occurred: {error_message}")
-                        await message.channel.send(f"[Script error: {error_message}]")
-
-    async def fetch_message_history(self, channel: Union[discord.TextChannel, discord.DMChannel]) -> List[LiteLLMMessage]:
-        """
-        Fetch message history from a Discord channel.
-
-        Args:
-            channel (Union[discord.TextChannel, discord.DMChannel]): The channel to fetch history from.
-
-        Returns:
-            List[LiteLLMMessage]: A list of messages in LiteLLM format.
-        """
-        discord_history: Iterable[discord.Message] = reversed([
-            message
-            async for message in channel.history(limit=self.config.chat.message_limit)
-        ])
-
-        # group adjacent messages from the same user
-        # this saves some tokens on repeated metadata
-        history = []
-        for _, message_group in groupby(discord_history, lambda a: a.author):
-            message_group = list(message_group)
-            first_message = message_group[0]
-            role: str = "assistant" if first_message.author.bot else "user"
-            msg_content = "\n\n".join((message.content for message in message_group))
-            content = f"""\
-{msg_content}
-<|begin_metadata|>
-Author: {first_message.author.display_name + ("" if first_message.author.bot else f" ({first_message.author.name})") }
-Author ID: {first_message.author.id}
-Sent at: {first_message.created_at}
-<|end_metadata|>
-"""
-
-            history.append(LiteLLMMessage(role=role, content=content))
-
-        return history
-
-    async def post_llm_response(self, messages: List[LiteLLMMessage], channel: discord.TextChannel, llm_handler: LLMHandler) -> str:
-        """
-        Generate a LLM response and post it to a Discord channel using the appropriate webhook.
-
-        Args:
-            messages (List[LiteLLMMessage]): The message history in the channel.
-            channel (discord.TextChannel): The channel to send the response to.
-            llm_handler (LLMHandler): The LLMHandler instance to use.
-
-        Returns:
-            str: The literal response as generated by the LLM.
-        """
-        response = await llm_handler.generate_response(messages)
-        response_str = response.choices[0].message.content
-
-        content = LLMHandler.parse_llm_response(response_str)
-
-        print(f"{llm_handler.webhook_config.name}: {content}")
-        await self.send_webhook_message(content, channel, llm_handler)
-
-        return response_str
-
-    async def send_webhook_message(self, content: str, channel: discord.TextChannel, llm_handler: LLMHandler) -> None:
-        """
-        Send a message to a Discord channel using the appropriate webhook, breaking it into multiple messages if necessary.
-
-        Args:
-            content (str): The content to send.
-            channel (discord.TextChannel): The channel to send the message to.
-            llm_handler (LLMHandler): The LLMHandler instance to use.
-        """
-        content = content.strip()
-
-        if not content:
-            return None
-
-        messages = self.break_messages(content)
-
-        webhook = await llm_handler.get_webhook(self, channel)
-        for message in messages:
-            await webhook.send(content=message)
+                        await channel.send(f"[Script error: {error_message}]")
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
@@ -282,3 +216,15 @@ Sent at: {first_message.created_at}
             messages.append("[LLM declined to respond]")
 
         return messages
+
+    @staticmethod
+    async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
+        """
+        Send a message to a Discord channel using the appropriate webhook, breaking it into multiple messages if necessary.
+
+        Args:
+            messages (List[str]): A list of messages to send via the webhook.
+            webhook (discord.Webhook): The webhook with which to send the message.
+        """
+        for message in messages:
+            await webhook.send(content=message)
