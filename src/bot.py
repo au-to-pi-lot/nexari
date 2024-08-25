@@ -46,16 +46,33 @@ class DiscordBot(discord.Client):
         self.llm_handlers[language_model.name] = llm_handler
         print(f"Added new LLMHandler: {language_model.name}")
 
-    def remove_llm_handler(self, name: str) -> None:
+    async def remove_llm_handler(self, name: str) -> None:
         """
-        Remove an LLMHandler at runtime.
+        Remove an LLMHandler at runtime and delete the corresponding database entry.
 
         Args:
             name (str): The name of the LLMHandler to remove.
+
+        Raises:
+            ValueError: If no LLMHandler with the given name exists.
         """
         if name not in self.llm_handlers:
             raise ValueError(f"LLMHandler with name '{name}' does not exist.")
-        
+
+        async with Session() as session:
+            # Find the corresponding LanguageModel in the database
+            query = select(LanguageModel).where(LanguageModel.name == name)
+            language_model = await session.execute(query)
+            language_model = language_model.scalar_one_or_none()
+
+            if language_model:
+                # Delete the LanguageModel from the database
+                await session.delete(language_model)
+                await session.commit()
+            else:
+                print(f"Warning: No database entry found for LLMHandler '{name}'")
+
+        # Remove the LLMHandler from the local dictionary
         del self.llm_handlers[name]
         print(f"Removed LLMHandler: {name}")
 
