@@ -182,7 +182,7 @@ class DiscordBot(discord.Client):
 
                         response_str = await llm_handler.get_response(history)
                         webhook = await llm_handler.get_webhook(self, channel)
-                        messages = DiscordBot.break_messages(response_str)
+                        messages = LLMHandler.break_messages(response_str)
 
                         await DiscordBot.send_messages(messages, webhook)
                     except Exception as e:
@@ -190,92 +190,6 @@ class DiscordBot(discord.Client):
                         print(f"An error occurred: {error_message}")
                         await channel.send(f"[Script error: {error_message}]")
 
-    @staticmethod
-    def break_messages(content: str) -> List[str]:
-        """
-        Break a long message into smaller chunks that fit within Discord's message limit.
-
-        Args:
-            content (str): The content to break into messages.
-
-        Returns:
-            List[str]: A list of message chunks.
-        """
-        class CharBlock(BaseModel):
-            content: str
-            block_type: Literal['text', 'code']
-
-        char_blocks = (
-            CharBlock(content=content, block_type=block_type)
-            for content, block_type in zip(content.split("```"), cycle(["text", "code"]))
-            if content
-        )
-
-        blocks = []
-        for block in char_blocks:
-            if block.block_type == "text":
-                block.content = block.content.strip()
-                if block:
-                    blocks.append(block)
-            else:
-                blocks.append(block)
-
-        messages = []
-        if blocks:
-            for block in char_blocks:
-                if block.block_type == "text":
-                    messages.extend([
-                        nonempty_message
-                        for paragraph in block.content.split("\n\n")
-                        for message in textwrap.wrap(
-                            paragraph,
-                            width=DISCORD_MESSAGE_MAX_CHARS,
-                            expand_tabs=False,
-                            replace_whitespace=False
-                        )
-                        if (nonempty_message := message.strip())
-                    ])
-                elif block.block_type == "code":
-                    lines = block.content.split("\n")
-
-                    potential_language_marker = None
-                    if lines[0] != "":
-                        potential_language_marker = lines[0]
-                        lines = lines[1:]
-
-                    lines = drop_both_ends(lambda ln: ln == "", lines)
-
-                    if not lines and potential_language_marker:
-                        lines = [potential_language_marker]
-
-                    if lines:
-                        message_lines = []
-                        current_length = 0
-                        for index, line in enumerate(lines):
-                            if current_length + len(line) + len("```\n") + len("\n```") + 1 <= DISCORD_MESSAGE_MAX_CHARS:
-                                message_lines.append(line)
-                                current_length += len(line) + 1  # plus one for newline
-                            else:
-                                messages.append(
-                                    "```\n"
-                                    + "\n".join(message_lines)
-                                    + "\n```"
-                                )
-                                message_lines = []
-                                current_length = 0
-
-                        if message_lines:
-                            messages.append(
-                                "```\n"
-                                + "\n".join(message_lines)
-                                + "\n```"
-                            )
-                    else:  # empty code block
-                        messages.append("```\n```")
-        else:
-            messages.append("[LLM declined to respond]")
-
-        return messages
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:

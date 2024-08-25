@@ -1,5 +1,6 @@
-from itertools import groupby
-from typing import List, Union, Iterable
+import textwrap
+from itertools import cycle, groupby
+from typing import List, Literal, Union, Iterable
 from datetime import datetime
 
 import discord
@@ -8,8 +9,10 @@ from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
 from src.db.models import LanguageModel, Webhook
+from src.util import drop_both_ends
 
 
 class LiteLLMMessage(BaseModel):
@@ -148,5 +151,97 @@ Sent at: {first_message.created_at}
         print(f"{self.language_model.name}: {content}")
 
         return response_str
+
+    @staticmethod
+    def break_messages(content: str) -> List[str]:
+        """
+        Break a long message into smaller chunks that fit within Discord's message limit.
+
+        Args:
+            content (str): The content to break into messages.
+
+        Returns:
+            List[str]: A list of message chunks.
+        """
+
+        class CharBlock(BaseModel):
+            content: str
+            block_type: Literal['text', 'code']
+
+        char_blocks = (
+            CharBlock(content=content, block_type=block_type)
+            for content, block_type in zip(content.split("```"), cycle(["text", "code"]))
+            if content
+        )
+
+        blocks = []
+        for block in char_blocks:
+            if block.block_type == "text":
+                block.content = block.content.strip()
+                if block:
+                    blocks.append(block)
+            else:
+                blocks.append(block)
+
+        messages = []
+        if blocks:
+            for block in char_blocks:
+                if block.block_type == "text":
+                    messages.extend(
+                        [
+                            nonempty_message
+                            for paragraph in block.content.split("\n\n")
+                            for message in textwrap.wrap(
+                            paragraph,
+                            width=DISCORD_MESSAGE_MAX_CHARS,
+                            expand_tabs=False,
+                            replace_whitespace=False
+                        )
+                            if (nonempty_message := message.strip())
+                        ]
+                    )
+                elif block.block_type == "code":
+                    lines = block.content.split("\n")
+
+                    potential_language_marker = None
+                    if lines[0] != "":
+                        potential_language_marker = lines[0]
+                        lines = lines[1:]
+
+                    lines = drop_both_ends(lambda ln: ln == "", lines)
+
+                    if not lines and potential_language_marker:
+                        lines = [potential_language_marker]
+
+                    if lines:
+                        message_lines = []
+                        current_length = 0
+                        for index, line in enumerate(lines):
+                            if current_length + len(line) + len("```\n") + len(
+                                    "\n```"
+                                    ) + 1 <= DISCORD_MESSAGE_MAX_CHARS:
+                                message_lines.append(line)
+                                current_length += len(line) + 1  # plus one for newline
+                            else:
+                                messages.append(
+                                    "```\n"
+                                    + "\n".join(message_lines)
+                                    + "\n```"
+                                )
+                                message_lines = []
+                                current_length = 0
+
+                        if message_lines:
+                            messages.append(
+                                "```\n"
+                                + "\n".join(message_lines)
+                                + "\n```"
+                            )
+                    else:  # empty code block
+                        messages.append("```\n```")
+        else:
+            messages.append("[LLM declined to respond]")
+
+        return messages
 
 
