@@ -1,6 +1,7 @@
 import textwrap
 from itertools import groupby, cycle
 from typing import List, Union, Iterable, Literal, Dict
+from src.db.models import LanguageModel
 
 import discord
 from pydantic import BaseModel
@@ -46,35 +47,40 @@ class DiscordBot(discord.Client):
         self.llm_handlers[language_model.name] = llm_handler
         print(f"Added new LLMHandler: {language_model.name}")
 
-    async def remove_llm_handler(self, name: str) -> None:
+    async def remove_llm_handler(self, identifier: Union[int, LanguageModel]) -> None:
         """
         Remove an LLMHandler at runtime and delete the corresponding database entry.
 
         Args:
-            name (str): The name of the LLMHandler to remove.
+            identifier (Union[int, LanguageModel]): Either the ID of the LanguageModel to remove,
+                                                    or a transient LanguageModel object.
 
         Raises:
-            ValueError: If no LLMHandler with the given name exists.
+            ValueError: If no LLMHandler with the given identifier exists.
         """
-        if name not in self.llm_handlers:
-            raise ValueError(f"LLMHandler with name '{name}' does not exist.")
-
         async with Session() as session:
-            # Find the corresponding LanguageModel in the database
-            query = select(LanguageModel).where(LanguageModel.name == name)
-            language_model = await session.execute(query)
-            language_model = language_model.scalar_one_or_none()
-
-            if language_model:
-                # Delete the LanguageModel from the database
-                await session.delete(language_model)
-                await session.commit()
+            if isinstance(identifier, int):
+                # If identifier is an ID, fetch the LanguageModel from the database
+                query = select(LanguageModel).where(LanguageModel.id == identifier)
+                language_model = await session.execute(query)
+                language_model = language_model.scalar_one_or_none()
+                if not language_model:
+                    raise ValueError(f"No LanguageModel found with id: {identifier}")
             else:
-                print(f"Warning: No database entry found for LLMHandler '{name}'")
+                # If identifier is a LanguageModel object, use it directly
+                language_model = identifier
+
+            # Check if the LLMHandler exists
+            if language_model.name not in self.llm_handlers:
+                raise ValueError(f"LLMHandler with name '{language_model.name}' does not exist.")
+
+            # Delete the LanguageModel from the database
+            await session.delete(language_model)
+            await session.commit()
 
         # Remove the LLMHandler from the local dictionary
-        del self.llm_handlers[name]
-        print(f"Removed LLMHandler: {name}")
+        del self.llm_handlers[language_model.name]
+        print(f"Removed LLMHandler: {language_model.name}")
 
     async def modify_llm_handler(self, transient_language_model: LanguageModel) -> None:
         """
