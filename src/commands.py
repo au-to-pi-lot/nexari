@@ -213,5 +213,53 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
 
+    @app_commands.command(description="Create a deep copy of an existing LLM handler with a new name")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(
+        source_name="Name of the existing LLM handler to copy",
+        new_name="Name for the new copy of the LLM handler"
+    )
+    async def copy(self, interaction: discord.Interaction, source_name: str, new_name: str):
+        """Create a deep copy of an existing LLM handler with a new name"""
+        await interaction.response.defer(ephemeral=True)
+
+        if source_name not in self.bot.llm_handlers:
+            await interaction.followup.send(f"Source LLM handler '{source_name}' not found.")
+            return
+
+        if new_name in self.bot.llm_handlers:
+            await interaction.followup.send(f"An LLM handler with the name '{new_name}' already exists.")
+            return
+
+        source_model = self.bot.llm_handlers[source_name].language_model
+
+        # Create a new LanguageModel instance with the same attributes as the source
+        new_model_data = {
+            'name': new_name,
+            'api_base': source_model.api_base,
+            'model_name': source_model.model_name,
+            'api_key': source_model.api_key,
+            'max_tokens': source_model.max_tokens,
+            'system_prompt': source_model.system_prompt,
+            'context_length': source_model.context_length,
+            'message_limit': source_model.message_limit,
+            'temperature': source_model.temperature,
+            'top_p': source_model.top_p,
+            'top_k': source_model.top_k,
+            'frequency_penalty': source_model.frequency_penalty,
+            'presence_penalty': source_model.presence_penalty,
+            'repetition_penalty': source_model.repetition_penalty,
+            'min_p': source_model.min_p,
+            'top_a': source_model.top_a
+        }
+
+        new_model = LanguageModel(**new_model_data)
+
+        try:
+            await self.bot.add_llm_handler(new_model)
+            await interaction.followup.send(f"LLM handler '{source_name}' successfully copied to '{new_name}'!")
+        except ValueError as e:
+            await interaction.followup.send(f"Error creating copy of LLM handler: {str(e)}")
+
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))

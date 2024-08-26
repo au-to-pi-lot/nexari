@@ -11,7 +11,7 @@ class LanguageModel(Base):
     __tablename__ = 'language_model'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
     api_base: Mapped[str] = mapped_column(Text)
     model_name: Mapped[str] = mapped_column(Text)
     api_key: Mapped[str] = mapped_column(Text)
