@@ -6,3 +6,4 @@ pydantic==2.8.2
 pytest==8.3.2
 sqlalchemy==2.0.32
 alembic==1.13.2
+aiosqlite==0.20.0
