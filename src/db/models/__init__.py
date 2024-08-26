@@ -69,3 +69,9 @@ class Base(DeclarativeBase):
                 await session.rollback()
                 # Log the error here
                 raise
+
+from src.db.models.channel import Channel
+from src.db.models.language_model import LanguageModel
+from src.db.models.webhook import Webhook
+
+metadata = Base.metadata
