@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Dict, Any
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -128,14 +128,27 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
 
+def get_app_command_option_type(field_type: Any) -> discord.AppCommandOptionType:
+    if field_type == str:
+        return discord.AppCommandOptionType.string
+    elif field_type == int:
+        return discord.AppCommandOptionType.integer
+    elif field_type == float:
+        return discord.AppCommandOptionType.number
+    elif field_type == bool:
+        return discord.AppCommandOptionType.boolean
+    else:
+        return discord.AppCommandOptionType.string  # Default to string for unknown types
+
 # Dynamically add options to create and modify commands
 for command in [LLMCommands.create, LLMCommands.modify]:
     for field, info in LLMParams.__fields__.items():
+        option_type = get_app_command_option_type(info.type_)
         command.add_option(
             discord.app_commands.Option(
                 name=field,
                 description=info.field_info.description or field.replace('_', ' ').capitalize(),
-                type=discord.AppCommandOptionType.string,  # Adjust based on field type if needed
+                type=option_type,
                 required=False
             )
         )
