@@ -47,6 +47,23 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.describe(
+        name="Name of the new LLM handler",
+        api_base="API base URL",
+        model_name="Name of the model",
+        max_tokens="Maximum number of tokens",
+        system_prompt="System prompt",
+        context_length="Context length",
+        message_limit="Message limit",
+        temperature="Temperature (default is 1.0)",
+        top_p="Top P value",
+        top_k="Top K value",
+        frequency_penalty="Frequency penalty",
+        presence_penalty="Presence penalty",
+        repetition_penalty="Repetition penalty",
+        min_p="Minimum P value",
+        top_a="Top A value"
+    )
     async def create(
         self,
         interaction: discord.Interaction,
@@ -109,14 +126,43 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.followup.send(f"Error creating LLM handler: {str(e)}")
 
-    @app_commands.command()
+    @app_commands.command(description="Modify an existing LLM handler")
     @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.describe(name="Name of the LLM handler to modify")
+    @app_commands.describe(
+        name="Name of the LLM handler to modify",
+        api_base="API base URL",
+        model_name="Name of the model",
+        max_tokens="Maximum number of tokens",
+        system_prompt="System prompt",
+        context_length="Context length",
+        message_limit="Message limit",
+        temperature="Temperature (default is 1.0)",
+        top_p="Top P value",
+        top_k="Top K value",
+        frequency_penalty="Frequency penalty",
+        presence_penalty="Presence penalty",
+        repetition_penalty="Repetition penalty",
+        min_p="Minimum P value",
+        top_a="Top A value"
+    )
     async def modify(
         self,
         interaction: discord.Interaction,
         name: str,
-        **kwargs: Annotated[LLMParams, discord.app_commands.Transformer]
+        api_base: Optional[str] = None,
+        model_name: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        context_length: Optional[int] = None,
+        message_limit: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        min_p: Optional[float] = None,
+        top_a: Optional[float] = None
     ):
         await interaction.response.defer(ephemeral=True)
 
@@ -125,13 +171,24 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(f"LLM handler '{name}' not found.")
             return
 
-        try:
-            llm_params = LLMParams(**kwargs)
-        except ValueError as e:
-            await interaction.followup.send(f"Invalid parameters: {str(e)}")
-            return
-
-        update_data = llm_params.dict(exclude_unset=True)
+        update_data = {
+            'api_base': api_base,
+            'model_name': model_name,
+            'max_tokens': max_tokens,
+            'system_prompt': system_prompt,
+            'context_length': context_length,
+            'message_limit': message_limit,
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': top_k,
+            'frequency_penalty': frequency_penalty,
+            'presence_penalty': presence_penalty,
+            'repetition_penalty': repetition_penalty,
+            'min_p': min_p,
+            'top_a': top_a
+        }
+        
+        update_data = {k: v for k, v in update_data.items() if v is not None}
 
         for key, value in update_data.items():
             setattr(model, key, value)
