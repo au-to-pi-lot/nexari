@@ -156,7 +156,11 @@ class DiscordBot(commands.Bot):
         for language_model in language_models:
             self.llm_handlers[language_model.name] = LLMHandler(language_model)
 
-        await tree.sync(guild=discord.Object(id=GUILD_ID))
+        try:
+            synced = await self.tree.sync()
+            print(f"Synced {len(synced)} command(s)")
+        except Exception as e:
+            print(f"Error syncing command tree: {e}")
 
     async def on_message(self, message: discord.Message):
         """
