@@ -30,7 +30,6 @@ class LanguageModel(Base):
     top_a: Mapped[Optional[float]]
 
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="language_model")
-    channels: Mapped[List["Channel"]] = relationship(secondary="webhook", back_populates="language_models")
 
     @validates('temperature')
     def validate_temperature(self, key, temperature: float) -> float:
