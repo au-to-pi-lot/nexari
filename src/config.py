@@ -1,10 +1,11 @@
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Config(BaseModel):
     bot_token: str
     client_id: str
+    database_url: str = Field(default="sqlite+aiosqlite:///data.db")
 
 
 with open('config.yml', 'r') as config_file:
