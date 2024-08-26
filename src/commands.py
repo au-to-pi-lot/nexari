@@ -47,18 +47,46 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
-    async def create(self, interaction: discord.Interaction, name: str, **kwargs: Annotated[LLMParams, discord.app_commands.Transformer]):
+    async def create(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        api_base: Optional[str] = None,
+        model_name: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        context_length: Optional[int] = None,
+        message_limit: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        min_p: Optional[float] = None,
+        top_a: Optional[float] = None
+    ):
         """Create a new LLM handler"""
         await interaction.response.defer(ephemeral=True)
         
-        try:
-            llm_params = LLMParams(**kwargs)
-        except ValueError as e:
-            await interaction.followup.send(f"Invalid parameters: {str(e)}")
-            return
-
-        model_data = llm_params.dict(exclude_unset=True)
-        model_data['name'] = name
+        model_data = {
+            'name': name,
+            'api_base': api_base,
+            'model_name': model_name,
+            'max_tokens': max_tokens,
+            'system_prompt': system_prompt,
+            'context_length': context_length,
+            'message_limit': message_limit,
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': top_k,
+            'frequency_penalty': frequency_penalty,
+            'presence_penalty': presence_penalty,
+            'repetition_penalty': repetition_penalty,
+            'min_p': min_p,
+            'top_a': top_a
+        }
+        model_data = {k: v for k, v in model_data.items() if v is not None}
 
         # Prompt for required fields that weren't provided
         for field in LanguageModel.__table__.columns:
@@ -149,18 +177,19 @@ def get_app_command_option_type(field_type: Type[Any]) -> discord.AppCommandOpti
     else:
         return discord.AppCommandOptionType.string  # Default to string for unknown types
 
-# Dynamically add options to create and modify commands
-for command in [LLMCommands.create, LLMCommands.modify]:
-    for field, info in LLMParams.model_fields.items():
-        option_type = get_app_command_option_type(info.annotation)
-        command.add_option(
-            discord.app_commands.Option(
-                name=field,
-                description=info.field_info.description or field.replace('_', ' ').capitalize(),
-                type=option_type,
-                required=False
-            )
+# Dynamically add options to the modify command
+for field, info in LLMParams.model_fields.items():
+    option_type = get_app_command_option_type(info.annotation)
+    LLMCommands.modify.add_option(
+        discord.app_commands.Option(
+            name=field,
+            description=info.field_info.description or field.replace('_', ' ').capitalize(),
+            type=option_type,
+            required=False
         )
+    )
+
+# The create command options are now explicitly defined in the method signature
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
