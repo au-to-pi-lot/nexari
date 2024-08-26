@@ -1,7 +1,12 @@
+from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.models import Base
+
+if TYPE_CHECKING:
+    from src.db.models.channel import Channel
+    from src.db.models.language_model import LanguageModel
 
 
 class Webhook(Base):

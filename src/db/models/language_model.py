@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
 
 
-
 class LanguageModel(Base):
     __tablename__ = 'language_model'
 
