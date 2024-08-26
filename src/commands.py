@@ -156,40 +156,5 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
 
-from typing import get_origin, get_args, Union
-
-def get_app_command_option_type(field_type: Type[Any]) -> discord.AppCommandOptionType:
-    # Handle Optional types
-    if get_origin(field_type) is Union:
-        args = get_args(field_type)
-        if len(args) == 2 and type(None) in args:
-            # This is an Optional type, so we'll use the non-None type
-            field_type = next(arg for arg in args if arg is not type(None))
-
-    if field_type == str:
-        return discord.AppCommandOptionType.string
-    elif field_type == int:
-        return discord.AppCommandOptionType.integer
-    elif field_type == float:
-        return discord.AppCommandOptionType.number
-    elif field_type == bool:
-        return discord.AppCommandOptionType.boolean
-    else:
-        return discord.AppCommandOptionType.string  # Default to string for unknown types
-
-# Dynamically add options to the modify command
-for field, info in LLMParams.model_fields.items():
-    option_type = get_app_command_option_type(info.annotation)
-    LLMCommands.modify.add_option(
-        discord.app_commands.Option(
-            name=field,
-            description=info.field_info.description or field.replace('_', ' ').capitalize(),
-            type=option_type,
-            required=False
-        )
-    )
-
-# The create command options are now explicitly defined in the method signature
-
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
