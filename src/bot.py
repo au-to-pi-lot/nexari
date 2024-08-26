@@ -1,18 +1,13 @@
-import textwrap
-from itertools import groupby, cycle
-from typing import List, Union, Iterable, Literal, Dict
-from src.db.models import LanguageModel, Webhook
+from typing import Dict, List, Union
 
 import discord
-from pydantic import BaseModel
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 
 from src.config import Config
-from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
-from src.db.models import LanguageModel
-from src.util import drop_both_ends
+from src.db.models import LanguageModel, Webhook
 from src.llm import LLMHandler, LiteLLMMessage
+
 
 class DiscordBot(discord.Client):
     """
