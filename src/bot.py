@@ -41,7 +41,14 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
         self.config = config
         self.llm_handlers: Dict[str, LLMHandler] = {}
-        self.load_extension("src.commands")
+
+    async def setup_hook(self) -> None:
+        """
+        A coroutine to be called to setup the bot, by default this is blank.
+        This performs an asynchronous setup after the bot is logged in,
+        but before it has connected to the Websocket to receive events.
+        """
+        await self.load_extension("src.commands")
 
     async def add_llm_handler(self, language_model: LanguageModel) -> None:
         """
