@@ -25,48 +25,84 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
-    async def create(self, interaction: discord.Interaction, name: str):
+    @app_commands.describe(
+        name="Name of the LLM handler",
+        api_base="API base URL",
+        model_name="Name of the model",
+        max_tokens="Maximum number of tokens",
+        system_prompt="System prompt",
+        context_length="Context length",
+        message_limit="Message limit",
+        temperature="Temperature (default is 1.0)",
+        top_p="Top P value",
+        top_k="Top K value",
+        frequency_penalty="Frequency penalty",
+        presence_penalty="Presence penalty",
+        repetition_penalty="Repetition penalty",
+        min_p="Minimum P value",
+        top_a="Top A value"
+    )
+    async def create(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        api_base: Optional[str] = None,
+        model_name: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        context_length: Optional[int] = None,
+        message_limit: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        min_p: Optional[float] = None,
+        top_a: Optional[float] = None
+    ):
         """Create a new LLM handler"""
         await interaction.response.defer(ephemeral=True)
         
         model_fields = inspect.signature(LanguageModel).parameters
-        field_prompts = {
-            'api_key': "Please enter the API key for this LLM handler (your response will be deleted immediately):",
-            'api_base': "Enter the API base URL:",
-            'model_name': "Enter the model name:",
-            'max_tokens': "Enter the maximum number of tokens:",
-            'system_prompt': "Enter the system prompt:",
-            'context_length': "Enter the context length:",
-            'message_limit': "Enter the message limit:",
-            'temperature': "Enter the temperature (default is 1.0):",
+        model_data = {
+            'name': name,
+            'api_base': api_base,
+            'model_name': model_name,
+            'max_tokens': max_tokens,
+            'system_prompt': system_prompt,
+            'context_length': context_length,
+            'message_limit': message_limit,
+            'temperature': temperature,
+            'top_p': top_p,
+            'top_k': top_k,
+            'frequency_penalty': frequency_penalty,
+            'presence_penalty': presence_penalty,
+            'repetition_penalty': repetition_penalty,
+            'min_p': min_p,
+            'top_a': top_a
         }
 
-        model_data = {'name': name}
-
+        # Prompt for required fields that weren't provided
         for field, param in model_fields.items():
-            if field == 'id' or field == 'name':
+            if field == 'id':
                 continue
-
-            if field == 'api_key':
-                await interaction.followup.send(field_prompts[field])
-                api_key_message = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-                await api_key_message.delete()
-                model_data[field] = api_key_message.content
-            else:
-                prompt = field_prompts.get(field, f"Enter {field}:")
-                await interaction.followup.send(prompt)
-                response = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-                
-                if param.annotation == int:
-                    model_data[field] = int(response.content)
-                elif param.annotation == float:
-                    model_data[field] = float(response.content)
-                elif param.annotation == Optional[float]:
-                    model_data[field] = float(response.content) if response.content.lower() != 'none' else None
-                elif param.annotation == Optional[int]:
-                    model_data[field] = int(response.content) if response.content.lower() != 'none' else None
+            if model_data[field] is None and param.default == param.empty:
+                if field == 'api_key':
+                    await interaction.followup.send("Please enter the API key for this LLM handler (your response will be deleted immediately):")
+                    api_key_message = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
+                    await api_key_message.delete()
+                    model_data[field] = api_key_message.content
                 else:
-                    model_data[field] = response.content
+                    await interaction.followup.send(f"Enter {field}:")
+                    response = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
+                    
+                    if param.annotation == int:
+                        model_data[field] = int(response.content)
+                    elif param.annotation == float:
+                        model_data[field] = float(response.content)
+                    else:
+                        model_data[field] = response.content
 
         new_model = LanguageModel(**model_data)
 
@@ -78,7 +114,42 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
-    async def modify(self, interaction: discord.Interaction, name: str):
+    @app_commands.describe(
+        name="Name of the LLM handler to modify",
+        api_base="API base URL",
+        model_name="Name of the model",
+        max_tokens="Maximum number of tokens",
+        system_prompt="System prompt",
+        context_length="Context length",
+        message_limit="Message limit",
+        temperature="Temperature",
+        top_p="Top P value",
+        top_k="Top K value",
+        frequency_penalty="Frequency penalty",
+        presence_penalty="Presence penalty",
+        repetition_penalty="Repetition penalty",
+        min_p="Minimum P value",
+        top_a="Top A value"
+    )
+    async def modify(
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        api_base: Optional[str] = None,
+        model_name: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        context_length: Optional[int] = None,
+        message_limit: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        min_p: Optional[float] = None,
+        top_a: Optional[float] = None
+    ):
         """Modify an existing LLM handler"""
         await interaction.response.defer(ephemeral=True)
 
@@ -87,29 +158,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
             return
 
         current_model = self.bot.llm_handlers[name].language_model
-        model_fields = inspect.signature(LanguageModel).parameters
+        update_data = {
+            k: v for k, v in locals().items()
+            if k not in ['self', 'interaction', 'name'] and v is not None
+        }
 
-        update_data: Dict[str, Any] = {}
-
-        for field, param in model_fields.items():
-            if field in ['id', 'name']:
-                continue
-
-            current_value = getattr(current_model, field)
-            await interaction.followup.send(f"Current value of {field}: {current_value}\nEnter new value or 'skip' to keep current:")
-            response = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-
-            if response.content.lower() != 'skip':
-                if param.annotation == int:
-                    update_data[field] = int(response.content)
-                elif param.annotation == float:
-                    update_data[field] = float(response.content)
-                elif param.annotation == Optional[float]:
-                    update_data[field] = float(response.content) if response.content.lower() != 'none' else None
-                elif param.annotation == Optional[int]:
-                    update_data[field] = int(response.content) if response.content.lower() != 'none' else None
-                else:
-                    update_data[field] = response.content
+        # Prompt for API key if it needs to be changed
+        if 'api_key' in update_data:
+            await interaction.followup.send("Please enter the new API key (your response will be deleted immediately):")
+            api_key_message = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
+            await api_key_message.delete()
+            update_data['api_key'] = api_key_message.content
 
         for key, value in update_data.items():
             setattr(current_model, key, value)
