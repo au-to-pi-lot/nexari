@@ -141,9 +141,9 @@ class DiscordBot(discord.Client):
         """
         print(f'{self.user} has connected to Discord!')
 
-        with Session() as session:
+        async with Session() as session:
             query = select(LanguageModel)
-            language_models = await session.scalars(query).all()
+            language_models = (await session.scalars(query)).all()
         for language_model in language_models:
             self.llm_handlers[language_model.name] = LLMHandler(language_model)
 
