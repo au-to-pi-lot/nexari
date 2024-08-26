@@ -35,6 +35,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         name="Name of the new LLM handler",
         api_base="API base URL",
         model_name="Name of the model",
+        api_key="API key for the LLM",
         max_tokens="Maximum number of tokens",
         system_prompt="System prompt",
         context_length="Context length",
@@ -52,13 +53,14 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self,
         interaction: discord.Interaction,
         name: str,
-        api_base: Optional[str] = None,
-        model_name: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        system_prompt: Optional[str] = None,
-        context_length: Optional[int] = None,
-        message_limit: Optional[int] = None,
-        temperature: Optional[float] = None,
+        api_base: str,
+        model_name: str,
+        api_key: str,
+        max_tokens: int,
+        system_prompt: str,
+        context_length: int,
+        message_limit: int,
+        temperature: float = 1.0,
         top_p: Optional[float] = None,
         top_k: Optional[int] = None,
         frequency_penalty: Optional[float] = None,
@@ -74,6 +76,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             'name': name,
             'api_base': api_base,
             'model_name': model_name,
+            'api_key': api_key,
             'max_tokens': max_tokens,
             'system_prompt': system_prompt,
             'context_length': context_length,
@@ -87,24 +90,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
             'min_p': min_p,
             'top_a': top_a
         }
-        model_data = {k: v for k, v in model_data.items() if v is not None}
-
-        # Prompt for required fields that weren't provided
-        for field in LanguageModel.__table__.columns:
-            if field.name not in model_data and not field.nullable and field.name != 'id':
-                if field.name == 'api_key':
-                    await interaction.followup.send("Please enter the API key for this LLM handler (your response will be deleted immediately):")
-                    api_key_message = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-                    await api_key_message.delete()
-                    model_data[field.name] = api_key_message.content
-                else:
-                    await interaction.followup.send(f"Enter {field.name}:")
-                    response = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-                    model_data[field.name] = response.content
-
-        new_model = LanguageModel(**model_data)
 
         try:
+            new_model = LanguageModel(**model_data)
             await self.bot.add_llm_handler(new_model)
             await interaction.followup.send(f"LLM handler '{name}' created successfully!")
         except ValueError as e:
