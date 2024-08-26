@@ -214,7 +214,7 @@ class DiscordBot(commands.Bot):
         for message in messages:
             await webhook.send(content=message)
 
-    @command(name="sync")
-    async def sync(ctx):
-        synced = await client.tree.sync()
-        print(f"Synced {len(synced)} command(s).")
+    @commands.command(name="sync")
+    async def sync(self, ctx):
+        synced = await self.tree.sync()
+        await ctx.send(f"Synced {len(synced)} command(s).")
