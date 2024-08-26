@@ -9,22 +9,6 @@ from src.bot import DiscordBot
 from src.db.engine import Session
 from src.db.models import LanguageModel
 
-class LLMParams(BaseModel):
-    api_base: Optional[str] = Field(None, description="API base URL")
-    model_name: Optional[str] = Field(None, description="Name of the model")
-    max_tokens: Optional[int] = Field(None, description="Maximum number of tokens")
-    system_prompt: Optional[str] = Field(None, description="System prompt")
-    context_length: Optional[int] = Field(None, description="Context length")
-    message_limit: Optional[int] = Field(None, description="Message limit")
-    temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="Temperature (default is 1.0)")
-    top_p: Optional[float] = Field(None, ge=0.0, le=1.0, description="Top P value")
-    top_k: Optional[int] = Field(None, ge=0, description="Top K value")
-    frequency_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0, description="Frequency penalty")
-    presence_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0, description="Presence penalty")
-    repetition_penalty: Optional[float] = Field(None, ge=0.0, description="Repetition penalty")
-    min_p: Optional[float] = Field(None, ge=0.0, le=1.0, description="Minimum P value")
-    top_a: Optional[float] = Field(None, ge=0.0, description="Top A value")
-
 class LLMCommands(commands.GroupCog, name="llm"):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
@@ -149,9 +133,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self,
         interaction: discord.Interaction,
         name: str,
-        api_base: Optional[str] = None,
-        model_name: Optional[str] = None,
-        max_tokens: Optional[int] = None,
+        api_base: str = None,
+        model_name: str = None,
+        max_tokens: int = None,
         system_prompt: Optional[str] = None,
         context_length: Optional[int] = None,
         message_limit: Optional[int] = None,
