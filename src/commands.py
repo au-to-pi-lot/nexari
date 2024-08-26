@@ -128,7 +128,16 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
 
+from typing import get_origin, get_args
+
 def get_app_command_option_type(field_type: Type[Any]) -> discord.AppCommandOptionType:
+    # Handle Optional types
+    if get_origin(field_type) is Union:
+        args = get_args(field_type)
+        if len(args) == 2 and type(None) in args:
+            # This is an Optional type, so we'll use the non-None type
+            field_type = next(arg for arg in args if arg is not type(None))
+
     if field_type == str:
         return discord.AppCommandOptionType.string
     elif field_type == int:
