@@ -1,6 +1,5 @@
 .aider*
 .env
-models/
 venv/
 # Configuration
 config.yml
