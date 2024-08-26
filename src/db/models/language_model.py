@@ -1,9 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from sqlalchemy import Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from src.db.models import Base
+
+if TYPE_CHECKING:
+    from src.db.models.webhook import Webhook
 
 
 
