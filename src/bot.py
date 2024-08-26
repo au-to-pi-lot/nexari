@@ -5,6 +5,7 @@ from discord.ext import commands
 from sqlalchemy import delete, select
 
 from src.config import Config
+from src.const import GUILD_ID
 from src.db.engine import Session
 from src.db.models import LanguageModel, Webhook
 from src.llm import LLMHandler, LiteLLMMessage
@@ -155,6 +156,8 @@ class DiscordBot(commands.Bot):
         for language_model in language_models:
             self.llm_handlers[language_model.name] = LLMHandler(language_model)
 
+        await tree.sync(guild=discord.Object(id=GUILD_ID))
+
     async def on_message(self, message: discord.Message):
         """
         Called when a message is received.
@@ -206,3 +209,8 @@ class DiscordBot(commands.Bot):
         """
         for message in messages:
             await webhook.send(content=message)
+
+    @command(name="sync")
+    async def sync(ctx):
+        synced = await client.tree.sync()
+        print(f"Synced {len(synced)} command(s).")
