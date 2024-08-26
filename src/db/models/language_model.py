@@ -1,11 +1,10 @@
-from typing import Optional, List
+from typing import List, Optional
 
-from sqlalchemy import Column, Integer, Text, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, validates, relationship
+from sqlalchemy import Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
+from src.db.models import Base
 
-class Base(DeclarativeBase):
-    pass
 
 
 class LanguageModel(Base):
@@ -74,25 +73,3 @@ class LanguageModel(Base):
         if top_a is not None and top_a < 0.0:
             raise ValueError(f'`top_a` must be non-negative: {top_a}.')
         return top_a
-
-
-class Channel(Base):
-    __tablename__ = "channel"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
-    webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel")
-    language_models: Mapped[List["LanguageModel"]] = relationship(secondary="webhook", back_populates="channels")
-
-
-class Webhook(Base):
-    __tablename__ = "webhook"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
-    token: Mapped[str] = mapped_column(Text, nullable=False)
-    channel_id: Mapped[int] = mapped_column(ForeignKey("channel.id"), nullable=False)
-    language_model_id: Mapped[int] = mapped_column(ForeignKey("language_model.id"), nullable=False)
-
-    channel: Mapped["Channel"] = relationship(back_populates="webhooks")
-    language_model: Mapped["LanguageModel"] = relationship(back_populates="webhooks")
-
-    unique_channel_model = UniqueConstraint("channel_id", "language_model")
