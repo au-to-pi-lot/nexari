@@ -128,7 +128,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
 
-from typing import get_origin, get_args
+from typing import get_origin, get_args, Union
 
 def get_app_command_option_type(field_type: Type[Any]) -> discord.AppCommandOptionType:
     # Handle Optional types
