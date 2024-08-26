@@ -1,5 +1,4 @@
-from typing import Annotated, Optional, Dict, Any
-import inspect
+from typing import Annotated, Optional
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -9,24 +8,22 @@ from sqlalchemy import select
 from src.bot import DiscordBot
 from src.db.engine import Session
 from src.db.models import LanguageModel
-from src.config import Config
 
 class LLMParams(BaseModel):
-    api_base: Optional[str] = None
-    model_name: Optional[str] = None
-    max_tokens: Optional[int] = None
-    system_prompt: Optional[str] = None
-    context_length: Optional[int] = None
-    message_limit: Optional[int] = None
-    temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
-    top_p: Optional[float] = Field(None, ge=0.0, le=1.0)
-    top_k: Optional[int] = Field(None, ge=0)
-    frequency_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0)
-    presence_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0)
-    repetition_penalty: Optional[float] = Field(None, ge=0.0)
-    min_p: Optional[float] = Field(None, ge=0.0, le=1.0)
-    top_a: Optional[float] = Field(None, ge=0.0)
-
+    api_base: Optional[str] = Field(None, description="API base URL")
+    model_name: Optional[str] = Field(None, description="Name of the model")
+    max_tokens: Optional[int] = Field(None, description="Maximum number of tokens")
+    system_prompt: Optional[str] = Field(None, description="System prompt")
+    context_length: Optional[int] = Field(None, description="Context length")
+    message_limit: Optional[int] = Field(None, description="Message limit")
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0, description="Temperature (default is 1.0)")
+    top_p: Optional[float] = Field(None, ge=0.0, le=1.0, description="Top P value")
+    top_k: Optional[int] = Field(None, ge=0, description="Top K value")
+    frequency_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0, description="Frequency penalty")
+    presence_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0, description="Presence penalty")
+    repetition_penalty: Optional[float] = Field(None, ge=0.0, description="Repetition penalty")
+    min_p: Optional[float] = Field(None, ge=0.0, le=1.0, description="Minimum P value")
+    top_a: Optional[float] = Field(None, ge=0.0, description="Top A value")
 
 class LLMCommands(commands.GroupCog, name="llm"):
     def __init__(self, bot: DiscordBot):
@@ -37,7 +34,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
         async with Session() as session:
             result = await session.execute(select(LanguageModel).where(LanguageModel.name == name))
             return result.scalar_one_or_none()
-
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
@@ -51,84 +47,31 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.describe(
-        name="Name of the LLM handler",
-        api_base="API base URL",
-        model_name="Name of the model",
-        max_tokens="Maximum number of tokens",
-        system_prompt="System prompt",
-        context_length="Context length",
-        message_limit="Message limit",
-        temperature="Temperature (default is 1.0)",
-        top_p="Top P value",
-        top_k="Top K value",
-        frequency_penalty="Frequency penalty",
-        presence_penalty="Presence penalty",
-        repetition_penalty="Repetition penalty",
-        min_p="Minimum P value",
-        top_a="Top A value"
-    )
-    async def create(
-        self,
-        interaction: discord.Interaction,
-        name: str,
-        api_base: Optional[str] = None,
-        model_name: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        system_prompt: Optional[str] = None,
-        context_length: Optional[int] = None,
-        message_limit: Optional[int] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        top_k: Optional[int] = None,
-        frequency_penalty: Optional[float] = None,
-        presence_penalty: Optional[float] = None,
-        repetition_penalty: Optional[float] = None,
-        min_p: Optional[float] = None,
-        top_a: Optional[float] = None
-    ):
+    async def create(self, interaction: discord.Interaction, name: str, **kwargs: Annotated[LLMParams, discord.app_commands.Transformer]):
         """Create a new LLM handler"""
         await interaction.response.defer(ephemeral=True)
         
-        model_fields = inspect.signature(LanguageModel).parameters
-        model_data = {
-            'name': name,
-            'api_base': api_base,
-            'model_name': model_name,
-            'max_tokens': max_tokens,
-            'system_prompt': system_prompt,
-            'context_length': context_length,
-            'message_limit': message_limit,
-            'temperature': temperature,
-            'top_p': top_p,
-            'top_k': top_k,
-            'frequency_penalty': frequency_penalty,
-            'presence_penalty': presence_penalty,
-            'repetition_penalty': repetition_penalty,
-            'min_p': min_p,
-            'top_a': top_a
-        }
+        try:
+            llm_params = LLMParams(**kwargs)
+        except ValueError as e:
+            await interaction.followup.send(f"Invalid parameters: {str(e)}")
+            return
+
+        model_data = llm_params.dict(exclude_unset=True)
+        model_data['name'] = name
 
         # Prompt for required fields that weren't provided
-        for field, param in model_fields.items():
-            if field == 'id':
-                continue
-            if model_data[field] is None and param.default == param.empty:
-                if field == 'api_key':
+        for field in LanguageModel.__table__.columns:
+            if field.name not in model_data and not field.nullable and field.name != 'id':
+                if field.name == 'api_key':
                     await interaction.followup.send("Please enter the API key for this LLM handler (your response will be deleted immediately):")
                     api_key_message = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
                     await api_key_message.delete()
-                    model_data[field] = api_key_message.content
+                    model_data[field.name] = api_key_message.content
                 else:
-                    await interaction.followup.send(f"Enter {field}:")
+                    await interaction.followup.send(f"Enter {field.name}:")
                     response = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-                    
-                    if param.annotation == int:
-                        model_data[field] = int(response.content)
-                    elif param.annotation == float:
-                        model_data[field] = float(response.content)
-                    else:
-                        model_data[field] = response.content
+                    model_data[field.name] = response.content
 
         new_model = LanguageModel(**model_data)
 
@@ -140,23 +83,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.describe(
-        name="Name of the LLM handler to modify",
-        api_base="API base URL",
-        model_name="Name of the model",
-        max_tokens="Maximum number of tokens",
-        system_prompt="System prompt",
-        context_length="Context length",
-        message_limit="Message limit",
-        temperature="Temperature",
-        top_p="Top P value",
-        top_k="Top K value",
-        frequency_penalty="Frequency penalty",
-        presence_penalty="Presence penalty",
-        repetition_penalty="Repetition penalty",
-        min_p="Minimum P value",
-        top_a="Top A value"
-    )
+    @app_commands.describe(name="Name of the LLM handler to modify")
     async def modify(
         self,
         interaction: discord.Interaction,
@@ -187,8 +114,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         except ValueError as e:
             await interaction.followup.send(f"Error modifying LLM handler: {str(e)}")
 
-
-@app_commands.command()
+    @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM handler"""
@@ -201,6 +127,18 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.response.send_message(f"LLM handler '{name}' deleted successfully!")
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
+
+# Dynamically add options to create and modify commands
+for command in [LLMCommands.create, LLMCommands.modify]:
+    for field, info in LLMParams.__fields__.items():
+        command.add_option(
+            discord.app_commands.Option(
+                name=field,
+                description=info.field_info.description or field.replace('_', ' ').capitalize(),
+                type=discord.AppCommandOptionType.string,  # Adjust based on field type if needed
+                required=False
+            )
+        )
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
