@@ -6,8 +6,8 @@ def main():
     """
     Main function to start the Discord bot.
     """
-    bot = DiscordBot(config.bot)
-    bot.start()
+    bot = DiscordBot(config)
+    bot.run(config.bot_token)
 
 if __name__ == "__main__":
     try:
