@@ -3,13 +3,12 @@ from config import config
 from src.bot import DiscordBot
 
 
-async def main():
+def main():
     """
     Main function to start the Discord bot.
     """
     bot = DiscordBot(config)
-    async with bot:
-        await bot.start(config.bot_token)
+    bot.run(config.bot_token)
 
 if __name__ == "__main__":
     try:
