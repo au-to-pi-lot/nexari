@@ -1,17 +1,43 @@
-from typing import Optional, Dict, Any
+from typing import Annotated, Optional, Dict, Any
 import inspect
 import discord
 from discord import app_commands
 from discord.ext import commands
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from src.bot import DiscordBot
+from src.db.engine import Session
 from src.db.models import LanguageModel
 from src.config import Config
+
+class LLMParams(BaseModel):
+    api_base: Optional[str] = None
+    model_name: Optional[str] = None
+    max_tokens: Optional[int] = None
+    system_prompt: Optional[str] = None
+    context_length: Optional[int] = None
+    message_limit: Optional[int] = None
+    temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
+    top_p: Optional[float] = Field(None, ge=0.0, le=1.0)
+    top_k: Optional[int] = Field(None, ge=0)
+    frequency_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0)
+    presence_penalty: Optional[float] = Field(None, ge=-2.0, le=2.0)
+    repetition_penalty: Optional[float] = Field(None, ge=0.0)
+    min_p: Optional[float] = Field(None, ge=0.0, le=1.0)
+    top_a: Optional[float] = Field(None, ge=0.0)
+
 
 class LLMCommands(commands.GroupCog, name="llm"):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         super().__init__()
+
+    async def _get_model_by_name(self, name: str) -> Optional[LanguageModel]:
+        async with Session() as session:
+            result = await session.execute(select(LanguageModel).where(LanguageModel.name == name))
+            return result.scalar_one_or_none()
+
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
@@ -23,7 +49,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         else:
             await interaction.response.send_message("No LLM handlers available.")
 
-    @app_commands.command()
+    @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         name="Name of the LLM handler",
@@ -135,51 +161,34 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self,
         interaction: discord.Interaction,
         name: str,
-        api_base: Optional[str] = None,
-        model_name: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        system_prompt: Optional[str] = None,
-        context_length: Optional[int] = None,
-        message_limit: Optional[int] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        top_k: Optional[int] = None,
-        frequency_penalty: Optional[float] = None,
-        presence_penalty: Optional[float] = None,
-        repetition_penalty: Optional[float] = None,
-        min_p: Optional[float] = None,
-        top_a: Optional[float] = None
+        **kwargs: Annotated[LLMParams, discord.app_commands.Transformer]
     ):
-        """Modify an existing LLM handler"""
         await interaction.response.defer(ephemeral=True)
 
-        if name not in self.bot.llm_handlers:
+        model = await self._get_model_by_name(name)
+        if not model:
             await interaction.followup.send(f"LLM handler '{name}' not found.")
             return
 
-        current_model = self.bot.llm_handlers[name].language_model
-        update_data = {
-            k: v for k, v in locals().items()
-            if k not in ['self', 'interaction', 'name'] and v is not None
-        }
+        try:
+            llm_params = LLMParams(**kwargs)
+        except ValueError as e:
+            await interaction.followup.send(f"Invalid parameters: {str(e)}")
+            return
 
-        # Prompt for API key if it needs to be changed
-        if 'api_key' in update_data:
-            await interaction.followup.send("Please enter the new API key (your response will be deleted immediately):")
-            api_key_message = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
-            await api_key_message.delete()
-            update_data['api_key'] = api_key_message.content
+        update_data = llm_params.dict(exclude_unset=True)
 
         for key, value in update_data.items():
-            setattr(current_model, key, value)
+            setattr(model, key, value)
 
         try:
-            await self.bot.modify_llm_handler(current_model)
+            await self.bot.modify_llm_handler(model)
             await interaction.followup.send(f"LLM handler '{name}' modified successfully!")
         except ValueError as e:
             await interaction.followup.send(f"Error modifying LLM handler: {str(e)}")
 
-    @app_commands.command()
+
+@app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM handler"""
