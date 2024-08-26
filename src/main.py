@@ -1,16 +1,18 @@
+import asyncio
 from config import config
 from src.bot import DiscordBot
 
 
-def main():
+async def main():
     """
     Main function to start the Discord bot.
     """
     bot = DiscordBot(config)
-    bot.run(config.bot_token)
+    async with bot:
+        await bot.start(config.bot_token)
 
 if __name__ == "__main__":
     try:
-        main()
+        asyncio.run(main())
     except KeyboardInterrupt:
         print("Bot stopped.")

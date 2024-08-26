@@ -1,6 +1,7 @@
 from typing import Dict, List, Union
 
 import discord
+from discord.ext import commands
 from sqlalchemy import delete, select
 
 from src.config import Config
@@ -9,7 +10,7 @@ from src.db.models import LanguageModel, Webhook
 from src.llm import LLMHandler, LiteLLMMessage
 
 
-class DiscordBot(discord.Client):
+class DiscordBot(commands.Bot):
     """
     A Discord bot that manages multiple webhooks and uses LiteLLM for generating responses.
     """
@@ -19,14 +20,21 @@ class DiscordBot(discord.Client):
         Initialize the DiscordBot.
 
         Args:
-            config (BotConfig): Configuration for the bot.
+            config (Config): Configuration for the bot.
         """
         intents: discord.Intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(intents=intents)
+        super().__init__(command_prefix="!", intents=intents)
         self.config = config
         self.llm_handlers: Dict[str, LLMHandler] = {}
 
+    async def setup_hook(self):
+        """
+        A coroutine to be called to setup the bot, by default this is blank.
+        This performs an asynchronous setup after the bot is logged in,
+        but before it has connected to the Websocket.
+        """
+        await self.load_extension("src.commands")
 
     async def add_llm_handler(self, language_model: LanguageModel) -> None:
         """
@@ -157,6 +165,8 @@ class DiscordBot(discord.Client):
         if message.author == self.user:
             return
 
+        await self.process_commands(message)
+
         channel = message.channel
 
         for llm_name, llm_handler in self.llm_handlers.items():
@@ -184,7 +194,6 @@ class DiscordBot(discord.Client):
                         error_message = str(e)
                         print(f"An error occurred: {error_message}")
                         await channel.send(f"[Script error: {error_message}]")
-
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
