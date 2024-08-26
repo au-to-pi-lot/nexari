@@ -53,7 +53,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 await api_key_message.delete()
                 model_data[field] = api_key_message.content
             else:
-                prompt = field_prompts.get(field, f"Enter the value for {field}:")
+                prompt = field_prompts.get(field, f"Enter {field}:")
                 await interaction.followup.send(prompt)
                 response = await self.bot.wait_for('message', check=lambda m: m.author == interaction.user and m.channel == interaction.channel)
                 
