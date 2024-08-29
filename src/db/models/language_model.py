@@ -48,7 +48,7 @@ class LanguageModelUpdate(BaseModel):
     min_p: Optional[float] = None
     top_a: Optional[float] = None
 
-class LanguageModel(Base):
+class LanguageModel(Base[LanguageModelCreate, LanguageModelUpdate]):
     __tablename__ = 'language_model'
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -71,9 +71,6 @@ class LanguageModel(Base):
     top_a: Mapped[Optional[float]]
 
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="language_model")
-
-    CreateSchemaType = LanguageModelCreate
-    UpdateSchemaType = LanguageModelUpdate
 
     @validates('temperature')
     def validate_temperature(self, key, temperature: float) -> float:

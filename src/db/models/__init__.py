@@ -1,4 +1,4 @@
-from typing import TypeVar, Type, List, Optional, Any
+from typing import TypeVar, Type, List, Optional, Any, Generic
 from sqlalchemy import select, delete, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase
@@ -10,10 +10,7 @@ T = TypeVar('T', bound='Base')
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
 UpdateSchemaType = TypeVar('UpdateSchemaType', bound=BaseModel)
 
-class Base(DeclarativeBase):
-    CreateSchemaType: Type[CreateSchemaType]
-    UpdateSchemaType: Type[UpdateSchemaType]
-
+class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
     @classmethod
     async def create(cls: Type[T], obj_in: CreateSchemaType, *, session: Optional[Session] = None) -> T:
         async def _create(s: Session):

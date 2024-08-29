@@ -15,11 +15,8 @@ class ChannelCreate(BaseModel):
 class ChannelUpdate(BaseModel):
     pass
 
-class Channel(Base):
+class Channel(Base[ChannelCreate, ChannelUpdate]):
     __tablename__ = "channel"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel", overlaps="language_models")
-
-    CreateSchemaType = ChannelCreate
-    UpdateSchemaType = ChannelUpdate

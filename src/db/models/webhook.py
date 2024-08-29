@@ -24,7 +24,7 @@ class WebhookUpdate(BaseModel):
     channel_id: Optional[int] = None
     language_model_id: Optional[int] = None
 
-class Webhook(Base):
+class Webhook(Base[WebhookCreate, WebhookUpdate]):
     __tablename__ = "webhook"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
@@ -36,9 +36,6 @@ class Webhook(Base):
     language_model: Mapped["LanguageModel"] = relationship(back_populates="webhooks")
 
     unique_channel_model = UniqueConstraint("channel_id", "language_model_id")
-
-    CreateSchemaType = WebhookCreate
-    UpdateSchemaType = WebhookUpdate
 
     @classmethod
     async def get_by_language_model_id(cls, language_model_id: int, *, session: Optional[Session] = None) -> List["Webhook"]:
