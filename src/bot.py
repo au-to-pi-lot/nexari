@@ -2,11 +2,9 @@ from typing import Dict, List, Union
 
 import discord
 from discord.ext import commands
-from sqlalchemy import delete, select
 
 from src.config import Config
 from src.const import GUILD_ID
-from src.db.engine import Session
 from src.db.models import LanguageModel, Webhook
 from src.llm import LLMHandler, LiteLLMMessage
 
@@ -15,19 +13,6 @@ class DiscordBot(commands.Bot):
     """
     A Discord bot that manages multiple webhooks and uses LiteLLM for generating responses.
     """
-
-    def __init__(self, config: Config):
-        """
-        Initialize the DiscordBot.
-
-        Args:
-            config (Config): Configuration for the bot.
-        """
-        intents: discord.Intents = discord.Intents.default()
-        intents.message_content = True
-        super().__init__(command_prefix="!", intents=intents)
-        self.config = config
-        self.llm_handlers: Dict[str, LLMHandler] = {}
 
     def __init__(self, config: Config):
         """
@@ -60,22 +45,12 @@ class DiscordBot(commands.Bot):
         Raises:
             ValueError: If an LLMHandler with the same name already exists.
         """
-        async with Session() as session:
-            # Check if an LLMHandler with the same name already exists
-            existing_model = await session.execute(
-                select(LanguageModel).where(LanguageModel.name == language_model.name)
-            )
-            if existing_model.scalar_one_or_none():
-                raise ValueError(f"LLMHandler with name '{language_model.name}' already exists.")
+        existing_model = await LanguageModel.get_by_name(language_model.name)
+        if existing_model:
+            raise ValueError(f"LLMHandler with name '{language_model.name}' already exists.")
 
-            # Add the language_model to the session and commit to save it to the database
-            session.add(language_model)
-            await session.commit()
-            
-            # Refresh the language_model to ensure it has the database-assigned ID
-            await session.refresh(language_model)
+        await language_model.create()
 
-        # Create and add the LLMHandler
         llm_handler = LLMHandler(language_model)
         self.llm_handlers[language_model.name] = llm_handler
         print(f"Added new LLMHandler: {language_model.name}")
@@ -92,41 +67,25 @@ class DiscordBot(commands.Bot):
         Raises:
             ValueError: If no LLMHandler with the given identifier exists.
         """
-        async with Session() as session:
-            if isinstance(identifier, int):
-                # If identifier is an ID, fetch the LanguageModel from the database
-                query = select(LanguageModel).where(LanguageModel.id == identifier)
-                language_model = await session.execute(query)
-                language_model = language_model.scalar_one_or_none()
-                if not language_model:
-                    raise ValueError(f"No LanguageModel found with id: {identifier}")
-            else:
-                # If identifier is a LanguageModel object, use it directly
-                language_model = identifier
+        if isinstance(identifier, int):
+            language_model = await LanguageModel.get(identifier)
+            if not language_model:
+                raise ValueError(f"No LanguageModel found with id: {identifier}")
+        else:
+            language_model = identifier
 
-            # Check if the LLMHandler exists
-            if language_model.name not in self.llm_handlers:
-                raise ValueError(f"LLMHandler with name '{language_model.name}' does not exist.")
+        if language_model.name not in self.llm_handlers:
+            raise ValueError(f"LLMHandler with name '{language_model.name}' does not exist.")
 
-            # Fetch all associated webhooks
-            webhook_query = select(Webhook).where(Webhook.language_model_id == language_model.id)
-            webhooks = await session.execute(webhook_query)
-            webhooks = webhooks.scalars().all()
+        webhooks = await Webhook.get_by_language_model_id(language_model.id)
 
-            # Delete Discord webhooks
-            for webhook in webhooks:
-                discord_webhook = await discord.Webhook.partial(webhook.id, webhook.token, client=self).fetch()
-                await discord_webhook.delete()
+        for webhook in webhooks:
+            discord_webhook = await discord.Webhook.partial(webhook.id, webhook.token, client=self).fetch()
+            await discord_webhook.delete()
+            await webhook.delete()
 
-            # Delete all associated webhooks from the database
-            delete_query = delete(Webhook).where(Webhook.language_model_id == language_model.id)
-            await session.execute(delete_query)
+        await language_model.delete()
 
-            # Delete the LanguageModel from the database
-            await session.delete(language_model)
-            await session.commit()
-
-        # Remove the LLMHandler from the local dictionary
         del self.llm_handlers[language_model.name]
         print(f"Removed LLMHandler and associated webhooks: {language_model.name}")
 
@@ -140,22 +99,14 @@ class DiscordBot(commands.Bot):
         Raises:
             ValueError: If no existing LanguageModel with the given primary key is found.
         """
-        async with Session() as session:
-            # Attempt to merge the transient object with the existing database object
-            merged_model = await session.merge(transient_language_model)
-            
-            # Check if the merge resulted in an existing object or created a new one
-            if merged_model not in session.new:
-                # The object existed and was updated
-                await session.commit()
-                
-                # Update the LLMHandler
-                self.llm_handlers[merged_model.name] = LLMHandler(merged_model)
-                print(f"Modified LLMHandler: {merged_model.name}")
-            else:
-                # The merge created a new object, which means no existing object was found
-                await session.rollback()
-                raise ValueError(f"No existing LanguageModel found with id: {transient_language_model.id}")
+        existing_model = await LanguageModel.get(transient_language_model.id)
+        if not existing_model:
+            raise ValueError(f"No existing LanguageModel found with id: {transient_language_model.id}")
+
+        await existing_model.update(transient_language_model)
+        
+        self.llm_handlers[existing_model.name] = LLMHandler(existing_model)
+        print(f"Modified LLMHandler: {existing_model.name}")
 
     async def on_ready(self):
         """
@@ -163,9 +114,7 @@ class DiscordBot(commands.Bot):
         """
         print(f'{self.user} has connected to Discord!')
 
-        async with Session() as session:
-            query = select(LanguageModel)
-            language_models = (await session.scalars(query)).all()
+        language_models = await LanguageModel.get_many()
         for language_model in language_models:
             self.llm_handlers[language_model.name] = LLMHandler(language_model)
 

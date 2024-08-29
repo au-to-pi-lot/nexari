@@ -1,4 +1,4 @@
-from typing import TypeVar, Type, List, Optional, Any, Generic
+from typing import TypeVar, Type, List, Optional, Any
 from sqlalchemy import select, delete, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase
@@ -67,6 +67,16 @@ class Base(DeclarativeBase):
                 await session.commit()
             except SQLAlchemyError as e:
                 await session.rollback()
+                # Log the error here
+                raise
+
+    @classmethod
+    async def get_by_name(cls: Type[T], name: str) -> Optional[T]:
+        async with Session() as session:
+            try:
+                result = await session.execute(select(cls).filter(cls.name == name))
+                return result.scalar_one_or_none()
+            except SQLAlchemyError as e:
                 # Log the error here
                 raise
 

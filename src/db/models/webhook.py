@@ -1,8 +1,10 @@
-from typing import TYPE_CHECKING
-from sqlalchemy import ForeignKey, Text, UniqueConstraint
+from typing import TYPE_CHECKING, List
+from sqlalchemy import ForeignKey, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.db.models import Base
+from src.db.engine import Session
 
 if TYPE_CHECKING:
     from src.db.models.channel import Channel
@@ -21,3 +23,13 @@ class Webhook(Base):
     language_model: Mapped["LanguageModel"] = relationship(back_populates="webhooks")
 
     unique_channel_model = UniqueConstraint("channel_id", "language_model_id")
+
+    @classmethod
+    async def get_by_language_model_id(cls, language_model_id: int) -> List["Webhook"]:
+        async with Session() as session:
+            try:
+                result = await session.execute(select(cls).filter(cls.language_model_id == language_model_id))
+                return result.scalars().all()
+            except SQLAlchemyError as e:
+                # Log the error here
+                raise
