@@ -70,15 +70,6 @@ class Base(DeclarativeBase):
                 # Log the error here
                 raise
 
-    @classmethod
-    async def get_by_name(cls: Type[T], name: str) -> Optional[T]:
-        async with Session() as session:
-            try:
-                result = await session.execute(select(cls).filter(cls.name == name))
-                return result.scalar_one_or_none()
-            except SQLAlchemyError as e:
-                # Log the error here
-                raise
 
 from src.db.models.channel import Channel
 from src.db.models.language_model import LanguageModel

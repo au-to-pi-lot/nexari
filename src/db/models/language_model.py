@@ -1,9 +1,11 @@
 from typing import List, Optional, TYPE_CHECKING
 
-from sqlalchemy import Text
+from sqlalchemy import Text, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.db.models import Base
+from src.db.engine import Session
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
@@ -74,3 +76,13 @@ class LanguageModel(Base):
         if top_a is not None and top_a < 0.0:
             raise ValueError(f'`top_a` must be non-negative: {top_a}.')
         return top_a
+
+    @classmethod
+    async def get_by_name(cls, name: str) -> Optional["LanguageModel"]:
+        async with Session() as session:
+            try:
+                result = await session.execute(select(cls).filter(cls.name == name))
+                return result.scalar_one_or_none()
+            except SQLAlchemyError as e:
+                # Log the error here
+                raise
