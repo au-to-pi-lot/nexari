@@ -13,7 +13,7 @@ UpdateSchemaType = TypeVar('UpdateSchemaType', bound=BaseModel)
 class Base(DeclarativeBase):
     @classmethod
     async def create(cls: Type[T], obj_in: CreateSchemaType, *, session: Optional[Session] = None) -> T:
-        async def _create(s):
+        async def _create(s: Session):
             try:
                 db_obj = cls(**obj_in.dict())
                 s.add(db_obj)
@@ -33,7 +33,7 @@ class Base(DeclarativeBase):
 
     @classmethod
     async def get(cls: Type[T], id: Any, *, session: Optional[Session] = None) -> Optional[T]:
-        async def _get(s):
+        async def _get(s: Session):
             try:
                 result = await s.execute(select(cls).filter(cls.id == id))
                 return result.scalar_one_or_none()
@@ -49,7 +49,7 @@ class Base(DeclarativeBase):
 
     @classmethod
     async def get_many(cls: Type[T], skip: int = 0, limit: int = 100, *, session: Optional[Session] = None) -> List[T]:
-        async def _get_many(s):
+        async def _get_many(s: Session):
             try:
                 result = await s.execute(select(cls).offset(skip).limit(limit))
                 return result.scalars().all()
@@ -65,7 +65,7 @@ class Base(DeclarativeBase):
 
     @classmethod
     async def update(cls: Type[T], id: Any, obj_in: UpdateSchemaType, *, session: Optional[Session] = None) -> Optional[T]:
-        async def _update(s):
+        async def _update(s: Session):
             try:
                 stmt = update(cls).where(cls.id == id).values(**obj_in.dict(exclude_unset=True)).returning(cls)
                 result = await s.execute(stmt)
@@ -84,7 +84,7 @@ class Base(DeclarativeBase):
 
     @classmethod
     async def delete(cls: Type[T], id: Any, *, session: Optional[Session] = None) -> None:
-        async def _delete(s):
+        async def _delete(s: Session):
             try:
                 stmt = delete(cls).where(cls.id == id)
                 await s.execute(stmt)
