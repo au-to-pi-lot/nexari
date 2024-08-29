@@ -1,2 +1,1 @@
 bot_token: your_discord_bot_token_here  # Your Discord bot token for authentication, get here https://discord.com/developers/applications
-client_id: your_discord_client_id_here  # Your Discord application's client ID, ditto
