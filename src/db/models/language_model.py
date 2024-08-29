@@ -78,11 +78,17 @@ class LanguageModel(Base):
         return top_a
 
     @classmethod
-    async def get_by_name(cls, name: str) -> Optional["LanguageModel"]:
-        async with Session() as session:
+    async def get_by_name(cls, name: str, *, session: Optional[Session] = None) -> Optional["LanguageModel"]:
+        async def _get_by_name(s):
             try:
-                result = await session.execute(select(cls).filter(cls.name == name))
+                result = await s.execute(select(cls).filter(cls.name == name))
                 return result.scalar_one_or_none()
             except SQLAlchemyError as e:
                 # Log the error here
                 raise
+
+        if session:
+            return await _get_by_name(session)
+        else:
+            async with Session() as new_session:
+                return await _get_by_name(new_session)

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import ForeignKey, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,11 +25,17 @@ class Webhook(Base):
     unique_channel_model = UniqueConstraint("channel_id", "language_model_id")
 
     @classmethod
-    async def get_by_language_model_id(cls, language_model_id: int) -> List["Webhook"]:
-        async with Session() as session:
+    async def get_by_language_model_id(cls, language_model_id: int, *, session: Optional[Session] = None) -> List["Webhook"]:
+        async def _get_by_language_model_id(s):
             try:
-                result = await session.execute(select(cls).filter(cls.language_model_id == language_model_id))
+                result = await s.execute(select(cls).filter(cls.language_model_id == language_model_id))
                 return result.scalars().all()
             except SQLAlchemyError as e:
                 # Log the error here
                 raise
+
+        if session:
+            return await _get_by_language_model_id(session)
+        else:
+            async with Session() as new_session:
+                return await _get_by_language_model_id(new_session)
