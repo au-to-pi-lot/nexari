@@ -7,8 +7,8 @@ from sqlalchemy import select
 
 from src.bot import DiscordBot
 from src.db.engine import Session
-from src.db.models import LanguageModel
-from src.db.models.llm import LanguageModelCreate, LanguageModelUpdate
+from src.db.models import LLM
+from src.db.models.llm import LLMCreate, LLMUpdate
 
 
 class LLMCommands(commands.GroupCog, name="llm"):
@@ -16,9 +16,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self.bot = bot
         super().__init__()
 
-    async def _get_model_by_name(self, name: str) -> Optional[LanguageModel]:
+    async def _get_model_by_name(self, name: str) -> Optional[LLM]:
         async with Session() as session:
-            result = await session.execute(select(LanguageModel).where(LanguageModel.name == name))
+            result = await session.execute(select(LLM).where(LLM.name == name))
             return result.scalar_one_or_none()
 
     @app_commands.command()
@@ -74,7 +74,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a new LLM handler"""
         await interaction.response.defer(ephemeral=True)
         
-        model_data = LanguageModelCreate(
+        model_data = LLMCreate(
             name=name,
             api_base=api_base,
             llm_name=llm_name,
@@ -146,7 +146,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(f"LLM handler '{name}' not found.")
             return
 
-        update_data = LanguageModelUpdate(
+        update_data = LLMUpdate(
             name=new_name,
             api_base=api_base,
             llm_name=llm_name,
@@ -207,8 +207,8 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         source_model = source_handler.language_model
 
-        # Create a new LanguageModel instance with the same attributes as the source
-        new_model_data = LanguageModelCreate(
+        # Create a new LLM instance with the same attributes as the source
+        new_model_data = LLMCreate(
             name=new_name,
             api_base=source_model.api_base,
             llm_name=source_model.llm_name,

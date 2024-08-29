@@ -1,16 +1,16 @@
 from typing import TYPE_CHECKING, List, Optional
+
 from pydantic import BaseModel
-
 from sqlalchemy import ForeignKey, Text, UniqueConstraint, select
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.db.models import Base, CreateSchemaType, UpdateSchemaType
 from src.db.engine import Session
+from src.db.models import Base
 
 if TYPE_CHECKING:
     from src.db.models.channel import Channel
-    from src.db.models.language_model import LanguageModel
+    from src.db.models.llm import LLM
 
 
 class WebhookCreate(BaseModel):
@@ -33,13 +33,13 @@ class Webhook(Base[WebhookCreate, WebhookUpdate]):
     language_model_id: Mapped[int] = mapped_column(ForeignKey("language_model.id"), nullable=False)
 
     channel: Mapped["Channel"] = relationship(back_populates="webhooks")
-    language_model: Mapped["LanguageModel"] = relationship(back_populates="webhooks")
+    language_model: Mapped["LLM"] = relationship(back_populates="webhooks")
 
     unique_channel_model = UniqueConstraint("channel_id", "language_model_id")
 
     @classmethod
     async def get_by_language_model_id(cls, language_model_id: int, *, session: Optional[Session] = None) -> List["Webhook"]:
-        async def _get_by_language_model_id(s):
+        async def _get_by_language_model_id(s: Session):
             try:
                 result = await s.execute(select(cls).filter(cls.language_model_id == language_model_id))
                 return result.scalars().all()

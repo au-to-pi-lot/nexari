@@ -1,21 +1,21 @@
 from typing import List, Optional, TYPE_CHECKING
+
 from pydantic import BaseModel, Field
-
 from sqlalchemy import Text, select
-from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from src.db.models import Base, CreateSchemaType, UpdateSchemaType
 from src.db.engine import Session
+from src.db.models import Base
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
 
 
-class LanguageModelCreate(BaseModel):
+class LLMCreate(BaseModel):
     name: str
     api_base: str
-    model_name: str
+    llm_name: str
     api_key: str
     max_tokens: int
     system_prompt: str
@@ -30,10 +30,10 @@ class LanguageModelCreate(BaseModel):
     min_p: Optional[float] = None
     top_a: Optional[float] = None
 
-class LanguageModelUpdate(BaseModel):
+class LLMUpdate(BaseModel):
     name: Optional[str] = None
     api_base: Optional[str] = None
-    model_name: Optional[str] = None
+    llm_name: Optional[str] = None
     api_key: Optional[str] = None
     max_tokens: Optional[int] = None
     system_prompt: Optional[str] = None
@@ -48,13 +48,13 @@ class LanguageModelUpdate(BaseModel):
     min_p: Optional[float] = None
     top_a: Optional[float] = None
 
-class LanguageModel(Base[LanguageModelCreate, LanguageModelUpdate]):
-    __tablename__ = 'language_model'
+class LLM(Base[LLMCreate, LLMUpdate]):
+    __tablename__ = 'llm'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
     api_base: Mapped[str] = mapped_column(Text)
-    model_name: Mapped[str] = mapped_column(Text)
+    llm_name: Mapped[str] = mapped_column(Text)
     api_key: Mapped[str] = mapped_column(Text)
     max_tokens: Mapped[int]
     system_prompt: Mapped[str] = mapped_column(Text)
@@ -115,7 +115,7 @@ class LanguageModel(Base[LanguageModelCreate, LanguageModelUpdate]):
         return top_a
 
     @classmethod
-    async def get_by_name(cls, name: str, *, session: Optional[Session] = None) -> Optional["LanguageModel"]:
+    async def get_by_name(cls, name: str, *, session: Optional[Session] = None) -> Optional["LLM"]:
         async def _get_by_name(s):
             try:
                 result = await s.execute(select(cls).filter(cls.name == name))

@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
-from src.db.models import LanguageModel, Webhook
+from src.db.models import LLM, Webhook
 from src.util import drop_both_ends
 
 
@@ -23,7 +23,7 @@ class LiteLLMMessage(BaseModel):
     content: str
 
 class LLMHandler:
-    def __init__(self, language_model: LanguageModel):
+    def __init__(self, language_model: LLM):
         self.language_model = language_model
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
@@ -62,7 +62,7 @@ class LLMHandler:
                 "top_a": self.language_model.top_a,
             }
             response = await acompletion(
-                model=self.language_model.model_name,
+                model=self.language_model.llm_name,
                 messages=messages,
                 max_tokens=self.language_model.max_tokens,
                 **{key: val for key, val in sampling_config.items() if val is not None},

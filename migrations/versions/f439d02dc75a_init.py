@@ -28,7 +28,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('api_base', sa.Text(), nullable=False),
-    sa.Column('model_name', sa.Text(), nullable=False),
+    sa.Column('llm_name', sa.Text(), nullable=False),
     sa.Column('api_key', sa.Text(), nullable=False),
     sa.Column('max_tokens', sa.Integer(), nullable=False),
     sa.Column('system_prompt', sa.Text(), nullable=False),
