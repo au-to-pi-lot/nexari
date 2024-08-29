@@ -105,7 +105,9 @@ class DiscordBot(commands.Bot):
         print(f'{self.user} has connected to Discord!')
 
         try:
-            synced = await self.tree.sync()
+            guild = await self.fetch_guild(307011228293660683)
+            self.tree.copy_global_to(guild=guild)
+            synced = await self.tree.sync(guild=guild)
             print(f"Synced {len(synced)} command(s)")
         except Exception as e:
             print(f"Error syncing command tree: {e}")

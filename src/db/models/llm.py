@@ -18,7 +18,7 @@ class LLMCreate(BaseModel):
     llm_name: str
     api_key: str
     max_tokens: int
-    system_prompt: str
+    system_prompt: Optional[str]
     context_length: int
     message_limit: int
     temperature: float = Field(default=1.0)
@@ -57,7 +57,7 @@ class LLM(Base[LLMCreate, LLMUpdate]):
     llm_name: Mapped[str] = mapped_column(Text)
     api_key: Mapped[str] = mapped_column(Text)
     max_tokens: Mapped[int]
-    system_prompt: Mapped[str] = mapped_column(Text)
+    system_prompt: Mapped[Optional[str]] = mapped_column(Text)
     context_length: Mapped[int]
     message_limit: Mapped[int]
 
@@ -70,7 +70,7 @@ class LLM(Base[LLMCreate, LLMUpdate]):
     min_p: Mapped[Optional[float]]
     top_a: Mapped[Optional[float]]
 
-    webhooks: Mapped[List["Webhook"]] = relationship(back_populates="language_model")
+    webhooks: Mapped[List["Webhook"]] = relationship(back_populates="llm")
 
     @validates('temperature')
     def validate_temperature(self, key, temperature: float) -> float:

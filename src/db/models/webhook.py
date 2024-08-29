@@ -30,12 +30,12 @@ class Webhook(Base[WebhookCreate, WebhookUpdate]):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
     token: Mapped[str] = mapped_column(Text, nullable=False)
     channel_id: Mapped[int] = mapped_column(ForeignKey("channel.id"), nullable=False)
-    language_model_id: Mapped[int] = mapped_column(ForeignKey("language_model.id"), nullable=False)
+    llm_id: Mapped[int] = mapped_column(ForeignKey("llm.id"), nullable=False)
 
     channel: Mapped["Channel"] = relationship(back_populates="webhooks")
-    language_model: Mapped["LLM"] = relationship(back_populates="webhooks")
+    llm: Mapped["LLM"] = relationship(back_populates="webhooks")
 
-    unique_channel_model = UniqueConstraint("channel_id", "language_model_id")
+    unique_channel_model = UniqueConstraint("channel_id", "llm_id")
 
     @classmethod
     async def get_by_language_model_id(cls, language_model_id: int, *, session: Optional[Session] = None) -> List["Webhook"]:

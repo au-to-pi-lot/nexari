@@ -62,7 +62,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         llm_name: str,
         api_key: str,
         max_tokens: int,
-        system_prompt: str,
+        system_prompt: Optional[str],
         context_length: int,
         message_limit: int,
         temperature: float = 1.0,
@@ -279,7 +279,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         await interaction.response.defer(ephemeral=True)
 
         try:
-            synced = await self.bot.tree.sync(guild=interaction.guild)
+            guild = interaction.guild
+            self.bot.tree.copy_global_to(guild=guild)
+            synced = await self.bot.tree.sync(guild=guild)
             embed = Embed(title="Bot Synced", color=discord.Color.green())
             embed.description = f"Synced {len(synced)} command(s) to the current guild."
             await interaction.followup.send(embed=embed)
