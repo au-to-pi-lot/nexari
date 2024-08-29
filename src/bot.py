@@ -1,11 +1,11 @@
-from typing import Dict, List, Union
+from typing import List, Union
 
 import discord
 from discord.ext import commands
 
 from src.config import Config
-from src.const import GUILD_ID
 from src.db.models import LanguageModel, Webhook
+from src.db.models.llm import LanguageModelCreate, LanguageModelUpdate
 from src.llm import LLMHandler, LiteLLMMessage
 
 
@@ -25,7 +25,6 @@ class DiscordBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
         self.config = config
-        self.llm_handlers: Dict[str, LLMHandler] = {}
 
     async def setup_hook(self) -> None:
         """
@@ -35,25 +34,22 @@ class DiscordBot(commands.Bot):
         """
         await self.load_extension("src.commands")
 
-    async def add_llm_handler(self, language_model: LanguageModel) -> None:
+    async def add_llm_handler(self, language_model_data: LanguageModelCreate) -> None:
         """
         Add a new LLMHandler at runtime and save the transient language_model to the database.
 
         Args:
-            language_model (LanguageModel): Transient LanguageModel object to be added.
+            language_model_data (LanguageModel): Transient LanguageModel object to be added.
 
         Raises:
             ValueError: If an LLMHandler with the same name already exists.
         """
-        existing_model = await LanguageModel.get_by_name(language_model.name)
+        existing_model = await LanguageModel.get_by_name(language_model_data.name)
         if existing_model:
-            raise ValueError(f"LLMHandler with name '{language_model.name}' already exists.")
+            raise ValueError(f"LLMHandler with name '{language_model_data.name}' already exists.")
 
-        await language_model.create()
-
-        llm_handler = LLMHandler(language_model)
-        self.llm_handlers[language_model.name] = llm_handler
-        print(f"Added new LLMHandler: {language_model.name}")
+        language_model = await LanguageModel.create(language_model_data)
+        print(f"Added new LLMHandler: {language_model_data.name}")
 
     async def remove_llm_handler(self, identifier: Union[int, LanguageModel]) -> None:
         """
@@ -74,49 +70,39 @@ class DiscordBot(commands.Bot):
         else:
             language_model = identifier
 
-        if language_model.name not in self.llm_handlers:
-            raise ValueError(f"LLMHandler with name '{language_model.name}' does not exist.")
-
         webhooks = await Webhook.get_by_language_model_id(language_model.id)
 
         for webhook in webhooks:
             discord_webhook = await discord.Webhook.partial(webhook.id, webhook.token, client=self).fetch()
             await discord_webhook.delete()
-            await webhook.delete()
+            await Webhook.delete(webhook.id)
 
-        await language_model.delete()
-
-        del self.llm_handlers[language_model.name]
+        await LanguageModel.delete(language_model.id)
         print(f"Removed LLMHandler and associated webhooks: {language_model.name}")
 
-    async def modify_llm_handler(self, transient_language_model: LanguageModel) -> None:
+    async def modify_llm_handler(self, id: int, data: LanguageModelUpdate) -> None:
         """
         Modify an existing LLMHandler at runtime using a transient SQLAlchemy object.
 
         Args:
-            transient_language_model (LanguageModel): A transient SQLAlchemy object with updated data.
+            id (int): The id of the model to update
+            data (LanguageModelUpdate): Data fields to change.
 
         Raises:
             ValueError: If no existing LanguageModel with the given primary key is found.
         """
-        existing_model = await LanguageModel.get(transient_language_model.id)
-        if not existing_model:
-            raise ValueError(f"No existing LanguageModel found with id: {transient_language_model.id}")
+        model = await LanguageModel.get(id)
+        if not model:
+            raise ValueError(f"No existing LanguageModel found with id: {data.id}")
 
-        await existing_model.update(transient_language_model)
-        
-        self.llm_handlers[existing_model.name] = LLMHandler(existing_model)
-        print(f"Modified LLMHandler: {existing_model.name}")
+        model = await model.update(id, data)
+        print(f"Modified LLMHandler: {model.name}")
 
     async def on_ready(self):
         """
         Called when the bot is ready and connected to Discord.
         """
         print(f'{self.user} has connected to Discord!')
-
-        language_models = await LanguageModel.get_many()
-        for language_model in language_models:
-            self.llm_handlers[language_model.name] = LLMHandler(language_model)
 
         try:
             synced = await self.tree.sync()
@@ -138,8 +124,10 @@ class DiscordBot(commands.Bot):
 
         channel = message.channel
 
-        for llm_name, llm_handler in self.llm_handlers.items():
-            if llm_name.lower() in message.content.lower():
+        llm_handlers = await self.get_llm_handlers()
+
+        for llm_handler in llm_handlers:
+            if llm_handler.language_model.name.lower() in message.content.lower():
                 async with channel.typing():
                     try:
                         history: List[LiteLLMMessage] = await llm_handler.fetch_message_history(self, channel)
@@ -163,6 +151,10 @@ class DiscordBot(commands.Bot):
                         error_message = str(e)
                         print(f"An error occurred: {error_message}")
                         await channel.send(f"[Script error: {error_message}]")
+
+    async def get_llm_handlers(self):
+        models = await LanguageModel.get_many(limit=None)
+        return [LLMHandler(model) for model in models]
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:

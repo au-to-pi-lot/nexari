@@ -1,13 +1,15 @@
-from typing import Annotated, Optional, Dict, Any, Type
+from typing import Optional
+
 import discord
 from discord import app_commands
 from discord.ext import commands
-from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from src.bot import DiscordBot
 from src.db.engine import Session
 from src.db.models import LanguageModel
+from src.db.models.llm import LanguageModelCreate, LanguageModelUpdate
+
 
 class LLMCommands(commands.GroupCog, name="llm"):
     def __init__(self, bot: DiscordBot):
@@ -23,9 +25,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.checks.has_permissions(administrator=True)
     async def list(self, interaction: discord.Interaction):
         """List all available LLM handlers"""
-        handlers = list(self.bot.llm_handlers.keys())
+        handlers = await self.bot.get_llm_handlers()
         if handlers:
-            await interaction.response.send_message(f"Available LLM handlers: {', '.join(handlers)}")
+            await interaction.response.send_message(f"Available LLM handlers: {', '.join((handler.language_model.name for handler in handlers))}")
         else:
             await interaction.response.send_message("No LLM handlers available.")
 
@@ -34,7 +36,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.describe(
         name="Name of the new LLM handler",
         api_base="API base URL",
-        model_name="Name of the model",
+        llm_name="Name of the model",
         api_key="API key for the LLM",
         max_tokens="Maximum number of tokens",
         system_prompt="System prompt",
@@ -54,7 +56,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         interaction: discord.Interaction,
         name: str,
         api_base: str,
-        model_name: str,
+        llm_name: str,
         api_key: str,
         max_tokens: int,
         system_prompt: str,
@@ -72,28 +74,27 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a new LLM handler"""
         await interaction.response.defer(ephemeral=True)
         
-        model_data = {
-            'name': name,
-            'api_base': api_base,
-            'model_name': model_name,
-            'api_key': api_key,
-            'max_tokens': max_tokens,
-            'system_prompt': system_prompt,
-            'context_length': context_length,
-            'message_limit': message_limit,
-            'temperature': temperature,
-            'top_p': top_p,
-            'top_k': top_k,
-            'frequency_penalty': frequency_penalty,
-            'presence_penalty': presence_penalty,
-            'repetition_penalty': repetition_penalty,
-            'min_p': min_p,
-            'top_a': top_a
-        }
+        model_data = LanguageModelCreate(
+            name=name,
+            api_base=api_base,
+            llm_name=llm_name,
+            api_key=api_key,
+            max_tokens=max_tokens,
+            system_prompt=system_prompt,
+            context_length=context_length,
+            message_limit=message_limit,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            repetition_penalty=repetition_penalty,
+            min_p=min_p,
+            top_a=top_a
+        )
 
         try:
-            new_model = LanguageModel(**model_data)
-            await self.bot.add_llm_handler(new_model)
+            await self.bot.add_llm_handler(model_data)
             await interaction.followup.send(f"LLM handler '{name}' created successfully!")
         except ValueError as e:
             await interaction.followup.send(f"Error creating LLM handler: {str(e)}")
@@ -102,8 +103,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
         name="Name of the LLM handler to modify",
+        new_name="New name for the LLM handler",
         api_base="API base URL",
-        model_name="Name of the model",
+        llm_name="Name of the model",
         max_tokens="Maximum number of tokens",
         system_prompt="System prompt",
         context_length="Context length",
@@ -121,8 +123,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self,
         interaction: discord.Interaction,
         name: str,
+        new_name: Optional[str] = None,
         api_base: Optional[str] = None,
-        model_name: Optional[str] = None,
+        llm_name: Optional[str] = None,
         max_tokens: Optional[int] = None,
         system_prompt: Optional[str] = None,
         context_length: Optional[int] = None,
@@ -143,30 +146,26 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(f"LLM handler '{name}' not found.")
             return
 
-        update_data = {
-            'api_base': api_base,
-            'model_name': model_name,
-            'max_tokens': max_tokens,
-            'system_prompt': system_prompt,
-            'context_length': context_length,
-            'message_limit': message_limit,
-            'temperature': temperature,
-            'top_p': top_p,
-            'top_k': top_k,
-            'frequency_penalty': frequency_penalty,
-            'presence_penalty': presence_penalty,
-            'repetition_penalty': repetition_penalty,
-            'min_p': min_p,
-            'top_a': top_a
-        }
-        
-        update_data = {k: v for k, v in update_data.items() if v is not None}
-
-        for key, value in update_data.items():
-            setattr(model, key, value)
+        update_data = LanguageModelUpdate(
+            name=new_name,
+            api_base=api_base,
+            llm_name=llm_name,
+            max_tokens=max_tokens,
+            system_prompt=system_prompt,
+            context_length=context_length,
+            message_limit=message_limit,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+            repetition_penalty=repetition_penalty,
+            min_p=min_p,
+            top_a=top_a
+        )
 
         try:
-            await self.bot.modify_llm_handler(model)
+            await self.bot.modify_llm_handler(model.id, update_data)
             await interaction.followup.send(f"LLM handler '{name}' modified successfully!")
         except ValueError as e:
             await interaction.followup.send(f"Error modifying LLM handler: {str(e)}")
@@ -206,29 +205,27 @@ class LLMCommands(commands.GroupCog, name="llm"):
         source_model = self.bot.llm_handlers[source_name].language_model
 
         # Create a new LanguageModel instance with the same attributes as the source
-        new_model_data = {
-            'name': new_name,
-            'api_base': source_model.api_base,
-            'model_name': source_model.model_name,
-            'api_key': source_model.api_key,
-            'max_tokens': source_model.max_tokens,
-            'system_prompt': source_model.system_prompt,
-            'context_length': source_model.context_length,
-            'message_limit': source_model.message_limit,
-            'temperature': source_model.temperature,
-            'top_p': source_model.top_p,
-            'top_k': source_model.top_k,
-            'frequency_penalty': source_model.frequency_penalty,
-            'presence_penalty': source_model.presence_penalty,
-            'repetition_penalty': source_model.repetition_penalty,
-            'min_p': source_model.min_p,
-            'top_a': source_model.top_a
-        }
-
-        new_model = LanguageModel(**new_model_data)
+        new_model_data = LanguageModelCreate(
+            name=new_name,
+            api_base=source_model.api_base,
+            llm_name=source_model.llm_name,
+            api_key=source_model.api_key,
+            max_tokens=source_model.max_tokens,
+            system_prompt=source_model.system_prompt,
+            context_length=source_model.context_length,
+            message_limit=source_model.message_limit,
+            temperature=source_model.temperature,
+            top_p=source_model.top_p,
+            top_k=source_model.top_k,
+            frequency_penalty=source_model.frequency_penalty,
+            presence_penalty=source_model.presence_penalty,
+            repetition_penalty=source_model.repetition_penalty,
+            min_p=source_model.min_p,
+            top_a=source_model.top_a
+        )
 
         try:
-            await self.bot.add_llm_handler(new_model)
+            await self.bot.add_llm_handler(new_model_data)
             await interaction.followup.send(f"LLM handler '{source_name}' successfully copied to '{new_name}'!")
         except ValueError as e:
             await interaction.followup.send(f"Error creating copy of LLM handler: {str(e)}")
