@@ -48,7 +48,7 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
                 return await _get(new_session)
 
     @classmethod
-    async def get_many(cls: Type[T], skip: int = 0, limit: int = 100, *, session: Optional[Session] = None) -> List[T]:
+    async def get_many(cls: Type[T], skip: int = 0, limit: Optional[int] = 100, *, session: Optional[Session] = None) -> List[T]:
         async def _get_many(s: Session):
             try:
                 result = await s.execute(select(cls).offset(skip).limit(limit))
