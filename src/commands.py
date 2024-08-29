@@ -174,12 +174,13 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.checks.has_permissions(administrator=True)
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM handler"""
-        if name not in self.bot.llm_handlers:
+        handler = await self.bot.get_handler(name)
+        if not handler:
             await interaction.response.send_message(f"LLM handler '{name}' not found.")
             return
 
         try:
-            await self.bot.remove_llm_handler(self.bot.llm_handlers[name].language_model)
+            await self.bot.remove_llm_handler(handler.language_model)
             await interaction.response.send_message(f"LLM handler '{name}' deleted successfully!")
         except ValueError as e:
             await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
@@ -194,15 +195,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a deep copy of an existing LLM handler with a new name"""
         await interaction.response.defer(ephemeral=True)
 
-        if source_name not in self.bot.llm_handlers:
+        source_handler = await self.bot.get_handler(source_name)
+        if not source_handler:
             await interaction.followup.send(f"Source LLM handler '{source_name}' not found.")
             return
 
-        if new_name in self.bot.llm_handlers:
+        existing_handler = await self.bot.get_handler(new_name)
+        if existing_handler:
             await interaction.followup.send(f"An LLM handler with the name '{new_name}' already exists.")
             return
 
-        source_model = self.bot.llm_handlers[source_name].language_model
+        source_model = source_handler.language_model
 
         # Create a new LanguageModel instance with the same attributes as the source
         new_model_data = LanguageModelCreate(

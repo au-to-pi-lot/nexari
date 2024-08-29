@@ -156,6 +156,10 @@ class DiscordBot(commands.Bot):
         models = await LanguageModel.get_many(limit=None)
         return [LLMHandler(model) for model in models]
 
+    async def get_handler(self, name: str) -> Optional[LLMHandler]:
+        model = await LanguageModel.get_by_name(name)
+        return LLMHandler(model) if model else None
+
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
         """
