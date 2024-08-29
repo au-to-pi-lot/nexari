@@ -1,7 +1,7 @@
 from typing import Optional
 
 import discord
-from discord import app_commands
+from discord import app_commands, Embed
 from discord.ext import commands
 from sqlalchemy import select
 
@@ -26,10 +26,13 @@ class LLMCommands(commands.GroupCog, name="llm"):
     async def list(self, interaction: discord.Interaction):
         """List all available LLM handlers"""
         handlers = await self.bot.get_llm_handlers()
+        embed = Embed(title="Available LLM Handlers", color=discord.Color.blue())
         if handlers:
-            await interaction.response.send_message(f"Available LLM handlers: {', '.join((handler.language_model.name for handler in handlers))}")
+            for handler in handlers:
+                embed.add_field(name=handler.language_model.name, value=f"Model: {handler.language_model.llm_name}", inline=False)
         else:
-            await interaction.response.send_message("No LLM handlers available.")
+            embed.description = "No LLM handlers available."
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
@@ -95,9 +98,16 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await self.bot.add_llm_handler(model_data)
-            await interaction.followup.send(f"LLM handler '{name}' created successfully!")
+            embed = Embed(title="LLM Handler Created", color=discord.Color.green())
+            embed.add_field(name="Name", value=name, inline=False)
+            embed.add_field(name="Model", value=llm_name, inline=False)
+            embed.add_field(name="Max Tokens", value=str(max_tokens), inline=True)
+            embed.add_field(name="Temperature", value=str(temperature), inline=True)
+            await interaction.followup.send(embed=embed)
         except ValueError as e:
-            await interaction.followup.send(f"Error creating LLM handler: {str(e)}")
+            embed = Embed(title="Error Creating LLM Handler", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Modify an existing LLM handler")
     @app_commands.checks.has_permissions(administrator=True)
@@ -143,7 +153,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         model = await self._get_model_by_name(name)
         if not model:
-            await interaction.followup.send(f"LLM handler '{name}' not found.")
+            embed = Embed(title="Error Modifying LLM Handler", color=discord.Color.red())
+            embed.description = f"LLM handler '{name}' not found."
+            await interaction.followup.send(embed=embed)
             return
 
         update_data = LLMUpdate(
@@ -166,9 +178,19 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await self.bot.modify_llm_handler(model.id, update_data)
-            await interaction.followup.send(f"LLM handler '{name}' modified successfully!")
+            embed = Embed(title="LLM Handler Modified", color=discord.Color.green())
+            embed.add_field(name="Name", value=new_name or name, inline=False)
+            if llm_name:
+                embed.add_field(name="Model", value=llm_name, inline=False)
+            if max_tokens:
+                embed.add_field(name="Max Tokens", value=str(max_tokens), inline=True)
+            if temperature:
+                embed.add_field(name="Temperature", value=str(temperature), inline=True)
+            await interaction.followup.send(embed=embed)
         except ValueError as e:
-            await interaction.followup.send(f"Error modifying LLM handler: {str(e)}")
+            embed = Embed(title="Error Modifying LLM Handler", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
@@ -176,14 +198,20 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Delete an existing LLM handler"""
         handler = await self.bot.get_handler(name)
         if not handler:
-            await interaction.response.send_message(f"LLM handler '{name}' not found.")
+            embed = Embed(title="Error Deleting LLM Handler", color=discord.Color.red())
+            embed.description = f"LLM handler '{name}' not found."
+            await interaction.response.send_message(embed=embed)
             return
 
         try:
             await self.bot.remove_llm_handler(handler.language_model)
-            await interaction.response.send_message(f"LLM handler '{name}' deleted successfully!")
+            embed = Embed(title="LLM Handler Deleted", color=discord.Color.green())
+            embed.description = f"LLM handler '{name}' deleted successfully!"
+            await interaction.response.send_message(embed=embed)
         except ValueError as e:
-            await interaction.response.send_message(f"Error deleting LLM handler: {str(e)}")
+            embed = Embed(title="Error Deleting LLM Handler", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.response.send_message(embed=embed)
 
     @app_commands.command(description="Create a deep copy of an existing LLM handler with a new name")
     @app_commands.checks.has_permissions(administrator=True)
@@ -197,12 +225,16 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         source_handler = await self.bot.get_handler(source_name)
         if not source_handler:
-            await interaction.followup.send(f"Source LLM handler '{source_name}' not found.")
+            embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
+            embed.description = f"Source LLM handler '{source_name}' not found."
+            await interaction.followup.send(embed=embed)
             return
 
         existing_handler = await self.bot.get_handler(new_name)
         if existing_handler:
-            await interaction.followup.send(f"An LLM handler with the name '{new_name}' already exists.")
+            embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
+            embed.description = f"An LLM handler with the name '{new_name}' already exists."
+            await interaction.followup.send(embed=embed)
             return
 
         source_model = source_handler.language_model
@@ -229,9 +261,16 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await self.bot.add_llm_handler(new_model_data)
-            await interaction.followup.send(f"LLM handler '{source_name}' successfully copied to '{new_name}'!")
+            embed = Embed(title="LLM Handler Copied", color=discord.Color.green())
+            embed.description = f"LLM handler '{source_name}' successfully copied to '{new_name}'!"
+            embed.add_field(name="Model", value=source_model.llm_name, inline=False)
+            embed.add_field(name="Max Tokens", value=str(source_model.max_tokens), inline=True)
+            embed.add_field(name="Temperature", value=str(source_model.temperature), inline=True)
+            await interaction.followup.send(embed=embed)
         except ValueError as e:
-            await interaction.followup.send(f"Error creating copy of LLM handler: {str(e)}")
+            embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.followup.send(embed=embed)
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
