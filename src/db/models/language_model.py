@@ -1,15 +1,52 @@
 from typing import List, Optional, TYPE_CHECKING
+from pydantic import BaseModel, Field
 
 from sqlalchemy import Text, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.db.models import Base
+from src.db.models import Base, CreateSchemaType, UpdateSchemaType
 from src.db.engine import Session
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
 
+
+class LanguageModelCreate(BaseModel):
+    name: str
+    api_base: str
+    model_name: str
+    api_key: str
+    max_tokens: int
+    system_prompt: str
+    context_length: int
+    message_limit: int
+    temperature: float = Field(default=1.0)
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    frequency_penalty: Optional[float] = None
+    presence_penalty: Optional[float] = None
+    repetition_penalty: Optional[float] = None
+    min_p: Optional[float] = None
+    top_a: Optional[float] = None
+
+class LanguageModelUpdate(BaseModel):
+    name: Optional[str] = None
+    api_base: Optional[str] = None
+    model_name: Optional[str] = None
+    api_key: Optional[str] = None
+    max_tokens: Optional[int] = None
+    system_prompt: Optional[str] = None
+    context_length: Optional[int] = None
+    message_limit: Optional[int] = None
+    temperature: Optional[float] = None
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    frequency_penalty: Optional[float] = None
+    presence_penalty: Optional[float] = None
+    repetition_penalty: Optional[float] = None
+    min_p: Optional[float] = None
+    top_a: Optional[float] = None
 
 class LanguageModel(Base):
     __tablename__ = 'language_model'
@@ -34,6 +71,9 @@ class LanguageModel(Base):
     top_a: Mapped[Optional[float]]
 
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="language_model")
+
+    CreateSchemaType = LanguageModelCreate
+    UpdateSchemaType = LanguageModelUpdate
 
     @validates('temperature')
     def validate_temperature(self, key, temperature: float) -> float:

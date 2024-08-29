@@ -1,15 +1,28 @@
 from typing import TYPE_CHECKING, List, Optional
+from pydantic import BaseModel
+
 from sqlalchemy import ForeignKey, Text, UniqueConstraint, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.db.models import Base
+from src.db.models import Base, CreateSchemaType, UpdateSchemaType
 from src.db.engine import Session
 
 if TYPE_CHECKING:
     from src.db.models.channel import Channel
     from src.db.models.language_model import LanguageModel
 
+
+class WebhookCreate(BaseModel):
+    id: int
+    token: str
+    channel_id: int
+    language_model_id: int
+
+class WebhookUpdate(BaseModel):
+    token: Optional[str] = None
+    channel_id: Optional[int] = None
+    language_model_id: Optional[int] = None
 
 class Webhook(Base):
     __tablename__ = "webhook"
@@ -23,6 +36,9 @@ class Webhook(Base):
     language_model: Mapped["LanguageModel"] = relationship(back_populates="webhooks")
 
     unique_channel_model = UniqueConstraint("channel_id", "language_model_id")
+
+    CreateSchemaType = WebhookCreate
+    UpdateSchemaType = WebhookUpdate
 
     @classmethod
     async def get_by_language_model_id(cls, language_model_id: int, *, session: Optional[Session] = None) -> List["Webhook"]:
