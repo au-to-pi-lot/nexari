@@ -272,5 +272,21 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed.description = str(e)
             await interaction.followup.send(embed=embed)
 
+    @app_commands.command(description="Sync the bot commands with the current guild")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def sync(self, interaction: discord.Interaction):
+        """Sync the bot commands with the current guild"""
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            synced = await self.bot.tree.sync(guild=interaction.guild)
+            embed = Embed(title="Bot Synced", color=discord.Color.green())
+            embed.description = f"Synced {len(synced)} command(s) to the current guild."
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            embed = Embed(title="Sync Error", color=discord.Color.red())
+            embed.description = f"An error occurred while syncing: {str(e)}"
+            await interaction.followup.send(embed=embed)
+
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
