@@ -1,9 +1,9 @@
 from typing import List, TYPE_CHECKING
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.db.models import Base, CreateSchemaType, UpdateSchemaType
+from src.db.models import Base
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
