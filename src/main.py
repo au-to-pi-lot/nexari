@@ -24,7 +24,7 @@ async def main():
         handlers=handlers,
         level=logging.INFO,
         style="{",
-        format='[{asctime}] {levelname} ({pathname}:{lineno}): {message}'
+        format='[{asctime}] {levelname} ({name}): {message}'
     )
 
     def handle_exception(loop, context):
