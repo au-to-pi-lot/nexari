@@ -111,5 +111,4 @@ class Guild(Base[GuildCreate, GuildUpdate]):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
     name: Mapped[str] = mapped_column(nullable=False)
 
-    channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
     llms: Mapped[List["LLM"]] = relationship(back_populates="guild")
