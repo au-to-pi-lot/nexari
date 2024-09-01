@@ -125,6 +125,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command(description="Modify an existing LLM handler")
     @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.autocomplete(name=autocomplete_llm_name)
     @app_commands.describe(
         name="Name of the LLM handler to modify",
         new_name="New name for the LLM handler",
