@@ -1,5 +1,8 @@
 import logging
+import os
+import aiohttp
 from typing import Optional
+from pathlib import Path
 
 import discord
 from discord import app_commands, Embed
@@ -9,6 +12,7 @@ from src.bot import DiscordBot
 from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.llm import LLMHandler
+from src.const import ROOT_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -269,6 +273,65 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
             embed.description = str(e)
             await interaction.followup.send(embed=embed)
+
+    @app_commands.command(description="Set an avatar for an LLM handler")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def set_avatar(self, interaction: discord.Interaction, name: str, image_url: str):
+        """Set an avatar for an LLM handler"""
+        await interaction.response.defer(ephemeral=True)
+
+        # Validate LLM exists
+        handler = await LLMHandler.get_handler(name, interaction.guild_id)
+        if not handler:
+            embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+            embed.description = f"LLM handler '{name}' not found in this guild."
+            await interaction.followup.send(embed=embed)
+            return
+
+        # Download and validate image
+        async with aiohttp.ClientSession() as session:
+            async with session.get(image_url) as resp:
+                if resp.status != 200:
+                    embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                    embed.description = f"Failed to download image from URL: {image_url}"
+                    await interaction.followup.send(embed=embed)
+                    return
+                
+                content_type = resp.headers.get('Content-Type', '').lower()
+                if not content_type.startswith('image/'):
+                    embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                    embed.description = f"The URL does not point to a valid image file."
+                    await interaction.followup.send(embed=embed)
+                    return
+
+                image_data = await resp.read()
+                file_extension = content_type.split('/')[-1]
+
+        # Save the image
+        avatars_dir = ROOT_DIR / 'avatars'
+        avatars_dir.mkdir(exist_ok=True)
+        avatar_filename = f"{name}.{file_extension}"
+        avatar_path = avatars_dir / avatar_filename
+
+        with open(avatar_path, 'wb') as f:
+            f.write(image_data)
+
+        # Update LLM model
+        update_data = LLMUpdate(avatar=avatar_filename)
+        await self.bot.modify_llm_handler(handler.llm.id, update_data)
+
+        # Update existing webhooks
+        async for guild in self.bot.fetch_guilds():
+            for channel in await guild.fetch_channels():
+                if isinstance(channel, discord.TextChannel):
+                    webhook = await handler.get_webhook(self.bot, channel)
+                    if webhook:
+                        with open(avatar_path, 'rb') as avatar:
+                            await webhook.edit(avatar=avatar.read())
+
+        embed = Embed(title="Avatar Set", color=discord.Color.green())
+        embed.description = f"Avatar for LLM handler '{name}' has been set and applied to all webhooks."
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Sync the bot commands with the current guild")
     @app_commands.checks.has_permissions(administrator=True)

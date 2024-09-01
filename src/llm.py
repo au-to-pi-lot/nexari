@@ -60,7 +60,14 @@ class LLMHandler:
                     client=bot
                 ).fetch()
             else:
-                webhook = await channel.create_webhook(name=self.llm.name)
+                avatar = None
+                if self.llm.avatar:
+                    avatar_path = ROOT_DIR / 'avatars' / self.llm.avatar
+                    if avatar_path.exists():
+                        with open(avatar_path, 'rb') as avatar_file:
+                            avatar = avatar_file.read()
+
+                webhook = await channel.create_webhook(name=self.llm.name, avatar=avatar)
                 session.add(Webhook(
                     id=webhook.id,
                     token=webhook.token,
@@ -68,6 +75,13 @@ class LLMHandler:
                     llm_id=self.llm.id,
                 ))
                 await session.commit()
+
+            # Update avatar if it has changed
+            if self.llm.avatar:
+                avatar_path = ROOT_DIR / 'avatars' / self.llm.avatar
+                if avatar_path.exists():
+                    with open(avatar_path, 'rb') as avatar_file:
+                        await webhook.edit(avatar=avatar_file.read())
 
         return webhook
 

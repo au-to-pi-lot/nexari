@@ -50,6 +50,7 @@ class LLMUpdate(BaseModel):
     repetition_penalty: Optional[float] = None
     min_p: Optional[float] = None
     top_a: Optional[float] = None
+    avatar: Optional[str] = None
 
 
 class LLM(Base[LLMCreate, LLMUpdate]):
@@ -74,6 +75,7 @@ class LLM(Base[LLMCreate, LLMUpdate]):
     repetition_penalty: Mapped[Optional[float]]
     min_p: Mapped[Optional[float]]
     top_a: Mapped[Optional[float]]
+    avatar: Mapped[Optional[str]]
 
     guild: Mapped["Guild"] = relationship(back_populates="llms")
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="llm")
