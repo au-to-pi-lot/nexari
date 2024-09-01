@@ -10,15 +10,37 @@ if TYPE_CHECKING:
 
 
 class ChannelCreate(BaseModel):
+    """
+    Pydantic model for creating a new Channel.
+
+    Attributes:
+        id (int): The unique identifier for the channel.
+        guild_id (int): The ID of the guild the channel belongs to.
+    """
     id: int
     guild_id: int
 
 
 class ChannelUpdate(BaseModel):
+    """
+    Pydantic model for updating an existing Channel.
+
+    Attributes:
+        guild_id (Optional[int]): The new guild ID for the channel, if changing.
+    """
     guild_id: Optional[int] = None
 
 
 class Channel(Base[ChannelCreate, ChannelUpdate]):
+    """
+    SQLAlchemy model representing a Discord channel.
+
+    Attributes:
+        id (int): The unique identifier for the channel.
+        guild_id (int): The ID of the guild the channel belongs to.
+        guild (Guild): The Guild object this channel belongs to.
+        webhooks (List[Webhook]): List of Webhook objects associated with this channel.
+    """
     __tablename__ = "channel"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)

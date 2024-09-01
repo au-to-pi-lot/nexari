@@ -13,10 +13,31 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
 class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
+    """
+    Base class for SQLAlchemy models with CRUD operations.
+
+    Generic parameters:
+        CreateSchemaType: Pydantic model for creating a new instance.
+        UpdateSchemaType: Pydantic model for updating an existing instance.
+    """
+
     @classmethod
     async def create(
         cls: Type[T], obj_in: CreateSchemaType, *, session: Optional[Session] = None
     ) -> T:
+        """
+        Create a new database object.
+
+        Args:
+            obj_in (CreateSchemaType): Pydantic model instance with creation data.
+            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
+
+        Returns:
+            T: The created database object.
+
+        Raises:
+            SQLAlchemyError: If there's an error during the database operation.
+        """
         async def _create(s: Session):
             try:
                 db_obj = cls(**obj_in.dict())
@@ -40,9 +61,23 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
         cls: Type[T],
         id: Any,
         *,
-        options: Iterable[ExecutableOption] = None,
+        options: Optional[Iterable[ExecutableOption]] = None,
         session: Optional[Session] = None
     ) -> Optional[T]:
+        """
+        Retrieve a database object by its ID.
+
+        Args:
+            id (Any): The ID of the object to retrieve.
+            options (Optional[Iterable[ExecutableOption]]): Query options to apply.
+            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
+
+        Returns:
+            Optional[T]: The retrieved object, or None if not found.
+
+        Raises:
+            SQLAlchemyError: If there's an error during the database operation.
+        """
         if options is None:
             options = []
 
@@ -70,6 +105,20 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
         *,
         session: Optional[Session] = None
     ) -> List[T]:
+        """
+        Retrieve multiple database objects with pagination.
+
+        Args:
+            skip (int): Number of records to skip.
+            limit (Optional[int]): Maximum number of records to return.
+            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
+
+        Returns:
+            List[T]: List of retrieved objects.
+
+        Raises:
+            SQLAlchemyError: If there's an error during the database operation.
+        """
         async def _get_many(s: Session):
             try:
                 result = await s.execute(select(cls).offset(skip).limit(limit))
@@ -92,6 +141,20 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
         *,
         session: Optional[Session] = None
     ) -> Optional[T]:
+        """
+        Update an existing database object.
+
+        Args:
+            id (Any): The ID of the object to update.
+            obj_in (UpdateSchemaType): Pydantic model instance with update data.
+            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
+
+        Returns:
+            Optional[T]: The updated object, or None if not found.
+
+        Raises:
+            SQLAlchemyError: If there's an error during the database operation.
+        """
         async def _update(s: Session):
             try:
                 stmt = (
@@ -118,6 +181,16 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
     async def delete(
         cls: Type[T], id: Any, *, session: Optional[Session] = None
     ) -> None:
+        """
+        Delete a database object by its ID.
+
+        Args:
+            id (Any): The ID of the object to delete.
+            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
+
+        Raises:
+            SQLAlchemyError: If there's an error during the database operation.
+        """
         async def _delete(s: Session):
             try:
                 stmt = delete(cls).where(cls.id == id)
