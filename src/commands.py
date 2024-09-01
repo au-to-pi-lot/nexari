@@ -336,7 +336,13 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
                     file_extension = content_type.split('/')[-1]
 
-            # Save the image
+            # Delete old avatar if it exists
+            if handler.llm.avatar:
+                old_avatar_path = ROOT_DIR / 'avatars' / handler.llm.avatar
+                if old_avatar_path.exists():
+                    old_avatar_path.unlink()
+
+            # Save the new image
             avatars_dir = ROOT_DIR / 'avatars'
             avatars_dir.mkdir(exist_ok=True)
             avatar_filename = f"{name}.{file_extension}"
