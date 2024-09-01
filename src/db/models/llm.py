@@ -6,11 +6,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from src.db.engine import Session
 from src.db.models import Base
-from src.db.models.guild import Guild
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
-    from src.db.models.guild import Guild as GuildModel
+    from src.db.models.guild import Guild
 
 
 class LLMCreate(BaseModel):
@@ -123,8 +122,8 @@ class LLM(Base[LLMCreate, LLMUpdate]):
         return top_a
 
     @classmethod
-    async def get_by_name(cls, name: str, guild: Union[discord.Guild, "GuildModel", int], *, session: Optional[Session] = None) -> Optional["LLM"]:
-        guild_id = cls._get_guild_id(guild)
+    async def get_by_name(cls, name: str, guild: Union[discord.Guild, Guild, int], *, session: Optional[Session] = None) -> Optional["LLM"]:
+        guild_id = Guild.get_guild_id(guild)
 
         async def _get_by_name(s):
             try:
@@ -139,12 +138,3 @@ class LLM(Base[LLMCreate, LLMUpdate]):
         else:
             async with Session() as new_session:
                 return await _get_by_name(new_session)
-
-    @staticmethod
-    def _get_guild_id(guild: Union[discord.Guild, "GuildModel", int]) -> int:
-        if isinstance(guild, (discord.Guild, GuildModel)):
-            return guild.id
-        elif isinstance(guild, int):
-            return guild
-        else:
-            raise ValueError("Invalid guild type. Expected discord.Guild, GuildModel, or int.")

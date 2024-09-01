@@ -92,7 +92,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         )
 
         try:
-            await self.bot.add_llm_handler(model_data)
+            await self.bot.add_llm_handler(model_data, interaction.guild)
             embed = Embed(title="LLM Handler Created", color=discord.Color.green())
             embed.add_field(name="Name", value=name, inline=False)
             embed.add_field(name="Model", value=llm_name, inline=False)
@@ -255,7 +255,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         )
 
         try:
-            await self.bot.add_llm_handler(new_model_data)
+            await self.bot.add_llm_handler(new_model_data, interaction.guild)
             embed = Embed(title="LLM Handler Copied", color=discord.Color.green())
             embed.description = f"LLM handler '{source_name}' successfully copied to '{new_name}'!"
             embed.add_field(name="Model", value=source_model.llm_name, inline=False)

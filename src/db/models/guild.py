@@ -1,6 +1,9 @@
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Union
+
+import discord
 from pydantic import BaseModel
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.db.models import Base
 
 if TYPE_CHECKING:
@@ -23,3 +26,13 @@ class Guild(Base[GuildCreate, GuildUpdate]):
 
     channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
     llms: Mapped[List["LLM"]] = relationship(back_populates="guild")
+
+    @staticmethod
+    def get_guild_id(guild: Union[discord.Guild, "Guild", int]) -> int:
+        if isinstance(guild, (discord.Guild, Guild)):
+            return guild.id
+        elif isinstance(guild, int):
+            return guild
+        else:
+            raise ValueError("Invalid guild type. Expected discord.Guild, Guild, or int.")
+

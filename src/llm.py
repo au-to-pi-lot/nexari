@@ -30,25 +30,16 @@ class LLMHandler:
 
     @classmethod
     async def get_llm_handlers(cls, guild: Union[discord.Guild, GuildModel, int]) -> List["LLMHandler"]:
-        guild_id = cls._get_guild_id(guild)
+        guild_id = Guild.get_guild_id(guild)
         async with Session() as session:
             models = (await Guild.get(guild_id, session=session)).llms
         return [cls(model) for model in models]
 
     @classmethod
     async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int]) -> Optional["LLMHandler"]:
-        guild_id = cls._get_guild_id(guild)
+        guild_id = Guild.get_guild_id(guild)
         model = await LLM.get_by_name(name, guild_id)
         return cls(model) if model else None
-
-    @staticmethod
-    def _get_guild_id(guild: Union[discord.Guild, GuildModel, int]) -> int:
-        if isinstance(guild, (discord.Guild, GuildModel)):
-            return guild.id
-        elif isinstance(guild, int):
-            return guild
-        else:
-            raise ValueError("Invalid guild type. Expected discord.Guild, GuildModel, or int.")
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
         async with Session() as session:

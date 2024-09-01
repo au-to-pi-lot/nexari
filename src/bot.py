@@ -1,15 +1,17 @@
-from typing import List, Union, Optional
+import logging
+from typing import List, Union
 
 import discord
 from discord.ext import commands
 
 from src.config import Config
+from src.db.engine import Session
 from src.db.models import LLM, Webhook, Guild
+from src.db.models.guild import GuildCreate
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.llm import LLMHandler, LiteLLMMessage
-from src.db.models.guild import GuildCreate
-from src.db.engine import Session
 
+logger = logging.getLogger(__name__)
 
 class DiscordBot(commands.Bot):
     """
@@ -30,28 +32,29 @@ class DiscordBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """
-        A coroutine to be called to setup the bot, by default this is blank.
+        A coroutine to be called to set up the bot, by default this is blank.
         This performs an asynchronous setup after the bot is logged in,
         but before it has connected to the Websocket to receive events.
         """
         await self.load_extension("src.commands")
 
-    async def add_llm_handler(self, language_model_data: LLMCreate) -> None:
+    async def add_llm_handler(self, language_model_data: LLMCreate, guild: Union[discord.Guild, Guild, int]) -> None:
         """
         Add a new LLMHandler at runtime and save the transient language_model to the database.
 
         Args:
-            language_model_data (LLM): Transient LLM object to be added.
+            language_model_data (LLMCreate): Transient LLM object to be added.
+            guild (Union[discord.Guild, Guild, int]): Guild or guild ID for handler.
 
         Raises:
             ValueError: If an LLMHandler with the same name already exists.
         """
-        existing_model = await LLM.get_by_name(language_model_data.name)
+        existing_model = await LLM.get_by_name(language_model_data.name, guild)
         if existing_model:
             raise ValueError(f"LLMHandler with name '{language_model_data.name}' already exists.")
 
-        language_model = await LLM.create(language_model_data)
-        print(f"Added new LLMHandler: {language_model_data.name}")
+        await LLM.create(language_model_data)
+        logger.info(f"Added new LLM for guild {guild.id}: {language_model_data.name}")
 
     async def remove_llm_handler(self, identifier: Union[int, LLM]) -> None:
         """
