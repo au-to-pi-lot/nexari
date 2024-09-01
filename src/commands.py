@@ -37,35 +37,35 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
     async def list(self, interaction: discord.Interaction):
-        """List all available LLM handlers for the current guild"""
+        """List all available LLMs for the current guild"""
         handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
-        embed = Embed(title="Available LLM Handlers", color=discord.Color.blue())
+        embed = Embed(title="Available LLMs", color=discord.Color.blue())
         if handlers:
             for handler in handlers:
                 embed.add_field(name=handler.llm.name, value=f"Model: {handler.llm.llm_name}", inline=False)
         else:
-            embed.description = "No LLM handlers available for this guild."
+            embed.description = "No LLMs configured."
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
-        name="Name of the new LLM handler",
-        api_base="API base URL",
+        name="Name of the new LLM",
+        api_base="API base URL path",
         llm_name="Name of the model",
-        api_key="API key for the LLM",
-        max_tokens="Maximum number of tokens",
-        system_prompt="System prompt",
-        context_length="Context length",
-        message_limit="Message limit",
-        temperature="Temperature (default is 1.0)",
-        top_p="Top P value",
-        top_k="Top K value",
-        frequency_penalty="Frequency penalty",
-        presence_penalty="Presence penalty",
-        repetition_penalty="Repetition penalty",
-        min_p="Minimum P value",
-        top_a="Top A value"
+        api_key="API secret key (don't share this!)",
+        max_tokens="Maximum number of tokens per response",
+        system_prompt="System prompt to be displayed at start of context",
+        context_length="Context length in tokens",
+        message_limit="Number of messages to put in LLM's context",
+        temperature="Sampling temperature (default is 1.0)",
+        top_p="Sampling top_p value",
+        top_k="Sampling top_k value (not supported by all APIs)",
+        frequency_penalty="Sampling frequency penalty",
+        presence_penalty="Sampling presence penalty",
+        repetition_penalty="Sampling repetition penalty (not supported by all APIs)",
+        min_p="Sampling min_p value (not supported by all APIs)",
+        top_a="Sampling top_a value (not supported by all APIs)"
     )
     async def create(
             self,
@@ -87,7 +87,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             min_p: Optional[float] = None,
             top_a: Optional[float] = None
     ):
-        """Create a new LLM handler"""
+        """Create a new LLM"""
         await interaction.response.defer(ephemeral=True)
 
         model_data = LLMCreate(
@@ -112,37 +112,38 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await self.bot.add_llm_handler(model_data, interaction.guild)
-            embed = Embed(title="LLM Handler Created", color=discord.Color.green())
+            embed = Embed(title="LLM Created", color=discord.Color.green())
             embed.add_field(name="Name", value=name, inline=False)
             embed.add_field(name="Model", value=llm_name, inline=False)
             embed.add_field(name="Max Tokens", value=str(max_tokens), inline=True)
             embed.add_field(name="Temperature", value=str(temperature), inline=True)
             await interaction.followup.send(embed=embed)
         except ValueError as e:
-            embed = Embed(title="Error Creating LLM Handler", color=discord.Color.red())
+            embed = Embed(title="Error Creating LLM", color=discord.Color.red())
             embed.description = str(e)
             await interaction.followup.send(embed=embed)
 
-    @app_commands.command(description="Modify an existing LLM handler")
+    @app_commands.command(description="Modify an existing LLM")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.autocomplete(name=autocomplete_llm_name)
     @app_commands.describe(
-        name="Name of the LLM handler to modify",
-        new_name="New name for the LLM handler",
-        api_base="API base URL",
+        name="Name of the LLM to modify",
+        new_name="New name for the LLM",
+        api_base="API base URL path",
         llm_name="Name of the model",
-        max_tokens="Maximum number of tokens",
-        system_prompt="System prompt",
-        context_length="Context length",
-        message_limit="Message limit",
-        temperature="Temperature (default is 1.0)",
-        top_p="Top P value",
-        top_k="Top K value",
-        frequency_penalty="Frequency penalty",
-        presence_penalty="Presence penalty",
-        repetition_penalty="Repetition penalty",
-        min_p="Minimum P value",
-        top_a="Top A value"
+        api_key="API secret key (don't share this!)",
+        max_tokens="Maximum number of tokens per response",
+        system_prompt="System prompt to be displayed at start of context",
+        context_length="Context length in tokens",
+        message_limit="Number of messages to put in LLM's context",
+        temperature="Sampling temperature (default is 1.0)",
+        top_p="Sampling top_p value",
+        top_k="Sampling top_k value (not supported by all APIs)",
+        frequency_penalty="Sampling frequency penalty",
+        presence_penalty="Sampling presence penalty",
+        repetition_penalty="Sampling repetition penalty (not supported by all APIs)",
+        min_p="Sampling min_p value (not supported by all APIs)",
+        top_a="Sampling top_a value (not supported by all APIs)"
     )
     async def modify(
             self,
@@ -169,8 +170,8 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         model = await LLM.get_by_name(name, interaction.guild_id)
         if not model:
-            embed = Embed(title="Error Modifying LLM Handler", color=discord.Color.red())
-            embed.description = f"LLM handler '{name}' not found in this guild."
+            embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
+            embed.description = f"LLM '{name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
 
@@ -195,7 +196,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await self.bot.modify_llm_handler(model.id, update_data)
-            embed = Embed(title="LLM Handler Modified", color=discord.Color.green())
+            embed = Embed(title="LLM Modified", color=discord.Color.green())
             embed.add_field(name="Name", value=new_name or name, inline=False)
             if llm_name:
                 embed.add_field(name="Model", value=llm_name, inline=False)
@@ -205,54 +206,57 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 embed.add_field(name="Temperature", value=str(temperature), inline=True)
             await interaction.followup.send(embed=embed)
         except ValueError as e:
-            embed = Embed(title="Error Modifying LLM Handler", color=discord.Color.red())
+            embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
             embed.description = str(e)
             await interaction.followup.send(embed=embed)
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.autocomplete(name=autocomplete_llm_name)
+    @app_commands.describe(
+        name="Name of the LLM to delete",
+    )
     async def delete(self, interaction: discord.Interaction, name: str):
-        """Delete an existing LLM handler"""
+        """Delete an existing LLM"""
         handler = await LLMHandler.get_handler(name, interaction.guild_id)
         if not handler:
-            embed = Embed(title="Error Deleting LLM Handler", color=discord.Color.red())
-            embed.description = f"LLM handler '{name}' not found in this guild."
+            embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
+            embed.description = f"'{name}' not found."
             await interaction.response.send_message(embed=embed)
             return
 
         try:
             await self.bot.remove_llm_handler(handler.llm)
-            embed = Embed(title="LLM Handler Deleted", color=discord.Color.green())
-            embed.description = f"LLM handler '{name}' deleted successfully!"
+            embed = Embed(title="LLM Deleted", color=discord.Color.green())
+            embed.description = f"'{name}' deleted successfully!"
             await interaction.response.send_message(embed=embed)
         except ValueError as e:
-            embed = Embed(title="Error Deleting LLM Handler", color=discord.Color.red())
+            embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
             embed.description = str(e)
             await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(description="Create a deep copy of an existing LLM handler with a new name")
+    @app_commands.command(description="Create a deep copy of an existing LLM with a new name")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
-        source_name="Name of the existing LLM handler to copy",
-        new_name="Name for the new copy of the LLM handler"
+        source_name="Name of the existing LLM",
+        new_name="Name for the new copy"
     )
     @app_commands.autocomplete(source_name=autocomplete_llm_name)
     async def copy(self, interaction: discord.Interaction, source_name: str, new_name: str):
-        """Create a deep copy of an existing LLM handler with a new name"""
+        """Create a deep copy of an existing LLM with a new name"""
         await interaction.response.defer(ephemeral=True)
 
         source_handler = await LLMHandler.get_handler(source_name, interaction.guild_id)
         if not source_handler:
-            embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
-            embed.description = f"Source LLM handler '{source_name}' not found in this guild."
+            embed = Embed(title="Error Copying LLM", color=discord.Color.red())
+            embed.description = f"'{source_name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
 
         existing_handler = await LLMHandler.get_handler(new_name, interaction.guild_id)
         if existing_handler:
-            embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
-            embed.description = f"An LLM handler with the name '{new_name}' already exists in this guild."
+            embed = Embed(title="Error Copying LLM", color=discord.Color.red())
+            embed.description = f"An LLM with the name '{new_name}' already exists in this guild."
             await interaction.followup.send(embed=embed)
             return
 
@@ -280,22 +284,22 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await self.bot.add_llm_handler(new_model_data, interaction.guild)
-            embed = Embed(title="LLM Handler Copied", color=discord.Color.green())
-            embed.description = f"LLM handler '{source_name}' successfully copied to '{new_name}'!"
+            embed = Embed(title="LLM Copied", color=discord.Color.green())
+            embed.description = f"LLM '{source_name}' successfully copied to '{new_name}'!"
             embed.add_field(name="Model", value=source_model.llm_name, inline=False)
             embed.add_field(name="Max Tokens", value=str(source_model.max_tokens), inline=True)
             embed.add_field(name="Temperature", value=str(source_model.temperature), inline=True)
             await interaction.followup.send(embed=embed)
         except ValueError as e:
-            embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
+            embed = Embed(title="Error Copying LLM", color=discord.Color.red())
             embed.description = str(e)
             await interaction.followup.send(embed=embed)
 
-    @app_commands.command(description="Set an avatar for an LLM handler")
+    @app_commands.command(description="Set an avatar for an LLM")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.autocomplete(name=autocomplete_llm_name)
     async def set_avatar(self, interaction: discord.Interaction, name: str, image_url: str):
-        """Set an avatar for an LLM handler"""
+        """Set an avatar for an LLM"""
         await interaction.response.defer(ephemeral=True)
 
         # Validate LLM exists
@@ -303,7 +307,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             handler = await LLMHandler.get_handler(name, interaction.guild_id, session=db_session)
             if not handler:
                 embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                embed.description = f"LLM handler '{name}' not found in this guild."
+                embed.description = f"'{name}' not found in this guild."
                 await interaction.followup.send(embed=embed)
                 return
 
@@ -350,7 +354,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await webhook.edit(avatar=image_data)
 
         embed = Embed(title="Avatar Set", color=discord.Color.green())
-        embed.description = f"Avatar for LLM handler '{name}' has been set and applied to all webhooks."
+        embed.description = f"Avatar for '{name}' has been set and applied to all webhooks."
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Sync the bot commands with the current guild")
