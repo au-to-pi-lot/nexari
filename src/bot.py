@@ -4,9 +4,11 @@ import discord
 from discord.ext import commands
 
 from src.config import Config
-from src.db.models import LLM, Webhook
+from src.db.models import LLM, Webhook, Guild
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.llm import LLMHandler, LiteLLMMessage
+from src.db.models.guild import GuildCreate
+from src.db.engine import Session
 
 
 class DiscordBot(commands.Bot):
@@ -119,9 +121,6 @@ class DiscordBot(commands.Bot):
         """
         Ensure that a guild exists in the database.
         """
-        from src.db.models.guild import Guild, GuildCreate
-        from src.db.engine import Session
-
         async with Session() as session:
             db_guild = await Guild.get(guild.id, session=session)
             if not db_guild:
