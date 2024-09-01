@@ -124,7 +124,7 @@ class DiscordBot(commands.Bot):
         async with Session() as session:
             db_guild = await Guild.get(guild.id, session=session)
             if not db_guild:
-                guild_data = GuildCreate(id=guild.id, name=guild.name)
+                guild_data = GuildCreate(id=guild.id)
                 await Guild.create(guild_data, session=session)
                 print(f"Added new guild to database: {guild.name} (ID: {guild.id})")
 

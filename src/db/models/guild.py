@@ -10,18 +10,16 @@ if TYPE_CHECKING:
 
 class GuildCreate(BaseModel):
     id: int
-    name: str
 
 
 class GuildUpdate(BaseModel):
-    name: Optional[str] = None
+    pass
 
 
 class Guild(Base[GuildCreate, GuildUpdate]):
     __tablename__ = "guild"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
-    name: Mapped[str] = mapped_column(nullable=False)
 
     channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
     llms: Mapped[List["LLM"]] = relationship(back_populates="guild")
