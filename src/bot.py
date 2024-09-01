@@ -85,7 +85,7 @@ class DiscordBot(commands.Bot):
         await LLM.delete(language_model.id)
         logger.info(f"Removed LLMHandler and associated webhooks: {language_model.name}")
 
-    async def modify_llm_handler(self, id: int, data: LLMUpdate) -> None:
+    async def modify_llm_handler(self, id: int, data: LLMUpdate, *, session: Session = None) -> None:
         """
         Modify an existing LLMHandler at runtime using a transient SQLAlchemy object.
 
@@ -100,7 +100,7 @@ class DiscordBot(commands.Bot):
         if not model:
             raise ValueError(f"No existing LLM found with id: {data.id}")
 
-        model = await model.update(id, data)
+        model = await model.update(id, data, session=session)
         logger.info(f"Modified LLMHandler: {model.name}")
 
     async def on_ready(self):
