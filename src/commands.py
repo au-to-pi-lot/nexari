@@ -338,15 +338,14 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
             # Delete old avatar if it exists
             if handler.llm.avatar:
-                old_avatar_path = ROOT_DIR / 'avatars' / handler.llm.avatar
+                old_avatar_path = AVATAR_DIR / handler.llm.avatar
                 if old_avatar_path.exists():
                     old_avatar_path.unlink()
 
             # Save the new image
-            avatars_dir = ROOT_DIR / 'avatars'
-            avatars_dir.mkdir(exist_ok=True)
+            AVATAR_DIR.mkdir(exist_ok=True)
             avatar_filename = f"{name}.{file_extension}"
-            avatar_path = avatars_dir / avatar_filename
+            avatar_path = AVATAR_DIR / avatar_filename
 
             with open(avatar_path, 'wb') as f:
                 f.write(image_data)
