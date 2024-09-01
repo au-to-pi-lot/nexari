@@ -27,6 +27,7 @@ class LiteLLMMessage(BaseModel):
     role: str
     content: str
 
+
 class LLMHandler:
     def __init__(self, llm: LLM):
         self.llm = llm
@@ -42,7 +43,8 @@ class LLMHandler:
         return [cls(model) for model in models]
 
     @classmethod
-    async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int], *, session: Session = None) -> Optional["LLMHandler"]:
+    async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int], *, session: Session = None) -> \
+    Optional["LLMHandler"]:
         guild_id = Guild.get_guild_id(guild)
         model = await LLM.get_by_name(name, guild_id, session=session)
         return cls(model) if model else None
@@ -50,7 +52,8 @@ class LLMHandler:
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
         async with Session() as session:
             query = select(Webhook).where(
-                Webhook.channel_id == channel.id and Webhook.llm_id == self.llm.id)
+                Webhook.channel_id == channel.id and Webhook.llm_id == self.llm.id
+            )
             db_webhook = (await session.scalars(query)).one_or_none()
 
             if db_webhook:
@@ -68,12 +71,14 @@ class LLMHandler:
                             avatar = avatar_file.read()
 
                 webhook = await channel.create_webhook(name=self.llm.name, avatar=avatar)
-                session.add(Webhook(
-                    id=webhook.id,
-                    token=webhook.token,
-                    channel_id=channel.id,
-                    llm_id=self.llm.id,
-                ))
+                session.add(
+                    Webhook(
+                        id=webhook.id,
+                        token=webhook.token,
+                        channel_id=channel.id,
+                        llm_id=self.llm.id,
+                    )
+                )
                 await session.commit()
 
         return webhook
@@ -139,8 +144,11 @@ Current Discord Channel: {channel_name}
             content = content.split("<|begin_metadata|>", 1)[0]
         return content.strip()
 
-    async def fetch_message_history(self, bot: discord.Client, channel: Union[discord.TextChannel, discord.DMChannel]) -> List[
-        LiteLLMMessage]:
+    async def fetch_message_history(
+            self,
+            bot: discord.Client,
+            channel: Union[discord.TextChannel, discord.DMChannel]
+    ) -> List[LiteLLMMessage]:
         """
         Fetch message history from a Discord channel.
 
@@ -264,9 +272,8 @@ Sent at: {first_message.created_at}
                     message_lines = []
                     current_length = 0
                     for index, line in enumerate(lines):
-                        if current_length + len(line) + len("```\n") + len(
-                                "\n```"
-                                ) + 1 <= DISCORD_MESSAGE_MAX_CHARS:
+                        estimated_length = current_length + len(line) + len("```\n") + len("\n```") + 1
+                        if estimated_length <= DISCORD_MESSAGE_MAX_CHARS:
                             message_lines.append(line)
                             current_length += len(line) + 1  # plus one for newline
                         else:
@@ -288,5 +295,3 @@ Sent at: {first_message.created_at}
                     messages.append("```\n```")
 
         return messages
-
-
