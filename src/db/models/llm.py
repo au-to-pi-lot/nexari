@@ -1,4 +1,5 @@
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING, Union, overload
+import discord
 from pydantic import BaseModel, Field
 from sqlalchemy import Text, select, UniqueConstraint, ForeignKey
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,7 +9,7 @@ from src.db.models import Base
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
-    from src.db.models.guild import Guild
+    from src.db.models.guild import Guild as GuildModel
 
 
 class LLMCreate(BaseModel):
@@ -121,7 +122,9 @@ class LLM(Base[LLMCreate, LLMUpdate]):
         return top_a
 
     @classmethod
-    async def get_by_name(cls, name: str, guild_id: int, *, session: Optional[Session] = None) -> Optional["LLM"]:
+    async def get_by_name(cls, name: str, guild: Union[discord.Guild, "GuildModel", int], *, session: Optional[Session] = None) -> Optional["LLM"]:
+        guild_id = cls._get_guild_id(guild)
+
         async def _get_by_name(s):
             try:
                 result = await s.execute(select(cls).filter(cls.name == name, cls.guild_id == guild_id))
@@ -135,3 +138,12 @@ class LLM(Base[LLMCreate, LLMUpdate]):
         else:
             async with Session() as new_session:
                 return await _get_by_name(new_session)
+
+    @staticmethod
+    def _get_guild_id(guild: Union[discord.Guild, "GuildModel", int]) -> int:
+        if isinstance(guild, (discord.Guild, GuildModel)):
+            return guild.id
+        elif isinstance(guild, int):
+            return guild
+        else:
+            raise ValueError("Invalid guild type. Expected discord.Guild, GuildModel, or int.")

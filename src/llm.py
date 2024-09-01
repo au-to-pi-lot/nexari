@@ -1,13 +1,15 @@
 import textwrap
 from datetime import datetime
 from itertools import cycle, groupby
-from typing import List, Literal, Union, Iterable, Optional
+from typing import List, Literal, Union, Iterable, Optional, overload
 
 import discord
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 from sqlalchemy import select
+
+from src.db.models.guild import Guild as GuildModel
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
@@ -27,15 +29,26 @@ class LLMHandler:
         self.llm = llm
 
     @classmethod
-    async def get_llm_handlers(cls, guild_id: int) -> List["LLMHandler"]:
-        with Session() as session:
+    async def get_llm_handlers(cls, guild: Union[discord.Guild, GuildModel, int]) -> List["LLMHandler"]:
+        guild_id = cls._get_guild_id(guild)
+        async with Session() as session:
             models = (await Guild.get(guild_id, session=session)).llms
         return [cls(model) for model in models]
 
     @classmethod
-    async def get_handler(cls, name: str, guild_id: int) -> Optional["LLMHandler"]:
+    async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int]) -> Optional["LLMHandler"]:
+        guild_id = cls._get_guild_id(guild)
         model = await LLM.get_by_name(name, guild_id)
         return cls(model) if model else None
+
+    @staticmethod
+    def _get_guild_id(guild: Union[discord.Guild, GuildModel, int]) -> int:
+        if isinstance(guild, (discord.Guild, GuildModel)):
+            return guild.id
+        elif isinstance(guild, int):
+            return guild
+        else:
+            raise ValueError("Invalid guild type. Expected discord.Guild, GuildModel, or int.")
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
         async with Session() as session:
