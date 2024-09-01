@@ -118,7 +118,7 @@ class DiscordBot(commands.Bot):
             synced = await self.tree.sync(guild=guild)
             logger.info(f"Synced {len(synced)} command(s)")
         except Exception as e:
-            logger.error(f"Error syncing command tree: {e}")
+            logger.exception(f"Error syncing command tree: {e}")
 
     async def ensure_guild_exists(self, guild: discord.Guild):
         """
@@ -177,7 +177,7 @@ class DiscordBot(commands.Bot):
                         await DiscordBot.send_messages(messages, webhook)
                     except Exception as e:
                         error_message = str(e)
-                        print(f"An error occurred: {error_message}")
+                        logger.exception(f"An error occurred: {e}")
                         await channel.send(f"[Script error: {error_message}]")
 
     @staticmethod
