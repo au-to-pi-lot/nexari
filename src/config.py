@@ -7,6 +7,6 @@ class Config(BaseModel):
     database_url: str = Field(default="sqlite+aiosqlite:///data.db")
 
 
-with open('config.yml', 'r') as config_file:
+with open("config.yml", "r") as config_file:
     config_dict = yaml.safe_load(config_file)
     config = Config(**config_dict)

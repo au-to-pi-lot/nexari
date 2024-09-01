@@ -1,6 +1,6 @@
 from typing import Callable, TypeVar, List
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def drop_both_ends(predicate: Callable[[T], bool], lst: List[T]) -> List[T]:

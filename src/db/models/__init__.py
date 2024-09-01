@@ -7,13 +7,16 @@ from sqlalchemy.sql.base import ExecutableOption
 
 from src.db.engine import Session
 
-T = TypeVar('T', bound='Base')
-CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
-UpdateSchemaType = TypeVar('UpdateSchemaType', bound=BaseModel)
+T = TypeVar("T", bound="Base")
+CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
+
 
 class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
     @classmethod
-    async def create(cls: Type[T], obj_in: CreateSchemaType, *, session: Optional[Session] = None) -> T:
+    async def create(
+        cls: Type[T], obj_in: CreateSchemaType, *, session: Optional[Session] = None
+    ) -> T:
         async def _create(s: Session):
             try:
                 db_obj = cls(**obj_in.dict())
@@ -33,13 +36,21 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
                 return await _create(new_session)
 
     @classmethod
-    async def get(cls: Type[T], id: Any, *, options: Iterable[ExecutableOption] = None, session: Optional[Session] = None) -> Optional[T]:
+    async def get(
+        cls: Type[T],
+        id: Any,
+        *,
+        options: Iterable[ExecutableOption] = None,
+        session: Optional[Session] = None
+    ) -> Optional[T]:
         if options is None:
             options = []
 
         async def _get(s: Session):
             try:
-                result = await s.execute(select(cls).options(*options).filter(cls.id == id))
+                result = await s.execute(
+                    select(cls).options(*options).filter(cls.id == id)
+                )
                 return result.scalar_one_or_none()
             except SQLAlchemyError as e:
                 # Log the error here
@@ -52,7 +63,13 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
                 return await _get(new_session)
 
     @classmethod
-    async def get_many(cls: Type[T], skip: int = 0, limit: Optional[int] = 100, *, session: Optional[Session] = None) -> List[T]:
+    async def get_many(
+        cls: Type[T],
+        skip: int = 0,
+        limit: Optional[int] = 100,
+        *,
+        session: Optional[Session] = None
+    ) -> List[T]:
         async def _get_many(s: Session):
             try:
                 result = await s.execute(select(cls).offset(skip).limit(limit))
@@ -68,10 +85,21 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
                 return await _get_many(new_session)
 
     @classmethod
-    async def update(cls: Type[T], id: Any, obj_in: UpdateSchemaType, *, session: Optional[Session] = None) -> Optional[T]:
+    async def update(
+        cls: Type[T],
+        id: Any,
+        obj_in: UpdateSchemaType,
+        *,
+        session: Optional[Session] = None
+    ) -> Optional[T]:
         async def _update(s: Session):
             try:
-                stmt = update(cls).where(cls.id == id).values(**obj_in.dict(exclude_unset=True)).returning(cls)
+                stmt = (
+                    update(cls)
+                    .where(cls.id == id)
+                    .values(**obj_in.dict(exclude_unset=True))
+                    .returning(cls)
+                )
                 result = await s.execute(stmt)
                 await s.commit()
                 return result.scalar_one_or_none()
@@ -87,7 +115,9 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
                 return await _update(new_session)
 
     @classmethod
-    async def delete(cls: Type[T], id: Any, *, session: Optional[Session] = None) -> None:
+    async def delete(
+        cls: Type[T], id: Any, *, session: Optional[Session] = None
+    ) -> None:
         async def _delete(s: Session):
             try:
                 stmt = delete(cls).where(cls.id == id)

@@ -10,7 +10,6 @@ from src.bot import DiscordBot
 logger = logging.getLogger(__name__)
 
 
-
 async def main():
     """
     Main function to start the Discord bot.
@@ -18,13 +17,15 @@ async def main():
     os.makedirs("log", exist_ok=True)
     handlers = [
         logging.StreamHandler(sys.stdout),
-        logging.handlers.RotatingFileHandler("log/nexari.log", maxBytes=1024 * 1024, backupCount=10, encoding="utf-8")
+        logging.handlers.RotatingFileHandler(
+            "log/nexari.log", maxBytes=1024 * 1024, backupCount=10, encoding="utf-8"
+        ),
     ]
     logging.basicConfig(
         handlers=handlers,
         level=logging.INFO,
         style="{",
-        format='[{asctime}] {levelname} ({name}): {message}'
+        format="[{asctime}] {levelname} ({name}): {message}",
     )
 
     def handle_exception(loop, context):
@@ -36,6 +37,7 @@ async def main():
     bot = DiscordBot(config)
     async with bot:
         await bot.start(config.bot_token)
+
 
 if __name__ == "__main__":
     try:

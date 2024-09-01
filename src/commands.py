@@ -13,7 +13,7 @@ from src.db.engine import Session
 from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.llm import LLMHandler
-from src.const import ROOT_DIR
+from src.const import AVATAR_DIR, ROOT_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,14 @@ class LLMCommands(commands.GroupCog, name="llm"):
         handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
         return [handler.llm.name for handler in handlers]
 
-    async def autocomplete_llm_name(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
+    async def autocomplete_llm_name(
+        self, interaction: Interaction, current: str
+    ) -> List[app_commands.Choice[str]]:
         llm_names = await self.get_llm_names(interaction)
         return [
             app_commands.Choice(name=name, value=name)
-            for name in llm_names if current.lower() in name.lower()
+            for name in llm_names
+            if current.lower() in name.lower()
         ]
 
     @app_commands.command()
@@ -42,7 +45,11 @@ class LLMCommands(commands.GroupCog, name="llm"):
         embed = Embed(title="Available LLMs", color=discord.Color.blue())
         if handlers:
             for handler in handlers:
-                embed.add_field(name=handler.llm.name, value=f"Model: {handler.llm.llm_name}", inline=False)
+                embed.add_field(
+                    name=handler.llm.name,
+                    value=f"Model: {handler.llm.llm_name}",
+                    inline=False,
+                )
         else:
             embed.description = "No LLMs configured."
         await interaction.response.send_message(embed=embed)
@@ -65,27 +72,27 @@ class LLMCommands(commands.GroupCog, name="llm"):
         presence_penalty="Sampling presence penalty",
         repetition_penalty="Sampling repetition penalty (not supported by all APIs)",
         min_p="Sampling min_p value (not supported by all APIs)",
-        top_a="Sampling top_a value (not supported by all APIs)"
+        top_a="Sampling top_a value (not supported by all APIs)",
     )
     async def create(
-            self,
-            interaction: discord.Interaction,
-            name: str,
-            api_base: str,
-            llm_name: str,
-            api_key: str,
-            max_tokens: int,
-            context_length: int,
-            message_limit: int,
-            system_prompt: str = "",
-            temperature: float = 1.0,
-            top_p: Optional[float] = None,
-            top_k: Optional[int] = None,
-            frequency_penalty: Optional[float] = None,
-            presence_penalty: Optional[float] = None,
-            repetition_penalty: Optional[float] = None,
-            min_p: Optional[float] = None,
-            top_a: Optional[float] = None
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        api_base: str,
+        llm_name: str,
+        api_key: str,
+        max_tokens: int,
+        context_length: int,
+        message_limit: int,
+        system_prompt: str = "",
+        temperature: float = 1.0,
+        top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        min_p: Optional[float] = None,
+        top_a: Optional[float] = None,
     ):
         """Create a new LLM"""
         await interaction.response.defer(ephemeral=True)
@@ -107,7 +114,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             presence_penalty=presence_penalty,
             repetition_penalty=repetition_penalty,
             min_p=min_p,
-            top_a=top_a
+            top_a=top_a,
         )
 
         try:
@@ -143,28 +150,28 @@ class LLMCommands(commands.GroupCog, name="llm"):
         presence_penalty="Sampling presence penalty",
         repetition_penalty="Sampling repetition penalty (not supported by all APIs)",
         min_p="Sampling min_p value (not supported by all APIs)",
-        top_a="Sampling top_a value (not supported by all APIs)"
+        top_a="Sampling top_a value (not supported by all APIs)",
     )
     async def modify(
-            self,
-            interaction: discord.Interaction,
-            name: str,
-            new_name: Optional[str] = None,
-            api_base: Optional[str] = None,
-            llm_name: Optional[str] = None,
-            api_key: Optional[str] = None,
-            max_tokens: Optional[int] = None,
-            system_prompt: Optional[str] = None,
-            context_length: Optional[int] = None,
-            message_limit: Optional[int] = None,
-            temperature: Optional[float] = None,
-            top_p: Optional[float] = None,
-            top_k: Optional[int] = None,
-            frequency_penalty: Optional[float] = None,
-            presence_penalty: Optional[float] = None,
-            repetition_penalty: Optional[float] = None,
-            min_p: Optional[float] = None,
-            top_a: Optional[float] = None
+        self,
+        interaction: discord.Interaction,
+        name: str,
+        new_name: Optional[str] = None,
+        api_base: Optional[str] = None,
+        llm_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+        context_length: Optional[int] = None,
+        message_limit: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        frequency_penalty: Optional[float] = None,
+        presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
+        min_p: Optional[float] = None,
+        top_a: Optional[float] = None,
     ):
         await interaction.response.defer(ephemeral=True)
 
@@ -191,7 +198,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             presence_penalty=presence_penalty,
             repetition_penalty=repetition_penalty,
             min_p=min_p,
-            top_a=top_a
+            top_a=top_a,
         )
 
         try:
@@ -235,14 +242,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed.description = str(e)
             await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(description="Create a deep copy of an existing LLM with a new name")
+    @app_commands.command(
+        description="Create a deep copy of an existing LLM with a new name"
+    )
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(
-        source_name="Name of the existing LLM",
-        new_name="Name for the new copy"
+        source_name="Name of the existing LLM", new_name="Name for the new copy"
     )
     @app_commands.autocomplete(source_name=autocomplete_llm_name)
-    async def copy(self, interaction: discord.Interaction, source_name: str, new_name: str):
+    async def copy(
+        self, interaction: discord.Interaction, source_name: str, new_name: str
+    ):
         """Create a deep copy of an existing LLM with a new name"""
         await interaction.response.defer(ephemeral=True)
 
@@ -256,7 +266,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         existing_handler = await LLMHandler.get_handler(new_name, interaction.guild_id)
         if existing_handler:
             embed = Embed(title="Error Copying LLM", color=discord.Color.red())
-            embed.description = f"An LLM with the name '{new_name}' already exists in this guild."
+            embed.description = (
+                f"An LLM with the name '{new_name}' already exists in this guild."
+            )
             await interaction.followup.send(embed=embed)
             return
 
@@ -279,16 +291,22 @@ class LLMCommands(commands.GroupCog, name="llm"):
             presence_penalty=source_model.presence_penalty,
             repetition_penalty=source_model.repetition_penalty,
             min_p=source_model.min_p,
-            top_a=source_model.top_a
+            top_a=source_model.top_a,
         )
 
         try:
             await self.bot.add_llm_handler(new_model_data, interaction.guild)
             embed = Embed(title="LLM Copied", color=discord.Color.green())
-            embed.description = f"LLM '{source_name}' successfully copied to '{new_name}'!"
+            embed.description = (
+                f"LLM '{source_name}' successfully copied to '{new_name}'!"
+            )
             embed.add_field(name="Model", value=source_model.llm_name, inline=False)
-            embed.add_field(name="Max Tokens", value=str(source_model.max_tokens), inline=True)
-            embed.add_field(name="Temperature", value=str(source_model.temperature), inline=True)
+            embed.add_field(
+                name="Max Tokens", value=str(source_model.max_tokens), inline=True
+            )
+            embed.add_field(
+                name="Temperature", value=str(source_model.temperature), inline=True
+            )
             await interaction.followup.send(embed=embed)
         except ValueError as e:
             embed = Embed(title="Error Copying LLM", color=discord.Color.red())
@@ -298,13 +316,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.command(description="Set an avatar for an LLM")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.autocomplete(name=autocomplete_llm_name)
-    async def set_avatar(self, interaction: discord.Interaction, name: str, image_url: str):
+    async def set_avatar(
+        self, interaction: discord.Interaction, name: str, image_url: str
+    ):
         """Set an avatar for an LLM"""
         await interaction.response.defer(ephemeral=True)
 
         # Validate LLM exists
         async with Session(expire_on_commit=False) as db_session:
-            handler = await LLMHandler.get_handler(name, interaction.guild_id, session=db_session)
+            handler = await LLMHandler.get_handler(
+                name, interaction.guild_id, session=db_session
+            )
             if not handler:
                 embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
                 embed.description = f"'{name}' not found in this guild."
@@ -315,26 +337,36 @@ class LLMCommands(commands.GroupCog, name="llm"):
             async with aiohttp.ClientSession() as http_session:
                 async with http_session.get(image_url) as resp:
                     if resp.status != 200:
-                        embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                        embed.description = f"Failed to download image from URL: {image_url}"
+                        embed = Embed(
+                            title="Error Setting Avatar", color=discord.Color.red()
+                        )
+                        embed.description = (
+                            f"Failed to download image from URL: {image_url}"
+                        )
                         await interaction.followup.send(embed=embed)
                         return
 
-                    content_type = resp.headers.get('Content-Type', '').lower()
-                    if content_type not in ['image/jpeg', 'image/png', 'image/gif']:
-                        embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                        embed.description = "The image must be a JPEG, PNG, or GIF file."
+                    content_type = resp.headers.get("Content-Type", "").lower()
+                    if content_type not in ["image/jpeg", "image/png", "image/gif"]:
+                        embed = Embed(
+                            title="Error Setting Avatar", color=discord.Color.red()
+                        )
+                        embed.description = (
+                            "The image must be a JPEG, PNG, or GIF file."
+                        )
                         await interaction.followup.send(embed=embed)
                         return
 
                     image_data = await resp.read()
                     if len(image_data) > 8 * 1024 * 1024:  # 8MB
-                        embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                        embed = Embed(
+                            title="Error Setting Avatar", color=discord.Color.red()
+                        )
                         embed.description = "The image file size must be less than 8MB."
                         await interaction.followup.send(embed=embed)
                         return
 
-                    file_extension = content_type.split('/')[-1]
+                    file_extension = content_type.split("/")[-1]
 
             # Delete old avatar if it exists
             if handler.llm.avatar:
@@ -347,19 +379,23 @@ class LLMCommands(commands.GroupCog, name="llm"):
             avatar_filename = f"{name}.{file_extension}"
             avatar_path = AVATAR_DIR / avatar_filename
 
-            with open(avatar_path, 'wb') as f:
+            with open(avatar_path, "wb") as f:
                 f.write(image_data)
 
             # Update LLM model
             update_data = LLMUpdate(avatar=avatar_filename)
-            await self.bot.modify_llm_handler(handler.llm.id, update_data, session=db_session)
+            await self.bot.modify_llm_handler(
+                handler.llm.id, update_data, session=db_session
+            )
 
         # Update existing webhooks
         for webhook in await handler.get_webhooks(self.bot):
             await webhook.edit(avatar=image_data)
 
         embed = Embed(title="Avatar Set", color=discord.Color.green())
-        embed.description = f"Avatar for '{name}' has been set and applied to all webhooks."
+        embed.description = (
+            f"Avatar for '{name}' has been set and applied to all webhooks."
+        )
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Sync the bot commands with the current guild")

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.const import DISCORD_MESSAGE_MAX_CHARS, ROOT_DIR
+from src.const import AVATAR_DIR, DISCORD_MESSAGE_MAX_CHARS, ROOT_DIR
 from src.db.engine import Session
 from src.db.models import LLM, Webhook, Guild
 from src.db.models.guild import Guild as GuildModel
@@ -24,6 +24,7 @@ class LiteLLMMessage(BaseModel):
     """
     A message in the LiteLLM format.
     """
+
     role: str
     content: str
 
@@ -33,23 +34,34 @@ class LLMHandler:
         self.llm = llm
 
     @classmethod
-    async def get_llm_handlers(cls, guild: Union[discord.Guild, GuildModel, int]) -> List["LLMHandler"]:
+    async def get_llm_handlers(
+        cls, guild: Union[discord.Guild, GuildModel, int]
+    ) -> List["LLMHandler"]:
         guild_id = Guild.get_guild_id(guild)
         async with Session() as session:
-            guild = await Guild.get(guild_id, options=[selectinload(Guild.llms)], session=session)
+            guild = await Guild.get(
+                guild_id, options=[selectinload(Guild.llms)], session=session
+            )
             if guild is None:
                 raise ValueError(f"Guild {guild_id} does not exist")
             models = guild.llms
         return [cls(model) for model in models]
 
     @classmethod
-    async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int], *, session: Session = None) -> \
-    Optional["LLMHandler"]:
+    async def get_handler(
+        cls,
+        name: str,
+        guild: Union[discord.Guild, GuildModel, int],
+        *,
+        session: Session = None,
+    ) -> Optional["LLMHandler"]:
         guild_id = Guild.get_guild_id(guild)
         model = await LLM.get_by_name(name, guild_id, session=session)
         return cls(model) if model else None
 
-    async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
+    async def get_webhook(
+        self, bot: discord.Client, channel: discord.TextChannel
+    ) -> discord.Webhook:
         async with Session() as session:
             query = select(Webhook).where(
                 Webhook.channel_id == channel.id and Webhook.llm_id == self.llm.id
@@ -58,19 +70,19 @@ class LLMHandler:
 
             if db_webhook:
                 webhook = await discord.Webhook.partial(
-                    id=db_webhook.id,
-                    token=db_webhook.token,
-                    client=bot
+                    id=db_webhook.id, token=db_webhook.token, client=bot
                 ).fetch()
             else:
                 avatar = None
                 if self.llm.avatar:
-                    avatar_path = ROOT_DIR / 'avatars' / self.llm.avatar
+                    avatar_path = AVATAR_DIR / self.llm.avatar
                     if avatar_path.exists():
-                        with open(avatar_path, 'rb') as avatar_file:
+                        with open(avatar_path, "rb") as avatar_file:
                             avatar = avatar_file.read()
 
-                webhook = await channel.create_webhook(name=self.llm.name, avatar=avatar)
+                webhook = await channel.create_webhook(
+                    name=self.llm.name, avatar=avatar
+                )
                 session.add(
                     Webhook(
                         id=webhook.id,
@@ -95,14 +107,14 @@ class LLMHandler:
             result = await session.execute(query)
             return [
                 await discord.Webhook.partial(
-                    id=db_webhook.id,
-                    token=db_webhook.token,
-                    client=bot
+                    id=db_webhook.id, token=db_webhook.token, client=bot
                 ).fetch()
                 for db_webhook in result.scalars().all()
             ]
 
-    async def generate_raw_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
+    async def generate_raw_response(
+        self, messages: List[LiteLLMMessage]
+    ) -> ModelResponse:
         try:
             sampling_config = {
                 "temperature": self.llm.temperature,
@@ -145,9 +157,9 @@ Current Discord Channel: {channel_name}
         return content.strip()
 
     async def fetch_message_history(
-            self,
-            bot: discord.Client,
-            channel: Union[discord.TextChannel, discord.DMChannel]
+        self,
+        bot: discord.Client,
+        channel: Union[discord.TextChannel, discord.DMChannel],
     ) -> List[LiteLLMMessage]:
         """
         Fetch message history from a Discord channel.
@@ -160,10 +172,7 @@ Current Discord Channel: {channel_name}
             List[LiteLLMMessage]: A list of messages in LiteLLM format.
         """
         discord_history: Iterable[discord.Message] = reversed(
-            [
-                message
-                async for message in channel.history(limit=self.llm.message_limit)
-            ]
+            [message async for message in channel.history(limit=self.llm.message_limit)]
         )
 
         webhook = await self.get_webhook(bot, channel)
@@ -174,7 +183,11 @@ Current Discord Channel: {channel_name}
         for _, message_group in groupby(discord_history, lambda a: a.author):
             message_group = list(message_group)
             first_message = message_group[0]
-            role: str = "assistant" if first_message.webhook_id and first_message.webhook_id == webhook.id else "user"
+            role: str = (
+                "assistant"
+                if first_message.webhook_id and first_message.webhook_id == webhook.id
+                else "user"
+            )
             msg_content = "\n\n".join((message.content for message in message_group))
             content = f"""\
 {msg_content}
@@ -222,11 +235,13 @@ Sent at: {first_message.created_at}
 
         class CharBlock(BaseModel):
             content: str
-            block_type: Literal['text', 'code']
+            block_type: Literal["text", "code"]
 
         char_blocks = (
             CharBlock(content=content, block_type=block_type)
-            for content, block_type in zip(content.split("```"), cycle(["text", "code"]))
+            for content, block_type in zip(
+                content.split("```"), cycle(["text", "code"])
+            )
             if content
         )
 
@@ -247,11 +262,11 @@ Sent at: {first_message.created_at}
                         nonempty_message
                         for paragraph in block.content.split("\n\n")
                         for message in textwrap.wrap(
-                        paragraph,
-                        width=DISCORD_MESSAGE_MAX_CHARS,
-                        expand_tabs=False,
-                        replace_whitespace=False
-                    )
+                            paragraph,
+                            width=DISCORD_MESSAGE_MAX_CHARS,
+                            expand_tabs=False,
+                            replace_whitespace=False,
+                        )
                         if (nonempty_message := message.strip())
                     ]
                 )
@@ -272,25 +287,21 @@ Sent at: {first_message.created_at}
                     message_lines = []
                     current_length = 0
                     for index, line in enumerate(lines):
-                        estimated_length = current_length + len(line) + len("```\n") + len("\n```") + 1
+                        estimated_length = (
+                            current_length + len(line) + len("```\n") + len("\n```") + 1
+                        )
                         if estimated_length <= DISCORD_MESSAGE_MAX_CHARS:
                             message_lines.append(line)
                             current_length += len(line) + 1  # plus one for newline
                         else:
                             messages.append(
-                                "```\n"
-                                + "\n".join(message_lines)
-                                + "\n```"
+                                "```\n" + "\n".join(message_lines) + "\n```"
                             )
                             message_lines = []
                             current_length = 0
 
                     if message_lines:
-                        messages.append(
-                            "```\n"
-                            + "\n".join(message_lines)
-                            + "\n```"
-                        )
+                        messages.append("```\n" + "\n".join(message_lines) + "\n```")
                 else:  # empty code block
                     messages.append("```\n```")
 

@@ -34,5 +34,6 @@ class Guild(Base[GuildCreate, GuildUpdate]):
         elif isinstance(guild, int):
             return guild
         else:
-            raise ValueError("Invalid guild type. Expected discord.Guild, Guild, or int.")
-
+            raise ValueError(
+                "Invalid guild type. Expected discord.Guild, Guild, or int."
+            )

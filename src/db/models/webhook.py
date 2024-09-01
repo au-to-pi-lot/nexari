@@ -19,10 +19,12 @@ class WebhookCreate(BaseModel):
     channel_id: int
     language_model_id: int
 
+
 class WebhookUpdate(BaseModel):
     token: Optional[str] = None
     channel_id: Optional[int] = None
     language_model_id: Optional[int] = None
+
 
 class Webhook(Base[WebhookCreate, WebhookUpdate]):
     __tablename__ = "webhook"
@@ -38,10 +40,14 @@ class Webhook(Base[WebhookCreate, WebhookUpdate]):
     unique_channel_model = UniqueConstraint("channel_id", "llm_id")
 
     @classmethod
-    async def get_by_language_model_id(cls, language_model_id: int, *, session: Optional[Session] = None) -> List["Webhook"]:
+    async def get_by_language_model_id(
+        cls, language_model_id: int, *, session: Optional[Session] = None
+    ) -> List["Webhook"]:
         async def _get_by_language_model_id(s: Session):
             try:
-                result = await s.execute(select(cls).filter(cls.language_model_id == language_model_id))
+                result = await s.execute(
+                    select(cls).filter(cls.language_model_id == language_model_id)
+                )
                 return result.scalars().all()
             except SQLAlchemyError as e:
                 # Log the error here

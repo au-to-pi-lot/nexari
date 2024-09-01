@@ -125,12 +125,14 @@ from datetime import datetime
 print(datetime.utcnow())
 ```
 """
-    expected_result = [f"""\
+    expected_result = [
+        f"""\
 ```
 from datetime import datetime
 
 print(datetime.utcnow())
-```"""]
+```"""
+    ]
     assert LLMHandler.break_messages(original_text) == expected_result
 
 
