@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from src.const import DISCORD_MESSAGE_MAX_CHARS
+from src.const import DISCORD_MESSAGE_MAX_CHARS, ROOT_DIR
 from src.db.engine import Session
 from src.db.models import LLM, Webhook, Guild
 from src.db.models.guild import Guild as GuildModel
