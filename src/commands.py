@@ -1,11 +1,11 @@
 import logging
 import os
 import aiohttp
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 import discord
-from discord import app_commands, Embed
+from discord import app_commands, Embed, Interaction
 from discord.ext import commands
 
 from src.bot import DiscordBot
@@ -22,6 +22,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         super().__init__()
+
+    async def get_llm_names(self, interaction: Interaction) -> List[str]:
+        handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
+        return [handler.llm.name for handler in handlers]
+
+    async def autocomplete_llm_name(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
+        llm_names = await self.get_llm_names(interaction)
+        return [
+            app_commands.Choice(name=name, value=name)
+            for name in llm_names if current.lower() in name.lower()
+        ]
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
@@ -197,6 +208,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.autocomplete(name=autocomplete_llm_name)
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM handler"""
         handler = await LLMHandler.get_handler(name, interaction.guild_id)
@@ -222,6 +234,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         source_name="Name of the existing LLM handler to copy",
         new_name="Name for the new copy of the LLM handler"
     )
+    @app_commands.autocomplete(source_name=autocomplete_llm_name)
     async def copy(self, interaction: discord.Interaction, source_name: str, new_name: str):
         """Create a deep copy of an existing LLM handler with a new name"""
         await interaction.response.defer(ephemeral=True)
@@ -277,6 +290,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command(description="Set an avatar for an LLM handler")
     @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.autocomplete(name=autocomplete_llm_name)
     async def set_avatar(self, interaction: discord.Interaction, name: str, image_url: str):
         """Set an avatar for an LLM handler"""
         await interaction.response.defer(ephemeral=True)
