@@ -9,6 +9,7 @@ from discord import app_commands, Embed
 from discord.ext import commands
 
 from src.bot import DiscordBot
+from src.db.engine import Session
 from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.llm import LLMHandler
@@ -281,59 +282,55 @@ class LLMCommands(commands.GroupCog, name="llm"):
         await interaction.response.defer(ephemeral=True)
 
         # Validate LLM exists
-        handler = await LLMHandler.get_handler(name, interaction.guild_id)
-        if not handler:
-            embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-            embed.description = f"LLM handler '{name}' not found in this guild."
-            await interaction.followup.send(embed=embed)
-            return
+        async with Session(expire_on_commit=False) as db_session:
+            handler = await LLMHandler.get_handler(name, interaction.guild_id, session=db_session)
+            if not handler:
+                embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                embed.description = f"LLM handler '{name}' not found in this guild."
+                await interaction.followup.send(embed=embed)
+                return
 
-        # Download and validate image
-        async with aiohttp.ClientSession() as session:
-            async with session.get(image_url) as resp:
-                if resp.status != 200:
-                    embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                    embed.description = f"Failed to download image from URL: {image_url}"
-                    await interaction.followup.send(embed=embed)
-                    return
-                
-                content_type = resp.headers.get('Content-Type', '').lower()
-                if content_type not in ['image/jpeg', 'image/png', 'image/gif']:
-                    embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                    embed.description = "The image must be a JPEG, PNG, or GIF file."
-                    await interaction.followup.send(embed=embed)
-                    return
+            # Download and validate image
+            async with aiohttp.ClientSession() as http_session:
+                async with http_session.get(image_url) as resp:
+                    if resp.status != 200:
+                        embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                        embed.description = f"Failed to download image from URL: {image_url}"
+                        await interaction.followup.send(embed=embed)
+                        return
 
-                image_data = await resp.read()
-                if len(image_data) > 8 * 1024 * 1024:  # 8MB
-                    embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                    embed.description = "The image file size must be less than 8MB."
-                    await interaction.followup.send(embed=embed)
-                    return
+                    content_type = resp.headers.get('Content-Type', '').lower()
+                    if content_type not in ['image/jpeg', 'image/png', 'image/gif']:
+                        embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                        embed.description = "The image must be a JPEG, PNG, or GIF file."
+                        await interaction.followup.send(embed=embed)
+                        return
 
-                file_extension = content_type.split('/')[-1]
+                    image_data = await resp.read()
+                    if len(image_data) > 8 * 1024 * 1024:  # 8MB
+                        embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                        embed.description = "The image file size must be less than 8MB."
+                        await interaction.followup.send(embed=embed)
+                        return
 
-        # Save the image
-        avatars_dir = ROOT_DIR / 'avatars'
-        avatars_dir.mkdir(exist_ok=True)
-        avatar_filename = f"{name}.{file_extension}"
-        avatar_path = avatars_dir / avatar_filename
+                    file_extension = content_type.split('/')[-1]
 
-        with open(avatar_path, 'wb') as f:
-            f.write(image_data)
+            # Save the image
+            avatars_dir = ROOT_DIR / 'avatars'
+            avatars_dir.mkdir(exist_ok=True)
+            avatar_filename = f"{name}.{file_extension}"
+            avatar_path = avatars_dir / avatar_filename
 
-        # Update LLM model
-        update_data = LLMUpdate(avatar=avatar_filename)
-        await self.bot.modify_llm_handler(handler.llm.id, update_data)
+            with open(avatar_path, 'wb') as f:
+                f.write(image_data)
+
+            # Update LLM model
+            update_data = LLMUpdate(avatar=avatar_filename)
+            await self.bot.modify_llm_handler(handler.llm.id, update_data, session=db_session)
 
         # Update existing webhooks
-        async for guild in self.bot.fetch_guilds():
-            for channel in await guild.fetch_channels():
-                if isinstance(channel, discord.TextChannel):
-                    webhook = await handler.get_webhook(self.bot, channel)
-                    if webhook:
-                        with open(avatar_path, 'rb') as avatar:
-                            await webhook.edit(avatar=avatar.read())
+        for webhook in await handler.get_webhooks(self.bot):
+            await webhook.edit(avatar=image_data)
 
         embed = Embed(title="Avatar Set", color=discord.Color.green())
         embed.description = f"Avatar for LLM handler '{name}' has been set and applied to all webhooks."
