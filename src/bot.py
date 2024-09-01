@@ -2,11 +2,13 @@ import logging
 from typing import List, Union
 import asyncio
 from collections import defaultdict
+from typing import Set
 
 import discord
 from discord.ext import commands
 
 from src.config import Config
+from src.llm import LLMHandler
 from src.db.engine import Session
 from src.db.models import LLM, Webhook, Guild
 from src.db.models.guild import GuildCreate
@@ -30,7 +32,7 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
         self.config = config
         self.typing_locks = defaultdict(asyncio.Lock)
-        self.typing_queues = defaultdict(asyncio.Queue)
+        self.typing_sets: defaultdict[int, Set[LLMHandler]] = defaultdict(set)
 
     async def setup_hook(self) -> None:
         """
@@ -175,17 +177,16 @@ class DiscordBot(commands.Bot):
             if llm_handler.mentioned_in_message(message.content):
                 pinged_llms.add(llm_handler)
 
-        for llm_handler in pinged_llms:
-            await self.typing_queues[channel.id].put(llm_handler)
+        self.typing_sets[channel.id].update(pinged_llms)
 
-        # Process the queue
+        # Process the set
         if not self.typing_locks[channel.id].locked():
-            asyncio.create_task(self.process_typing_queue(channel))
+            asyncio.create_task(self.process_typing_set(channel))
 
-    async def process_typing_queue(self, channel: discord.TextChannel):
+    async def process_typing_set(self, channel: discord.TextChannel):
         async with self.typing_locks[channel.id]:
-            while not self.typing_queues[channel.id].empty():
-                llm_handler = await self.typing_queues[channel.id].get()
+            while self.typing_sets[channel.id]:
+                llm_handler = self.typing_sets[channel.id].pop()
                 async with channel.typing():
                     try:
                         history: List[LiteLLMMessage] = (
@@ -221,8 +222,6 @@ class DiscordBot(commands.Bot):
                             color=discord.Color.red(),
                         )
                         await channel.send(embed=error_embed)
-                    finally:
-                        self.typing_queues[channel.id].task_done()
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
