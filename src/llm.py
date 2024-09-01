@@ -78,7 +78,7 @@ class LLMHandler:
 
         return webhook
 
-    async def get_webhooks(self) -> List[Webhook]:
+    async def get_webhooks(self, bot: discord.Client) -> List[discord.Webhook]:
         """
         Retrieve all webhooks currently attached to the LLM.
 
@@ -88,7 +88,14 @@ class LLMHandler:
         async with Session() as session:
             query = select(Webhook).where(Webhook.llm_id == self.llm.id)
             result = await session.execute(query)
-            return result.scalars().all()
+            return [
+                await discord.Webhook.partial(
+                    id=db_webhook.id,
+                    token=db_webhook.token,
+                    client=bot
+                ).fetch()
+                for db_webhook in result.scalars().all()
+            ]
 
     async def generate_raw_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
         try:
