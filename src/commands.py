@@ -3,12 +3,11 @@ from typing import Optional
 import discord
 from discord import app_commands, Embed
 from discord.ext import commands
-from sqlalchemy import select
 
 from src.bot import DiscordBot
-from src.db.engine import Session
 from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
+from src.llm import LLMHandler
 
 
 class LLMCommands(commands.GroupCog, name="llm"):
@@ -16,15 +15,11 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self.bot = bot
         super().__init__()
 
-    async def _get_model_by_name(self, name: str, guild_id: int) -> Optional[LLM]:
-        async with Session() as session:
-            return await LLM.get_by_name(name, guild_id, session=session)
-
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
     async def list(self, interaction: discord.Interaction):
         """List all available LLM handlers for the current guild"""
-        handlers = await self.bot.get_llm_handlers(interaction.guild_id)
+        handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
         embed = Embed(title="Available LLM Handlers", color=discord.Color.blue())
         if handlers:
             for handler in handlers:
@@ -151,7 +146,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
     ):
         await interaction.response.defer(ephemeral=True)
 
-        model = await self._get_model_by_name(name, interaction.guild_id)
+        model = await LLM.get_by_name(name, interaction.guild_id)
         if not model:
             embed = Embed(title="Error Modifying LLM Handler", color=discord.Color.red())
             embed.description = f"LLM handler '{name}' not found in this guild."
@@ -196,7 +191,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.checks.has_permissions(administrator=True)
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM handler"""
-        handler = await self.bot.get_handler(name, interaction.guild_id)
+        handler = await LLMHandler.get_handler(name, interaction.guild_id)
         if not handler:
             embed = Embed(title="Error Deleting LLM Handler", color=discord.Color.red())
             embed.description = f"LLM handler '{name}' not found in this guild."
@@ -223,14 +218,14 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a deep copy of an existing LLM handler with a new name"""
         await interaction.response.defer(ephemeral=True)
 
-        source_handler = await self.bot.get_handler(source_name, interaction.guild_id)
+        source_handler = await LLMHandler.get_handler(source_name, interaction.guild_id)
         if not source_handler:
             embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
             embed.description = f"Source LLM handler '{source_name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
 
-        existing_handler = await self.bot.get_handler(new_name, interaction.guild_id)
+        existing_handler = await LLMHandler.get_handler(new_name, interaction.guild_id)
         if existing_handler:
             embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
             embed.description = f"An LLM handler with the name '{new_name}' already exists in this guild."

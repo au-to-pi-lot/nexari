@@ -146,9 +146,10 @@ class DiscordBot(commands.Bot):
 
         await self.process_commands(message)
 
+        guild = message.guild
         channel = message.channel
 
-        llm_handlers = await self.get_llm_handlers()
+        llm_handlers = await LLMHandler.get_llm_handlers(guild.id)
 
         for llm_handler in llm_handlers:
             if llm_handler.llm.name.lower() in message.content.lower():
@@ -175,14 +176,6 @@ class DiscordBot(commands.Bot):
                         error_message = str(e)
                         print(f"An error occurred: {error_message}")
                         await channel.send(f"[Script error: {error_message}]")
-
-    async def get_llm_handlers(self):
-        models = await LLM.get_many(limit=None)
-        return [LLMHandler(model) for model in models]
-
-    async def get_handler(self, name: str) -> Optional[LLMHandler]:
-        model = await LLM.get_by_name(name)
-        return LLMHandler(model) if model else None
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:

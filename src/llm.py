@@ -1,7 +1,7 @@
 import textwrap
-from itertools import cycle, groupby
-from typing import List, Literal, Union, Iterable
 from datetime import datetime
+from itertools import cycle, groupby
+from typing import List, Literal, Union, Iterable, Optional
 
 import discord
 from litellm import acompletion
@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
-from src.db.models import LLM, Webhook
+from src.db.models import LLM, Webhook, Guild
 from src.util import drop_both_ends
 
 
@@ -25,6 +25,17 @@ class LiteLLMMessage(BaseModel):
 class LLMHandler:
     def __init__(self, llm: LLM):
         self.llm = llm
+
+    @classmethod
+    async def get_llm_handlers(cls, guild_id: int) -> List["LLMHandler"]:
+        with Session() as session:
+            models = (await Guild.get(guild_id, session=session)).llms
+        return [cls(model) for model in models]
+
+    @classmethod
+    async def get_handler(cls, name: str, guild_id: int) -> Optional["LLMHandler"]:
+        model = await LLM.get_by_name(name, guild_id)
+        return cls(model) if model else None
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
         async with Session() as session:
