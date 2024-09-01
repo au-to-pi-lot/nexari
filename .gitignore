@@ -1,6 +1,7 @@
 .aider*
 .env
 venv/
+log/
 # Configuration
 config.yml
 data.db
