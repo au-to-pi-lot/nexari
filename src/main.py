@@ -34,7 +34,7 @@ async def main():
     loop.set_exception_handler(handle_exception)
 
     bot = DiscordBot(config)
-    with bot:
+    async with bot:
         await bot.start(config.bot_token)
 
 if __name__ == "__main__":
