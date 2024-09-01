@@ -2,6 +2,7 @@
 .env
 venv/
 log/
+avatars/
 # Configuration
 config.yml
 data.db
