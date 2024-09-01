@@ -13,8 +13,7 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 
 class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
-    """
-    Base class for SQLAlchemy models with CRUD operations.
+    """Base class for SQLAlchemy models with CRUD operations.
 
     Generic parameters:
         CreateSchemaType: Pydantic model for creating a new instance.
@@ -25,8 +24,7 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
     async def create(
         cls: Type[T], obj_in: CreateSchemaType, *, session: Optional[Session] = None
     ) -> T:
-        """
-        Create a new database object.
+        """Create a new database object.
 
         Args:
             obj_in (CreateSchemaType): Pydantic model instance with creation data.

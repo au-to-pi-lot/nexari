@@ -15,13 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class DiscordBot(commands.Bot):
-    """
-    A Discord bot that manages multiple webhooks and uses LiteLLM for generating responses.
-    """
+    """A Discord bot that manages multiple webhooks and uses LiteLLM for generating responses."""
 
     def __init__(self, config: Config):
-        """
-        Initialize the DiscordBot.
+        """Initialize the DiscordBot.
 
         Args:
             config (Config): Configuration for the bot.

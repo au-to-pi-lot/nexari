@@ -13,8 +13,7 @@ if TYPE_CHECKING:
 
 
 class LLMCreate(BaseModel):
-    """
-    Pydantic model for creating a new LLM.
+    """Pydantic model for creating a new LLM.
 
     Attributes:
         name (str): The name of the LLM.

@@ -10,8 +10,7 @@ if TYPE_CHECKING:
 
 
 class ChannelCreate(BaseModel):
-    """
-    Pydantic model for creating a new Channel.
+    """Pydantic model for creating a new Channel.
 
     Attributes:
         id (int): The unique identifier for the channel.
@@ -22,8 +21,7 @@ class ChannelCreate(BaseModel):
 
 
 class ChannelUpdate(BaseModel):
-    """
-    Pydantic model for updating an existing Channel.
+    """Pydantic model for updating an existing Channel.
 
     Attributes:
         guild_id (Optional[int]): The new guild ID for the channel, if changing.
@@ -32,8 +30,7 @@ class ChannelUpdate(BaseModel):
 
 
 class Channel(Base[ChannelCreate, ChannelUpdate]):
-    """
-    SQLAlchemy model representing a Discord channel.
+    """SQLAlchemy model representing a Discord channel.
 
     Attributes:
         id (int): The unique identifier for the channel.

@@ -19,17 +19,41 @@ logger = logging.getLogger(__name__)
 
 
 class LLMCommands(commands.GroupCog, name="llm"):
+    """A group of commands for managing LLMs."""
+
     def __init__(self, bot: DiscordBot):
+        """Initialize the LLMCommands cog.
+
+        Args:
+            bot (DiscordBot): The DiscordBot instance.
+        """
         self.bot = bot
         super().__init__()
 
     async def get_llm_names(self, interaction: Interaction) -> List[str]:
+        """Get a list of LLM names for the current guild.
+
+        Args:
+            interaction (Interaction): The Discord interaction.
+
+        Returns:
+            List[str]: A list of LLM names.
+        """
         handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
         return [handler.llm.name for handler in handlers]
 
     async def autocomplete_llm_name(
         self, interaction: Interaction, current: str
     ) -> List[app_commands.Choice[str]]:
+        """Autocomplete LLM names based on the current input.
+
+        Args:
+            interaction: The Discord interaction.
+            current: The current input string.
+
+        Returns:
+            List[app_commands.Choice[str]]: A list of autocomplete choices.
+        """
         llm_names = await self.get_llm_names(interaction)
         return [
             app_commands.Choice(name=name, value=name)

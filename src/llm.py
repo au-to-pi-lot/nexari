@@ -30,13 +30,31 @@ class LiteLLMMessage(BaseModel):
 
 
 class LLMHandler:
+    """Handler for Language Model operations."""
+
     def __init__(self, llm: LLM):
+        """Initialize the LLMHandler.
+
+        Args:
+            llm: The LLM model instance.
+        """
         self.llm = llm
 
     @classmethod
     async def get_llm_handlers(
         cls, guild: Union[discord.Guild, GuildModel, int]
     ) -> List["LLMHandler"]:
+        """Get LLMHandlers for a given guild.
+
+        Args:
+            guild: The guild object or ID.
+
+        Returns:
+            A list of LLMHandler instances.
+
+        Raises:
+            ValueError: If the guild does not exist.
+        """
         guild_id = Guild.get_guild_id(guild)
         async with Session() as session:
             guild = await Guild.get(
