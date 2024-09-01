@@ -188,7 +188,14 @@ class DiscordBot(commands.Bot):
                         webhook = await llm_handler.get_webhook(self, channel)
                         messages = LLMHandler.break_messages(response_str)
 
-                        await DiscordBot.send_messages(messages, webhook)
+                        if messages:
+                            await DiscordBot.send_messages(messages, webhook)
+                        else:
+                            embed = discord.Embed(
+                                description=f"{name} declined to respond.",
+                                color=discord.Color.light_gray()
+                            )
+                            await channel.send(embed=embed)
                     except Exception as e:
                         logger.exception(f"An error occurred: {e}")
                         error_embed = discord.Embed(
