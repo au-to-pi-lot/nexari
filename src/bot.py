@@ -104,6 +104,9 @@ class DiscordBot(commands.Bot):
         """
         print(f'{self.user} has connected to Discord!')
 
+        for guild in self.guilds:
+            await self.ensure_guild_exists(guild)
+
         try:
             guild = await self.fetch_guild(307011228293660683)
             self.tree.copy_global_to(guild=guild)
@@ -111,6 +114,26 @@ class DiscordBot(commands.Bot):
             print(f"Synced {len(synced)} command(s)")
         except Exception as e:
             print(f"Error syncing command tree: {e}")
+
+    async def ensure_guild_exists(self, guild: discord.Guild):
+        """
+        Ensure that a guild exists in the database.
+        """
+        from src.db.models.guild import Guild, GuildCreate
+        from src.db.engine import Session
+
+        async with Session() as session:
+            db_guild = await Guild.get(guild.id, session=session)
+            if not db_guild:
+                guild_data = GuildCreate(id=guild.id, name=guild.name)
+                await Guild.create(guild_data, session=session)
+                print(f"Added new guild to database: {guild.name} (ID: {guild.id})")
+
+    async def on_guild_join(self, guild: discord.Guild):
+        """
+        Called when the bot joins a new guild.
+        """
+        await self.ensure_guild_exists(guild)
 
     async def on_message(self, message: discord.Message):
         """

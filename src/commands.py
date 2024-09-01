@@ -16,22 +16,21 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self.bot = bot
         super().__init__()
 
-    async def _get_model_by_name(self, name: str) -> Optional[LLM]:
+    async def _get_model_by_name(self, name: str, guild_id: int) -> Optional[LLM]:
         async with Session() as session:
-            result = await session.execute(select(LLM).where(LLM.name == name))
-            return result.scalar_one_or_none()
+            return await LLM.get_by_name(name, guild_id, session=session)
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
     async def list(self, interaction: discord.Interaction):
-        """List all available LLM handlers"""
-        handlers = await self.bot.get_llm_handlers()
+        """List all available LLM handlers for the current guild"""
+        handlers = await self.bot.get_llm_handlers(interaction.guild_id)
         embed = Embed(title="Available LLM Handlers", color=discord.Color.blue())
         if handlers:
             for handler in handlers:
                 embed.add_field(name=handler.llm.name, value=f"Model: {handler.llm.llm_name}", inline=False)
         else:
-            embed.description = "No LLM handlers available."
+            embed.description = "No LLM handlers available for this guild."
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(description="Register a new LLM")
@@ -79,6 +78,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         
         model_data = LLMCreate(
             name=name,
+            guild_id=interaction.guild_id,
             api_base=api_base,
             llm_name=llm_name,
             api_key=api_key,
@@ -151,10 +151,10 @@ class LLMCommands(commands.GroupCog, name="llm"):
     ):
         await interaction.response.defer(ephemeral=True)
 
-        model = await self._get_model_by_name(name)
+        model = await self._get_model_by_name(name, interaction.guild_id)
         if not model:
             embed = Embed(title="Error Modifying LLM Handler", color=discord.Color.red())
-            embed.description = f"LLM handler '{name}' not found."
+            embed.description = f"LLM handler '{name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
 
@@ -196,10 +196,10 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.checks.has_permissions(administrator=True)
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM handler"""
-        handler = await self.bot.get_handler(name)
+        handler = await self.bot.get_handler(name, interaction.guild_id)
         if not handler:
             embed = Embed(title="Error Deleting LLM Handler", color=discord.Color.red())
-            embed.description = f"LLM handler '{name}' not found."
+            embed.description = f"LLM handler '{name}' not found in this guild."
             await interaction.response.send_message(embed=embed)
             return
 
@@ -223,17 +223,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a deep copy of an existing LLM handler with a new name"""
         await interaction.response.defer(ephemeral=True)
 
-        source_handler = await self.bot.get_handler(source_name)
+        source_handler = await self.bot.get_handler(source_name, interaction.guild_id)
         if not source_handler:
             embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
-            embed.description = f"Source LLM handler '{source_name}' not found."
+            embed.description = f"Source LLM handler '{source_name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
 
-        existing_handler = await self.bot.get_handler(new_name)
+        existing_handler = await self.bot.get_handler(new_name, interaction.guild_id)
         if existing_handler:
             embed = Embed(title="Error Copying LLM Handler", color=discord.Color.red())
-            embed.description = f"An LLM handler with the name '{new_name}' already exists."
+            embed.description = f"An LLM handler with the name '{new_name}' already exists in this guild."
             await interaction.followup.send(embed=embed)
             return
 
