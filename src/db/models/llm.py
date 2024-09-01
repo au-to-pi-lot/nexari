@@ -31,7 +31,6 @@ class LLMCreate(BaseModel):
 
 class LLMUpdate(BaseModel):
     name: Optional[str] = None
-    guild_id: Optional[int] = None
     api_base: Optional[str] = None
     llm_name: Optional[str] = None
     api_key: Optional[str] = None
