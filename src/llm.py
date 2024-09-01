@@ -42,9 +42,9 @@ class LLMHandler:
         return [cls(model) for model in models]
 
     @classmethod
-    async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int]) -> Optional["LLMHandler"]:
+    async def get_handler(cls, name: str, guild: Union[discord.Guild, GuildModel, int], *, session: Session = None) -> Optional["LLMHandler"]:
         guild_id = Guild.get_guild_id(guild)
-        model = await LLM.get_by_name(name, guild_id)
+        model = await LLM.get_by_name(name, guild_id, session=session)
         return cls(model) if model else None
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
