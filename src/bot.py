@@ -165,7 +165,7 @@ class DiscordBot(commands.Bot):
         llm_handlers = await LLMHandler.get_llm_handlers(guild.id)
 
         for llm_handler in llm_handlers:
-            if llm_handler.llm.name.lower() in message.content.lower():
+            if llm_handler.mentioned_in_message(message.content):
                 async with channel.typing():
                     try:
                         history: List[LiteLLMMessage] = (
@@ -190,7 +190,7 @@ class DiscordBot(commands.Bot):
                         else:
                             embed = discord.Embed(
                                 description=f"{llm_handler.llm.name} declined to respond.",
-                                color=discord.Color.light_gray()
+                                color=discord.Color.light_gray(),
                             )
                             await channel.send(embed=embed)
                     except Exception as e:
@@ -198,7 +198,7 @@ class DiscordBot(commands.Bot):
                         error_embed = discord.Embed(
                             title="Unexpected Error",
                             description=str(e),
-                            color=discord.Color.red()
+                            color=discord.Color.red(),
                         )
                         await channel.send(embed=error_embed)
 
