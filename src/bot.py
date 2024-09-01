@@ -1,5 +1,7 @@
 import logging
 from typing import List, Union
+import asyncio
+from collections import defaultdict
 
 import discord
 from discord.ext import commands
@@ -27,6 +29,8 @@ class DiscordBot(commands.Bot):
         intents.message_content = True
         super().__init__(command_prefix="!", intents=intents)
         self.config = config
+        self.typing_locks = defaultdict(asyncio.Lock)
+        self.typing_queues = defaultdict(asyncio.Queue)
 
     async def setup_hook(self) -> None:
         """
@@ -147,9 +151,6 @@ class DiscordBot(commands.Bot):
         """
         await self.ensure_guild_exists(guild)
 
-    # Dictionary to keep track of which LLM is typing in each channel
-    typing_llms = {}
-
     async def on_message(self, message: discord.Message):
         """
         Called when a message is received.
@@ -175,50 +176,53 @@ class DiscordBot(commands.Bot):
                 pinged_llms.add(llm_handler)
 
         for llm_handler in pinged_llms:
-            # Check if any LLM is already typing in this channel
-            if channel.id in self.typing_llms:
-                continue  # Skip this LLM and move to the next
+            await self.typing_queues[channel.id].put(llm_handler)
 
-            self.typing_llms[channel.id] = llm_handler
+        # Process the queue
+        if not self.typing_locks[channel.id].locked():
+            asyncio.create_task(self.process_typing_queue(channel))
 
-            async with channel.typing():
-                try:
-                    history: List[LiteLLMMessage] = (
-                        await llm_handler.fetch_message_history(self, channel)
-                    )
-
-                    system_prompt = llm_handler.get_system_prompt(
-                        message.guild.name, channel.name
-                    )
-
-                    history = [
-                        LiteLLMMessage(role="system", content=system_prompt),
-                        *history,
-                    ]
-
-                    response_str = await llm_handler.get_response(history)
-                    webhook = await llm_handler.get_webhook(self, channel)
-                    messages = LLMHandler.break_messages(response_str)
-
-                    if messages:
-                        await DiscordBot.send_messages(messages, webhook)
-                    else:
-                        embed = discord.Embed(
-                            description=f"{llm_handler.llm.name} declined to respond.",
-                            color=discord.Color.light_gray(),
+    async def process_typing_queue(self, channel: discord.TextChannel):
+        async with self.typing_locks[channel.id]:
+            while not self.typing_queues[channel.id].empty():
+                llm_handler = await self.typing_queues[channel.id].get()
+                async with channel.typing():
+                    try:
+                        history: List[LiteLLMMessage] = (
+                            await llm_handler.fetch_message_history(self, channel)
                         )
-                        await channel.send(embed=embed)
-                except Exception as e:
-                    logger.exception(f"An error occurred: {e}")
-                    error_embed = discord.Embed(
-                        title="Unexpected Error",
-                        description=str(e),
-                        color=discord.Color.red(),
-                    )
-                    await channel.send(embed=error_embed)
-                finally:
-                    # Remove the LLM from the typing list when it's done
-                    del self.typing_llms[channel.id]
+
+                        system_prompt = llm_handler.get_system_prompt(
+                            channel.guild.name, channel.name
+                        )
+
+                        history = [
+                            LiteLLMMessage(role="system", content=system_prompt),
+                            *history,
+                        ]
+
+                        response_str = await llm_handler.get_response(history)
+                        webhook = await llm_handler.get_webhook(self, channel)
+                        messages = LLMHandler.break_messages(response_str)
+
+                        if messages:
+                            await DiscordBot.send_messages(messages, webhook)
+                        else:
+                            embed = discord.Embed(
+                                description=f"{llm_handler.llm.name} declined to respond.",
+                                color=discord.Color.light_gray(),
+                            )
+                            await channel.send(embed=embed)
+                    except Exception as e:
+                        logger.exception(f"An error occurred: {e}")
+                        error_embed = discord.Embed(
+                            title="Unexpected Error",
+                            description=str(e),
+                            color=discord.Color.red(),
+                        )
+                        await channel.send(embed=error_embed)
+                    finally:
+                        self.typing_queues[channel.id].task_done()
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
