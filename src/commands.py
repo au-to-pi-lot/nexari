@@ -29,7 +29,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         embed = Embed(title="Available LLM Handlers", color=discord.Color.blue())
         if handlers:
             for handler in handlers:
-                embed.add_field(name=handler.language_model.name, value=f"Model: {handler.language_model.llm_name}", inline=False)
+                embed.add_field(name=handler.llm.name, value=f"Model: {handler.llm.llm_name}", inline=False)
         else:
             embed.description = "No LLM handlers available."
         await interaction.response.send_message(embed=embed)
@@ -204,7 +204,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             return
 
         try:
-            await self.bot.remove_llm_handler(handler.language_model)
+            await self.bot.remove_llm_handler(handler.llm)
             embed = Embed(title="LLM Handler Deleted", color=discord.Color.green())
             embed.description = f"LLM handler '{name}' deleted successfully!"
             await interaction.response.send_message(embed=embed)
@@ -237,7 +237,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(embed=embed)
             return
 
-        source_model = source_handler.language_model
+        source_model = source_handler.llm
 
         # Create a new LLM instance with the same attributes as the source
         new_model_data = LLMCreate(

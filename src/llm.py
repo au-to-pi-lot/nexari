@@ -23,27 +23,28 @@ class LiteLLMMessage(BaseModel):
     content: str
 
 class LLMHandler:
-    def __init__(self, language_model: LLM):
-        self.language_model = language_model
+    def __init__(self, llm: LLM):
+        self.llm = llm
 
     async def get_webhook(self, bot: discord.Client, channel: discord.TextChannel) -> discord.Webhook:
         async with Session() as session:
-            query = select(Webhook).where(channel_id=channel.id, language_model_id=self.language_model.id)
-            webhook_model = await session.scalars(query).one_or_none()
+            query = select(Webhook).where(
+                Webhook.channel_id == channel.id and Webhook.llm_id == self.llm.id)
+            db_webhook = (await session.scalars(query)).one_or_none()
 
-            if webhook_model:
+            if db_webhook:
                 webhook = await discord.Webhook.partial(
-                    id=webhook_model.id,
-                    token=webhook_model.token,
+                    id=db_webhook.id,
+                    token=db_webhook.token,
                     client=bot
                 ).fetch()
             else:
-                webhook = await channel.create_webhook(name=self.language_model.name)
+                webhook = await channel.create_webhook(name=self.llm.name)
                 session.add(Webhook(
                     id=webhook.id,
                     token=webhook.token,
                     channel_id=channel.id,
-                    language_model_id=self.language_model.id,
+                    llm_id=self.llm.id,
                 ))
                 await session.commit()
 
@@ -52,22 +53,22 @@ class LLMHandler:
     async def generate_raw_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
         try:
             sampling_config = {
-                "temperature": self.language_model.temperature,
-                "top_p": self.language_model.top_p,
-                "top_k": self.language_model.top_k,
-                "frequency_penalty": self.language_model.frequency_penalty,
-                "presence_penalty": self.language_model.presence_penalty,
-                "repetition_penalty": self.language_model.repetition_penalty,
-                "min_p": self.language_model.min_p,
-                "top_a": self.language_model.top_a,
+                "temperature": self.llm.temperature,
+                "top_p": self.llm.top_p,
+                "top_k": self.llm.top_k,
+                "frequency_penalty": self.llm.frequency_penalty,
+                "presence_penalty": self.llm.presence_penalty,
+                "repetition_penalty": self.llm.repetition_penalty,
+                "min_p": self.llm.min_p,
+                "top_a": self.llm.top_a,
             }
             response = await acompletion(
-                model=self.language_model.llm_name,
+                model=self.llm.llm_name,
                 messages=messages,
-                max_tokens=self.language_model.max_tokens,
+                max_tokens=self.llm.max_tokens,
                 **{key: val for key, val in sampling_config.items() if val is not None},
-                api_base=self.language_model.api_base,
-                api_key=self.language_model.api_key,
+                api_base=self.llm.api_base,
+                api_key=self.llm.api_key,
                 stop=["<|begin_metadata|>"],
             )
             return response
@@ -77,9 +78,9 @@ class LLMHandler:
 
     def get_system_prompt(self, guild_name: str, channel_name: str) -> str:
         return f"""\
-{self.language_model.system_prompt}
+{self.llm.system_prompt}
 
-You are: {self.language_model.name}
+You are: {self.llm.name}
 Current Time: {datetime.now().isoformat()}
 Current Discord Guild: {guild_name}
 Current Discord Channel: {channel_name}
@@ -106,7 +107,7 @@ Current Discord Channel: {channel_name}
         discord_history: Iterable[discord.Message] = reversed(
             [
                 message
-                async for message in channel.history(limit=self.language_model.message_limit)
+                async for message in channel.history(limit=self.llm.message_limit)
             ]
         )
 
@@ -148,7 +149,7 @@ Sent at: {first_message.created_at}
 
         content = LLMHandler.parse_llm_response(response_str)
 
-        print(f"{self.language_model.name}: {content}")
+        print(f"{self.llm.name}: {content}")
 
         return response_str
 
@@ -185,7 +186,7 @@ Sent at: {first_message.created_at}
 
         messages = []
         if blocks:
-            for block in char_blocks:
+            for block in blocks:
                 if block.block_type == "text":
                     messages.extend(
                         [

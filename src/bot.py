@@ -129,7 +129,7 @@ class DiscordBot(commands.Bot):
         llm_handlers = await self.get_llm_handlers()
 
         for llm_handler in llm_handlers:
-            if llm_handler.language_model.name.lower() in message.content.lower():
+            if llm_handler.llm.name.lower() in message.content.lower():
                 async with channel.typing():
                     try:
                         history: List[LiteLLMMessage] = await llm_handler.fetch_message_history(self, channel)
