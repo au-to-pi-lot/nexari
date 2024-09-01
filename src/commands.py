@@ -298,13 +298,19 @@ class LLMCommands(commands.GroupCog, name="llm"):
                     return
                 
                 content_type = resp.headers.get('Content-Type', '').lower()
-                if not content_type.startswith('image/'):
+                if content_type not in ['image/jpeg', 'image/png', 'image/gif']:
                     embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                    embed.description = f"The URL does not point to a valid image file."
+                    embed.description = "The image must be a JPEG, PNG, or GIF file."
                     await interaction.followup.send(embed=embed)
                     return
 
                 image_data = await resp.read()
+                if len(image_data) > 8 * 1024 * 1024:  # 8MB
+                    embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                    embed.description = "The image file size must be less than 8MB."
+                    await interaction.followup.send(embed=embed)
+                    return
+
                 file_extension = content_type.split('/')[-1]
 
         # Save the image
