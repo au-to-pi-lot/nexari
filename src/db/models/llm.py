@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 from src.db.engine import Session
 from src.db.models import Base
+from src.db.models.guild import Guild
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
