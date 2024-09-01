@@ -49,28 +49,28 @@ class LLMCommands(commands.GroupCog, name="llm"):
         top_a="Top A value"
     )
     async def create(
-        self,
-        interaction: discord.Interaction,
-        name: str,
-        api_base: str,
-        llm_name: str,
-        api_key: str,
-        max_tokens: int,
-        system_prompt: Optional[str],
-        context_length: int,
-        message_limit: int,
-        temperature: float = 1.0,
-        top_p: Optional[float] = None,
-        top_k: Optional[int] = None,
-        frequency_penalty: Optional[float] = None,
-        presence_penalty: Optional[float] = None,
-        repetition_penalty: Optional[float] = None,
-        min_p: Optional[float] = None,
-        top_a: Optional[float] = None
+            self,
+            interaction: discord.Interaction,
+            name: str,
+            api_base: str,
+            llm_name: str,
+            api_key: str,
+            max_tokens: int,
+            system_prompt: Optional[str],
+            context_length: int,
+            message_limit: int,
+            temperature: float = 1.0,
+            top_p: Optional[float] = None,
+            top_k: Optional[int] = None,
+            frequency_penalty: Optional[float] = None,
+            presence_penalty: Optional[float] = None,
+            repetition_penalty: Optional[float] = None,
+            min_p: Optional[float] = None,
+            top_a: Optional[float] = None
     ):
         """Create a new LLM handler"""
         await interaction.response.defer(ephemeral=True)
-        
+
         model_data = LLMCreate(
             name=name,
             guild_id=interaction.guild_id,
@@ -125,24 +125,24 @@ class LLMCommands(commands.GroupCog, name="llm"):
         top_a="Top A value"
     )
     async def modify(
-        self,
-        interaction: discord.Interaction,
-        name: str,
-        new_name: Optional[str] = None,
-        api_base: Optional[str] = None,
-        llm_name: Optional[str] = None,
-        max_tokens: Optional[int] = None,
-        system_prompt: Optional[str] = None,
-        context_length: Optional[int] = None,
-        message_limit: Optional[int] = None,
-        temperature: Optional[float] = None,
-        top_p: Optional[float] = None,
-        top_k: Optional[int] = None,
-        frequency_penalty: Optional[float] = None,
-        presence_penalty: Optional[float] = None,
-        repetition_penalty: Optional[float] = None,
-        min_p: Optional[float] = None,
-        top_a: Optional[float] = None
+            self,
+            interaction: discord.Interaction,
+            name: str,
+            new_name: Optional[str] = None,
+            api_base: Optional[str] = None,
+            llm_name: Optional[str] = None,
+            max_tokens: Optional[int] = None,
+            system_prompt: Optional[str] = None,
+            context_length: Optional[int] = None,
+            message_limit: Optional[int] = None,
+            temperature: Optional[float] = None,
+            top_p: Optional[float] = None,
+            top_k: Optional[int] = None,
+            frequency_penalty: Optional[float] = None,
+            presence_penalty: Optional[float] = None,
+            repetition_penalty: Optional[float] = None,
+            min_p: Optional[float] = None,
+            top_a: Optional[float] = None
     ):
         await interaction.response.defer(ephemeral=True)
 
@@ -284,6 +284,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed = Embed(title="Sync Error", color=discord.Color.red())
             embed.description = f"An error occurred while syncing: {str(e)}"
             await interaction.followup.send(embed=embed)
+
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
