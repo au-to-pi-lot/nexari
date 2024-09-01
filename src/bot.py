@@ -192,7 +192,7 @@ class DiscordBot(commands.Bot):
                             await DiscordBot.send_messages(messages, webhook)
                         else:
                             embed = discord.Embed(
-                                description=f"{name} declined to respond.",
+                                description=f"{llm_handler.llm.name} declined to respond.",
                                 color=discord.Color.light_gray()
                             )
                             await channel.send(embed=embed)
