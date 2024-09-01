@@ -190,9 +190,13 @@ class DiscordBot(commands.Bot):
 
                         await DiscordBot.send_messages(messages, webhook)
                     except Exception as e:
-                        error_message = str(e)
                         logger.exception(f"An error occurred: {e}")
-                        await channel.send(f"[Script error: {error_message}]")
+                        error_embed = discord.Embed(
+                            title="Unexpected Error",
+                            description=str(e),
+                            color=discord.Color.red()
+                        )
+                        await channel.send(embed=error_embed)
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
