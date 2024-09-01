@@ -9,6 +9,7 @@ from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
@@ -34,7 +35,10 @@ class LLMHandler:
     async def get_llm_handlers(cls, guild: Union[discord.Guild, GuildModel, int]) -> List["LLMHandler"]:
         guild_id = Guild.get_guild_id(guild)
         async with Session() as session:
-            models = (await Guild.get(guild_id, session=session)).llms
+            guild = await Guild.get(guild_id, options=[selectinload(Guild.llms)], session=session)
+            if guild is None:
+                raise ValueError(f"Guild {guild_id} does not exist")
+            models = guild.llms
         return [cls(model) for model in models]
 
     @classmethod

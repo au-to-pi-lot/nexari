@@ -1,8 +1,9 @@
-from typing import TypeVar, Type, List, Optional, Any, Generic
+from typing import TypeVar, Type, List, Optional, Any, Generic, Iterable
 from sqlalchemy import select, delete, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase
 from pydantic import BaseModel
+from sqlalchemy.sql.base import ExecutableOption
 
 from src.db.engine import Session
 
@@ -32,10 +33,13 @@ class Base(DeclarativeBase, Generic[CreateSchemaType, UpdateSchemaType]):
                 return await _create(new_session)
 
     @classmethod
-    async def get(cls: Type[T], id: Any, *, session: Optional[Session] = None) -> Optional[T]:
+    async def get(cls: Type[T], id: Any, *, options: Iterable[ExecutableOption] = None, session: Optional[Session] = None) -> Optional[T]:
+        if options is None:
+            options = []
+
         async def _get(s: Session):
             try:
-                result = await s.execute(select(cls).filter(cls.id == id))
+                result = await s.execute(select(cls).options(*options).filter(cls.id == id))
                 return result.scalar_one_or_none()
             except SQLAlchemyError as e:
                 # Log the error here
