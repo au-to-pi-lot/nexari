@@ -78,6 +78,18 @@ class LLMHandler:
 
         return webhook
 
+    async def get_webhooks(self) -> List[Webhook]:
+        """
+        Retrieve all webhooks currently attached to the LLM.
+
+        Returns:
+            List[Webhook]: A list of Webhook objects associated with this LLM.
+        """
+        async with Session() as session:
+            query = select(Webhook).where(Webhook.llm_id == self.llm.id)
+            result = await session.execute(query)
+            return result.scalars().all()
+
     async def generate_raw_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
         try:
             sampling_config = {
