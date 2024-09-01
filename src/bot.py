@@ -147,6 +147,9 @@ class DiscordBot(commands.Bot):
         """
         await self.ensure_guild_exists(guild)
 
+    # Dictionary to keep track of which LLM is typing in each channel
+    typing_llms = {}
+
     async def on_message(self, message: discord.Message):
         """
         Called when a message is received.
@@ -164,43 +167,58 @@ class DiscordBot(commands.Bot):
 
         llm_handlers = await LLMHandler.get_llm_handlers(guild.id)
 
+        # Set to keep track of which LLMs have been pinged in this message
+        pinged_llms = set()
+
         for llm_handler in llm_handlers:
             if llm_handler.mentioned_in_message(message.content):
-                async with channel.typing():
-                    try:
-                        history: List[LiteLLMMessage] = (
-                            await llm_handler.fetch_message_history(self, channel)
+                pinged_llms.add(llm_handler)
+
+        for llm_handler in pinged_llms:
+            # Check if any LLM is already typing in this channel
+            if channel.id in self.typing_llms:
+                continue  # Skip this LLM and move to the next
+
+            self.typing_llms[channel.id] = llm_handler
+
+            async with channel.typing():
+                try:
+                    history: List[LiteLLMMessage] = (
+                        await llm_handler.fetch_message_history(self, channel)
+                    )
+
+                    system_prompt = llm_handler.get_system_prompt(
+                        message.guild.name, channel.name
+                    )
+
+                    history = [
+                        LiteLLMMessage(role="system", content=system_prompt),
+                        *history,
+                    ]
+
+                    response_str = await llm_handler.get_response(history)
+                    webhook = await llm_handler.get_webhook(self, channel)
+                    messages = LLMHandler.break_messages(response_str)
+
+                    if messages:
+                        await DiscordBot.send_messages(messages, webhook)
+                    else:
+                        embed = discord.Embed(
+                            description=f"{llm_handler.llm.name} declined to respond.",
+                            color=discord.Color.light_gray(),
                         )
-
-                        system_prompt = llm_handler.get_system_prompt(
-                            message.guild.name, channel.name
-                        )
-
-                        history = [
-                            LiteLLMMessage(role="system", content=system_prompt),
-                            *history,
-                        ]
-
-                        response_str = await llm_handler.get_response(history)
-                        webhook = await llm_handler.get_webhook(self, channel)
-                        messages = LLMHandler.break_messages(response_str)
-
-                        if messages:
-                            await DiscordBot.send_messages(messages, webhook)
-                        else:
-                            embed = discord.Embed(
-                                description=f"{llm_handler.llm.name} declined to respond.",
-                                color=discord.Color.light_gray(),
-                            )
-                            await channel.send(embed=embed)
-                    except Exception as e:
-                        logger.exception(f"An error occurred: {e}")
-                        error_embed = discord.Embed(
-                            title="Unexpected Error",
-                            description=str(e),
-                            color=discord.Color.red(),
-                        )
-                        await channel.send(embed=error_embed)
+                        await channel.send(embed=embed)
+                except Exception as e:
+                    logger.exception(f"An error occurred: {e}")
+                    error_embed = discord.Embed(
+                        title="Unexpected Error",
+                        description=str(e),
+                        color=discord.Color.red(),
+                    )
+                    await channel.send(embed=error_embed)
+                finally:
+                    # Remove the LLM from the typing list when it's done
+                    del self.typing_llms[channel.id]
 
     @staticmethod
     async def send_messages(messages: List[str], webhook: discord.Webhook) -> None:
