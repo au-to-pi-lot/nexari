@@ -76,13 +76,6 @@ class LLMHandler:
                 ))
                 await session.commit()
 
-            # Update avatar if it has changed
-            if self.llm.avatar:
-                avatar_path = ROOT_DIR / 'avatars' / self.llm.avatar
-                if avatar_path.exists():
-                    with open(avatar_path, 'rb') as avatar_file:
-                        await webhook.edit(avatar=avatar_file.read())
-
         return webhook
 
     async def generate_raw_response(self, messages: List[LiteLLMMessage]) -> ModelResponse:
