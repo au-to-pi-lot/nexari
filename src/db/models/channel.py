@@ -8,12 +8,15 @@ if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
     from src.db.models.guild import Guild
 
+
 class ChannelCreate(BaseModel):
     id: int
     guild_id: int
 
+
 class ChannelUpdate(BaseModel):
     guild_id: Optional[int] = None
+
 
 class Channel(Base[ChannelCreate, ChannelUpdate]):
     __tablename__ = "channel"

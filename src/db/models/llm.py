@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
     from src.db.models.guild import Guild
 
+
 class LLMCreate(BaseModel):
     name: str
     guild_id: int
@@ -29,6 +30,7 @@ class LLMCreate(BaseModel):
     min_p: Optional[float] = None
     top_a: Optional[float] = None
 
+
 class LLMUpdate(BaseModel):
     name: Optional[str] = None
     api_base: Optional[str] = None
@@ -46,6 +48,7 @@ class LLMUpdate(BaseModel):
     repetition_penalty: Optional[float] = None
     min_p: Optional[float] = None
     top_a: Optional[float] = None
+
 
 class LLM(Base[LLMCreate, LLMUpdate]):
     __tablename__ = 'llm'
