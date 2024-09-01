@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import discord
@@ -8,6 +9,8 @@ from src.bot import DiscordBot
 from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.llm import LLMHandler
+
+logger = logging.getLogger(__name__)
 
 
 class LLMCommands(commands.GroupCog, name="llm"):

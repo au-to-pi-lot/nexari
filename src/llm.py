@@ -1,6 +1,7 @@
 import textwrap
 from datetime import datetime
 from itertools import cycle, groupby
+import logging
 from typing import List, Literal, Union, Iterable, Optional, overload
 
 import discord
@@ -10,6 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from src.db.models.guild import Guild as GuildModel
+
+logger = logging.getLogger(__name__)
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
 from src.db.engine import Session
@@ -88,7 +91,7 @@ class LLMHandler:
             )
             return response
         except Exception as e:
-            print(f"Error in generate_response: {str(e)}")
+            logger.error(f"Error in generate_response: {str(e)}")
             raise
 
     def get_system_prompt(self, guild_name: str, channel_name: str) -> str:
@@ -164,7 +167,7 @@ Sent at: {first_message.created_at}
 
         content = LLMHandler.parse_llm_response(response_str)
 
-        print(f"{self.llm.name}: {content}")
+        logger.info(f"{self.llm.name}: {content}")
 
         return response_str
 

@@ -83,7 +83,7 @@ class DiscordBot(commands.Bot):
             await Webhook.delete(webhook.id)
 
         await LLM.delete(language_model.id)
-        print(f"Removed LLMHandler and associated webhooks: {language_model.name}")
+        logger.info(f"Removed LLMHandler and associated webhooks: {language_model.name}")
 
     async def modify_llm_handler(self, id: int, data: LLMUpdate) -> None:
         """
@@ -101,13 +101,13 @@ class DiscordBot(commands.Bot):
             raise ValueError(f"No existing LLM found with id: {data.id}")
 
         model = await model.update(id, data)
-        print(f"Modified LLMHandler: {model.name}")
+        logger.info(f"Modified LLMHandler: {model.name}")
 
     async def on_ready(self):
         """
         Called when the bot is ready and connected to Discord.
         """
-        print(f'{self.user} has connected to Discord!')
+        logger.info(f'{self.user} has connected to Discord!')
 
         for guild in self.guilds:
             await self.ensure_guild_exists(guild)
@@ -116,9 +116,9 @@ class DiscordBot(commands.Bot):
             guild = await self.fetch_guild(307011228293660683)
             self.tree.copy_global_to(guild=guild)
             synced = await self.tree.sync(guild=guild)
-            print(f"Synced {len(synced)} command(s)")
+            logger.info(f"Synced {len(synced)} command(s)")
         except Exception as e:
-            print(f"Error syncing command tree: {e}")
+            logger.error(f"Error syncing command tree: {e}")
 
     async def ensure_guild_exists(self, guild: discord.Guild):
         """
@@ -129,7 +129,7 @@ class DiscordBot(commands.Bot):
             if not db_guild:
                 guild_data = GuildCreate(id=guild.id)
                 await Guild.create(guild_data, session=session)
-                print(f"Added new guild to database: {guild.name} (ID: {guild.id})")
+                logger.info(f"Added new guild to database: {guild.name} (ID: {guild.id})")
 
     async def on_guild_join(self, guild: discord.Guild):
         """
