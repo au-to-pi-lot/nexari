@@ -1,5 +1,7 @@
 import logging
 import os
+from textwrap import dedent
+
 import aiohttp
 from typing import Optional, List
 from pathlib import Path
@@ -524,7 +526,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         # Commands section
         embed.add_field(
             name="Commands",
-            value="""
+            value=dedent("""
         `/llm list`: List all available LLMs
         `/llm create`: Register a new LLM (Admin only)
         `/llm modify`: Modify an existing LLM (Admin only)
@@ -534,32 +536,33 @@ class LLMCommands(commands.GroupCog, name="llm"):
         `/llm print`: Print the configuration of an LLM
         `/llm sync`: Sync bot commands with the current guild (Admin only)
         `/llm help`: Show this help message
-        """,
+        """),
             inline=False,
         )
 
         # LLM Interaction section
         embed.add_field(
             name="Interacting with LLMs",
-            value="""
+            value=dedent("""
         To interact with an LLM, simply mention it in your message:
         `@LLM_Name Your message here`
 
         The LLM will then respond to your message in the channel.
         You can have conversations by continuing to mention the LLM in your replies.
-        """,
+        You can also trigger a response by replying to a message sent by the LLM.
+        """),
             inline=False,
         )
 
         # Tips section
         embed.add_field(
             name="Tips",
-            value="""
+            value=dedent("""
         - Each LLM has its own personality and capabilities based on its configuration.
         - You can use the `/llm print` command to view an LLM's configuration.
         - Administrators can manage LLMs using the create, modify, delete, and copy commands.
         - If you're unsure which LLMs are available, use the `/llm list` command.
-        """,
+        """),
             inline=False,
         )
 
