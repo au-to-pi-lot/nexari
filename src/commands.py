@@ -473,6 +473,45 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(description="Get help on bot commands and LLM interaction")
+    async def help(self, interaction: discord.Interaction):
+        """Provide help information about bot commands and LLM interaction"""
+        embed = Embed(title="LLM Bot Help", color=discord.Color.blue())
+        
+        # General description
+        embed.description = "This bot allows you to interact with various Language Models (LLMs) through Discord. Here's how to use it:"
+
+        # Commands section
+        embed.add_field(name="Commands", value="""
+        `/llm list`: List all available LLMs
+        `/llm create`: Register a new LLM (Admin only)
+        `/llm modify`: Modify an existing LLM (Admin only)
+        `/llm delete`: Delete an existing LLM (Admin only)
+        `/llm copy`: Create a copy of an existing LLM (Admin only)
+        `/llm set_avatar`: Set an avatar for an LLM (Admin only)
+        `/llm print`: Print the configuration of an LLM
+        `/llm sync`: Sync bot commands with the current guild (Admin only)
+        `/llm help`: Show this help message
+        """, inline=False)
+
+        # LLM Interaction section
+        embed.add_field(name="Interacting with LLMs", value="""
+        To interact with an LLM, simply mention it in your message:
+        `@LLM_Name Your message here`
+
+        The LLM will then respond to your message in the channel.
+        You can have conversations by continuing to mention the LLM in your replies.
+        """, inline=False)
+
+        # Tips section
+        embed.add_field(name="Tips", value="""
+        - Each LLM has its own personality and capabilities based on its configuration.
+        - You can use the `/llm print` command to view an LLM's configuration.
+        - Administrators can manage LLMs using the create, modify, delete, and copy commands.
+        - If you're unsure which LLMs are available, use the `/llm list` command.
+        """, inline=False)
+
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
