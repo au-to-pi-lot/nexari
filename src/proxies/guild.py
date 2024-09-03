@@ -9,8 +9,11 @@ from discord import (
     TextChannel,
     VoiceChannel,
 )
+from sqlalchemy.orm import selectinload
+from sqlalchemy import select
 
-from src.db.models import Guild as DBGuild
+from src.db.models import Guild as DBGuild, Guild, LLM
+from src.proxies.llm import LLMProxy
 from src.types.proxy import BaseProxy
 from src.services import svc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,6 +65,15 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     @property
     def roles(self) -> Sequence[Role]:
         return self._discord_obj.roles
+
+    async def get_llms(self) -> Sequence[LLMProxy]:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        async with Session() as session:
+            guild = (await session.scalars(
+                select(Guild).options(selectinload(Guild.llms)).where(Guild.id == self._db_obj.id)
+            )).one()
+            llm_db_objs = guild.llms
+        return [LLMProxy(llm_db_obj) for llm_db_obj in llm_db_objs]
 
     async def fetch_members(self) -> List[discord.Member]:
         return [member async for member in self._discord_obj.fetch_members()]
