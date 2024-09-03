@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from src.db.base import Base
+
+from src.db.models import Base
+
 
 class Message(Base):
     __tablename__ = "messages"
