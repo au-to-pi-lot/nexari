@@ -186,6 +186,40 @@ Current Discord Channel: {channel_name}
             await session.commit()
         self._db_obj = None
 
+    async def copy(self, new_name: str) -> "LLMProxy":
+        """
+        Create a new instance of LLM with all the same values as the source instance, but with a different name.
+
+        Args:
+            new_name (str): The name for the new LLM instance.
+
+        Returns:
+            LLMProxy: A new LLMProxy instance with copied values and the new name.
+        """
+        new_llm_data = {
+            "name": new_name,
+            "guild_id": self._db_obj.guild_id,
+            "api_base": self._db_obj.api_base,
+            "llm_name": self._db_obj.llm_name,
+            "api_key": self._db_obj.api_key,
+            "max_tokens": self._db_obj.max_tokens,
+            "system_prompt": self._db_obj.system_prompt,
+            "context_length": self._db_obj.context_length,
+            "message_limit": self._db_obj.message_limit,
+            "temperature": self._db_obj.temperature,
+            "top_p": self._db_obj.top_p,
+            "top_k": self._db_obj.top_k,
+            "frequency_penalty": self._db_obj.frequency_penalty,
+            "presence_penalty": self._db_obj.presence_penalty,
+            "repetition_penalty": self._db_obj.repetition_penalty,
+            "min_p": self._db_obj.min_p,
+            "top_a": self._db_obj.top_a,
+            "avatar": self._db_obj.avatar
+        }
+        
+        new_llm = await self.create(LLMCreate(**new_llm_data))
+        return new_llm
+
     async def respond(self, channel_id: int, messages: List[LiteLLMMessage]) -> None:
         """
         Generate a response and post it in the given channel.
