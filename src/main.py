@@ -1,11 +1,15 @@
 import asyncio
-import os
-import sys
 import logging
 import logging.handlers
+import os
+import sys
+
+from discord.ext.commands import Bot
 
 from config import config
-from src.bot import DiscordBot
+from src.commands import LLMCommands
+from src.event_handlers import register_event_handlers
+from src.services import svc
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +38,9 @@ async def main():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(handle_exception)
 
-    bot = DiscordBot(config)
+    bot = await svc.aget(Bot)
+    register_event_handlers(bot)
+    await bot.add_cog(LLMCommands(bot))
     async with bot:
         await bot.start(config.bot_token)
 
