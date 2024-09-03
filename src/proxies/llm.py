@@ -6,6 +6,7 @@ import discord
 from discord.ext.commands import Bot
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
+from src.types.litellm_message import LiteLLMMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -184,3 +185,31 @@ Current Discord Channel: {channel_name}
             await session.delete(self._db_obj)
             await session.commit()
         self._db_obj = None
+
+    async def respond(self, channel_id: int, messages: List[LiteLLMMessage]) -> None:
+        """
+        Generate a response and post it in the given channel.
+
+        Args:
+            channel_id (int): The ID of the channel to post the response in.
+            messages (List[LiteLLMMessage]): The conversation history to generate a response from.
+        """
+        try:
+            # Generate the response
+            response = await self.generate_raw_response(messages)
+            
+            # Get the channel
+            channel = await ChannelProxy.get(channel_id)
+            if not channel:
+                logger.error(f"Channel with ID {channel_id} not found")
+                return
+
+            # Get or create the webhook for this channel
+            webhook = await self.get_webhook(channel_id)
+
+            # Send the response using the webhook
+            await webhook.send(content=response.choices[0].message.content)
+
+        except Exception as e:
+            logger.exception(f"Error in respond method: {str(e)}")
+            # Optionally, you could send an error message to the channel here
