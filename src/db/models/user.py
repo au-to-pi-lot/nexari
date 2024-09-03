@@ -45,9 +45,9 @@ class User(Base):
         discriminator (str): The discriminator of the user.
         messages (List[Message]): List of Message objects associated with this user.
     """
-    __tablename__ = "users"
+    __tablename__ = "user"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
     name: Mapped[str] = mapped_column(nullable=False)
     discriminator: Mapped[str] = mapped_column(nullable=False)
 

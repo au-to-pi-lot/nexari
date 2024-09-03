@@ -1,10 +1,9 @@
-from typing import List, Optional, TYPE_CHECKING, Union, overload
-import discord
+from typing import List, Optional, TYPE_CHECKING
+
 from pydantic import BaseModel, Field
-from sqlalchemy import Text, select, UniqueConstraint, ForeignKey
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
-from src.db.engine import Session
+
 from src.db.models import Base
 from src.db.models.guild import Guild
 
@@ -95,7 +94,7 @@ class LLMUpdate(BaseModel):
     avatar: Optional[str] = None
 
 
-class LLM(Base[LLMCreate, LLMUpdate]):
+class LLM(Base):
     """
     SQLAlchemy model representing an LLM configuration.
 
@@ -292,43 +291,3 @@ class LLM(Base[LLMCreate, LLMUpdate]):
         if top_a is not None and top_a < 0.0:
             raise ValueError(f"`top_a` must be non-negative: {top_a}.")
         return top_a
-
-    @classmethod
-    async def get_by_name(
-        cls,
-        name: str,
-        guild: Union[discord.Guild, Guild, int],
-        *,
-        session: Optional[Session] = None,
-    ) -> Optional["LLM"]:
-        """
-        Get an LLM by its name and guild.
-
-        Args:
-            name (str): The name of the LLM to retrieve.
-            guild (Union[discord.Guild, Guild, int]): The guild or guild ID to search in.
-            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
-
-        Returns:
-            Optional[LLM]: The retrieved LLM object, or None if not found.
-
-        Raises:
-            SQLAlchemyError: If there's an error during the database operation.
-        """
-        guild_id = Guild.get_guild_id(guild)
-
-        async def _get_by_name(s: Session):
-            try:
-                result = await s.execute(
-                    select(cls).filter(cls.name == name, cls.guild_id == guild_id)
-                )
-                return result.scalar_one_or_none()
-            except SQLAlchemyError as e:
-                # Log the error here
-                raise
-
-        if session:
-            return await _get_by_name(session)
-        else:
-            async with Session() as new_session:
-                return await _get_by_name(new_session)

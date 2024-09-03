@@ -58,15 +58,13 @@ class Message(Base):
         channel (Channel): The Channel object this message belongs to.
         guild (Guild): The Guild object this message belongs to.
     """
-    __tablename__ = "messages"
+    __tablename__ = "message"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    author_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+    author_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("user.id"), nullable=False)
     channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channel.id"), nullable=False)
-    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(nullable=False)
 
     author: Mapped["User"] = relationship(back_populates="messages")
     channel: Mapped["Channel"] = relationship(back_populates="messages")
-    guild: Mapped["Guild"] = relationship(back_populates="messages")

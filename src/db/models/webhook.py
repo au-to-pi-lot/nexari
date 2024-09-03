@@ -1,11 +1,9 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import Optional, TYPE_CHECKING
 
 from pydantic import BaseModel
-from sqlalchemy import ForeignKey, Text, UniqueConstraint, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.db.engine import Session
 from src.db.models import Base
 
 if TYPE_CHECKING:
@@ -43,7 +41,7 @@ class WebhookUpdate(BaseModel):
     language_model_id: Optional[int] = None
 
 
-class Webhook(Base[WebhookCreate, WebhookUpdate]):
+class Webhook(Base):
     """
     SQLAlchemy model representing a Discord webhook.
 
@@ -66,36 +64,3 @@ class Webhook(Base[WebhookCreate, WebhookUpdate]):
     llm: Mapped["LLM"] = relationship(back_populates="webhooks")
 
     unique_channel_model = UniqueConstraint("channel_id", "llm_id")
-
-    @classmethod
-    async def get_by_language_model_id(
-        cls, language_model_id: int, *, session: Optional[Session] = None
-    ) -> List["Webhook"]:
-        """
-        Get all webhooks associated with a specific language model.
-
-        Args:
-            language_model_id (int): The ID of the language model.
-            session (Optional[Session]): SQLAlchemy async session. If None, a new session will be created.
-
-        Returns:
-            List[Webhook]: A list of Webhook objects associated with the given language model ID.
-
-        Raises:
-            SQLAlchemyError: If there's an error during the database operation.
-        """
-        async def _get_by_language_model_id(s: Session):
-            try:
-                result = await s.execute(
-                    select(cls).filter(cls.llm_id == language_model_id)
-                )
-                return result.scalars().all()
-            except SQLAlchemyError as e:
-                # Log the error here
-                raise
-
-        if session:
-            return await _get_by_language_model_id(session)
-        else:
-            async with Session() as new_session:
-                return await _get_by_language_model_id(new_session)

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.models import Base
+from src.db.models.message import Message
 
 if TYPE_CHECKING:
     from src.db.models.webhook import Webhook
@@ -29,7 +30,7 @@ class ChannelUpdate(BaseModel):
     guild_id: Optional[int] = None
 
 
-class Channel(Base[ChannelCreate, ChannelUpdate]):
+class Channel(Base):
     """SQLAlchemy model representing a Discord channel.
 
     Attributes:
@@ -45,3 +46,4 @@ class Channel(Base[ChannelCreate, ChannelUpdate]):
 
     guild: Mapped["Guild"] = relationship(back_populates="channels")
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel")
+    messages: Mapped[Message] = relationship(back_populates="channel")

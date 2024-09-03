@@ -29,7 +29,7 @@ class GuildUpdate(BaseModel):
     pass
 
 
-class Guild(Base[GuildCreate, GuildUpdate]):
+class Guild(Base):
     """
     SQLAlchemy model representing a Discord guild.
 
@@ -44,26 +44,3 @@ class Guild(Base[GuildCreate, GuildUpdate]):
 
     channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
     llms: Mapped[List["LLM"]] = relationship(back_populates="guild")
-
-    @staticmethod
-    def get_guild_id(guild: Union[discord.Guild, "Guild", int]) -> int:
-        """
-        Get the guild ID from various guild representations.
-
-        Args:
-            guild (Union[discord.Guild, Guild, int]): The guild object or ID.
-
-        Returns:
-            int: The guild ID.
-
-        Raises:
-            ValueError: If an invalid guild type is provided.
-        """
-        if isinstance(guild, (discord.Guild, Guild)):
-            return guild.id
-        elif isinstance(guild, int):
-            return guild
-        else:
-            raise ValueError(
-                "Invalid guild type. Expected discord.Guild, Guild, or int."
-            )
