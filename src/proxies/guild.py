@@ -7,12 +7,13 @@ from src.services import svc
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.bot import DiscordBot
 
+
 class GuildProxy(BaseProxy):
     def __init__(self, discord_guild: discord.Guild, db_guild: DBGuild):
         super().__init__(discord_guild, db_guild)
 
     @classmethod
-    async def get(cls, identifier: int) -> Optional['GuildProxy']:
+    async def get(cls, identifier: int) -> Optional["GuildProxy"]:
         bot = await svc.resolve(DiscordBot)()
         discord_guild = bot.get_guild(identifier)
         if not discord_guild:
@@ -71,8 +72,15 @@ class GuildProxy(BaseProxy):
     async def kick(self, user: discord.User, reason: Optional[str] = None):
         await self._discord_obj.kick(user, reason=reason)
 
-    async def ban(self, user: discord.User, reason: Optional[str] = None, delete_message_days: int = 1):
-        await self._discord_obj.ban(user, reason=reason, delete_message_days=delete_message_days)
+    async def ban(
+        self,
+        user: discord.User,
+        reason: Optional[str] = None,
+        delete_message_days: int = 1,
+    ):
+        await self._discord_obj.ban(
+            user, reason=reason, delete_message_days=delete_message_days
+        )
 
     async def unban(self, user: discord.User, *, reason: Optional[str] = None):
         await self._discord_obj.unban(user, reason=reason)
