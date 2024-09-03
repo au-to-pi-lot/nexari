@@ -174,3 +174,12 @@ Current Discord Channel: {channel_name}
             return True
 
         webhook = self.get_webhook(message.channel)
+
+    async def delete(self) -> None:
+        """
+        Delete the LLM from the database.
+        """
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        async with Session() as session:
+            await session.delete(self._db_obj)
+            await session.commit()
