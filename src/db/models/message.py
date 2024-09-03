@@ -63,8 +63,8 @@ class Message(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     author_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
-    channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channels.id"), nullable=False)
-    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guilds.id"), nullable=False)
+    channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channel.id"), nullable=False)
+    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(nullable=False)
 
     author: Mapped["User"] = relationship(back_populates="messages")
