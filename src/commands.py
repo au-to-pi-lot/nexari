@@ -440,6 +440,40 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed.description = f"An error occurred while syncing: {str(e)}"
             await interaction.followup.send(embed=embed)
 
+    @app_commands.command(description="Print the configuration of an LLM")
+    @app_commands.checks.has_permissions(administrator=True)
+    @app_commands.autocomplete(name=autocomplete_llm_name)
+    async def print(self, interaction: discord.Interaction, name: str):
+        """Print the configuration of an LLM"""
+        await interaction.response.defer(ephemeral=True)
+
+        handler = await LLMHandler.get_handler(name, interaction.guild_id)
+        if not handler:
+            embed = Embed(title="Error", color=discord.Color.red())
+            embed.description = f"LLM '{name}' not found in this guild."
+            await interaction.followup.send(embed=embed)
+            return
+
+        llm = handler.llm
+        embed = Embed(title=f"Configuration for {llm.name}", color=discord.Color.blue())
+        embed.add_field(name="API Base", value=llm.api_base, inline=False)
+        embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
+        embed.add_field(name="Max Tokens", value=str(llm.max_tokens), inline=True)
+        embed.add_field(name="Context Length", value=str(llm.context_length), inline=True)
+        embed.add_field(name="Message Limit", value=str(llm.message_limit), inline=True)
+        embed.add_field(name="Temperature", value=str(llm.temperature), inline=True)
+        embed.add_field(name="Top P", value=str(llm.top_p) if llm.top_p is not None else "N/A", inline=True)
+        embed.add_field(name="Top K", value=str(llm.top_k) if llm.top_k is not None else "N/A", inline=True)
+        embed.add_field(name="Frequency Penalty", value=str(llm.frequency_penalty) if llm.frequency_penalty is not None else "N/A", inline=True)
+        embed.add_field(name="Presence Penalty", value=str(llm.presence_penalty) if llm.presence_penalty is not None else "N/A", inline=True)
+        embed.add_field(name="Repetition Penalty", value=str(llm.repetition_penalty) if llm.repetition_penalty is not None else "N/A", inline=True)
+        embed.add_field(name="Min P", value=str(llm.min_p) if llm.min_p is not None else "N/A", inline=True)
+        embed.add_field(name="Top A", value=str(llm.top_a) if llm.top_a is not None else "N/A", inline=True)
+        embed.add_field(name="System Prompt", value=llm.system_prompt or "N/A", inline=False)
+        embed.add_field(name="Avatar", value=llm.avatar or "N/A", inline=False)
+
+        await interaction.followup.send(embed=embed)
+
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
