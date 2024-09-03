@@ -1,5 +1,14 @@
 import discord
-from typing import Optional, List
+from typing import Optional, List, Sequence
+
+from discord import (
+    CategoryChannel,
+    ForumChannel,
+    Role,
+    StageChannel,
+    TextChannel,
+    VoiceChannel,
+)
 
 from src.db.models import Guild as DBGuild
 from src.types.proxy import BaseProxy
@@ -8,18 +17,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.bot import DiscordBot
 
 
-class GuildProxy(BaseProxy):
+class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     def __init__(self, discord_guild: discord.Guild, db_guild: DBGuild):
         super().__init__(discord_guild, db_guild)
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["GuildProxy"]:
-        bot = await svc.resolve(DiscordBot)()
+        bot = await svc.get(DiscordBot)()
         discord_guild = bot.get_guild(identifier)
         if not discord_guild:
             return None
 
-        async with svc.resolve(AsyncSession)() as session:
+        async with svc.get(type[AsyncSession])() as session:
             db_guild = await session.get(DBGuild, identifier)
             if not db_guild:
                 db_guild = DBGuild(id=identifier, name=discord_guild.name)
@@ -29,7 +38,7 @@ class GuildProxy(BaseProxy):
         return cls(discord_guild, db_guild)
 
     async def save(self):
-        async with svc.resolve(AsyncSession)() as session:
+        async with svc.get(AsyncSession)() as session:
             self._db_obj.name = self._discord_obj.name
             session.add(self._db_obj)
             await session.commit()
@@ -43,11 +52,15 @@ class GuildProxy(BaseProxy):
         return self._discord_obj.member_count
 
     @property
-    def channels(self) -> List[discord.abc.GuildChannel]:
+    def channels(
+        self,
+    ) -> Sequence[
+        VoiceChannel | StageChannel | ForumChannel | TextChannel | CategoryChannel
+    ]:
         return self._discord_obj.channels
 
     @property
-    def roles(self) -> List[discord.Role]:
+    def roles(self) -> Sequence[Role]:
         return self._discord_obj.roles
 
     async def fetch_members(self) -> List[discord.Member]:
