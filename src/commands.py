@@ -62,7 +62,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
         ]
 
     @app_commands.command()
-    @app_commands.checks.has_permissions(administrator=True)
     async def list(self, interaction: discord.Interaction):
         """List all available LLMs for the current guild"""
         handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
@@ -441,7 +440,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Print the configuration of an LLM")
-    @app_commands.checks.has_permissions(administrator=True)
     @app_commands.autocomplete(name=autocomplete_llm_name)
     async def print(self, interaction: discord.Interaction, name: str):
         """Print the configuration of an LLM"""
@@ -459,17 +457,59 @@ class LLMCommands(commands.GroupCog, name="llm"):
         embed.add_field(name="API Base", value=llm.api_base, inline=False)
         embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
         embed.add_field(name="Max Tokens", value=str(llm.max_tokens), inline=True)
-        embed.add_field(name="Context Length", value=str(llm.context_length), inline=True)
+        embed.add_field(
+            name="Context Length", value=str(llm.context_length), inline=True
+        )
         embed.add_field(name="Message Limit", value=str(llm.message_limit), inline=True)
         embed.add_field(name="Temperature", value=str(llm.temperature), inline=True)
-        embed.add_field(name="Top P", value=str(llm.top_p) if llm.top_p is not None else "N/A", inline=True)
-        embed.add_field(name="Top K", value=str(llm.top_k) if llm.top_k is not None else "N/A", inline=True)
-        embed.add_field(name="Frequency Penalty", value=str(llm.frequency_penalty) if llm.frequency_penalty is not None else "N/A", inline=True)
-        embed.add_field(name="Presence Penalty", value=str(llm.presence_penalty) if llm.presence_penalty is not None else "N/A", inline=True)
-        embed.add_field(name="Repetition Penalty", value=str(llm.repetition_penalty) if llm.repetition_penalty is not None else "N/A", inline=True)
-        embed.add_field(name="Min P", value=str(llm.min_p) if llm.min_p is not None else "N/A", inline=True)
-        embed.add_field(name="Top A", value=str(llm.top_a) if llm.top_a is not None else "N/A", inline=True)
-        embed.add_field(name="System Prompt", value=llm.system_prompt or "N/A", inline=False)
+        embed.add_field(
+            name="Top P",
+            value=str(llm.top_p) if llm.top_p is not None else "N/A",
+            inline=True,
+        )
+        embed.add_field(
+            name="Top K",
+            value=str(llm.top_k) if llm.top_k is not None else "N/A",
+            inline=True,
+        )
+        embed.add_field(
+            name="Frequency Penalty",
+            value=(
+                str(llm.frequency_penalty)
+                if llm.frequency_penalty is not None
+                else "N/A"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="Presence Penalty",
+            value=(
+                str(llm.presence_penalty) if llm.presence_penalty is not None else "N/A"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="Repetition Penalty",
+            value=(
+                str(llm.repetition_penalty)
+                if llm.repetition_penalty is not None
+                else "N/A"
+            ),
+            inline=True,
+        )
+        embed.add_field(
+            name="Min P",
+            value=str(llm.min_p) if llm.min_p is not None else "N/A",
+            inline=True,
+        )
+        embed.add_field(
+            name="Top A",
+            value=str(llm.top_a) if llm.top_a is not None else "N/A",
+            inline=True,
+        )
+        embed.add_field(
+            name="System Prompt", value=llm.system_prompt or "N/A", inline=False
+        )
 
         await interaction.followup.send(embed=embed)
 
@@ -477,12 +517,14 @@ class LLMCommands(commands.GroupCog, name="llm"):
     async def help(self, interaction: discord.Interaction):
         """Provide help information about bot commands and LLM interaction"""
         embed = Embed(title="LLM Bot Help", color=discord.Color.blue())
-        
+
         # General description
         embed.description = "This bot allows you to interact with various Language Models (LLMs) through Discord. Here's how to use it:"
 
         # Commands section
-        embed.add_field(name="Commands", value="""
+        embed.add_field(
+            name="Commands",
+            value="""
         `/llm list`: List all available LLMs
         `/llm create`: Register a new LLM (Admin only)
         `/llm modify`: Modify an existing LLM (Admin only)
@@ -492,26 +534,37 @@ class LLMCommands(commands.GroupCog, name="llm"):
         `/llm print`: Print the configuration of an LLM
         `/llm sync`: Sync bot commands with the current guild (Admin only)
         `/llm help`: Show this help message
-        """, inline=False)
+        """,
+            inline=False,
+        )
 
         # LLM Interaction section
-        embed.add_field(name="Interacting with LLMs", value="""
+        embed.add_field(
+            name="Interacting with LLMs",
+            value="""
         To interact with an LLM, simply mention it in your message:
         `@LLM_Name Your message here`
 
         The LLM will then respond to your message in the channel.
         You can have conversations by continuing to mention the LLM in your replies.
-        """, inline=False)
+        """,
+            inline=False,
+        )
 
         # Tips section
-        embed.add_field(name="Tips", value="""
+        embed.add_field(
+            name="Tips",
+            value="""
         - Each LLM has its own personality and capabilities based on its configuration.
         - You can use the `/llm print` command to view an LLM's configuration.
         - Administrators can manage LLMs using the create, modify, delete, and copy commands.
         - If you're unsure which LLMs are available, use the `/llm list` command.
-        """, inline=False)
+        """,
+            inline=False,
+        )
 
         await interaction.response.send_message(embed=embed)
+
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(LLMCommands(bot))
