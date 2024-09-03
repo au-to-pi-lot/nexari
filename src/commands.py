@@ -470,7 +470,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
         embed.add_field(name="Min P", value=str(llm.min_p) if llm.min_p is not None else "N/A", inline=True)
         embed.add_field(name="Top A", value=str(llm.top_a) if llm.top_a is not None else "N/A", inline=True)
         embed.add_field(name="System Prompt", value=llm.system_prompt or "N/A", inline=False)
-        embed.add_field(name="Avatar", value=llm.avatar or "N/A", inline=False)
 
         await interaction.followup.send(embed=embed)
 
