@@ -183,3 +183,4 @@ Current Discord Channel: {channel_name}
         async with Session() as session:
             await session.delete(self._db_obj)
             await session.commit()
+        self._db_obj = None
