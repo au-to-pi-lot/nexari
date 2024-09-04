@@ -133,6 +133,35 @@ class LLMProxy(BaseProxy[None, LLM]):
 
         return WebhookProxy(db_webhook=db_webhook, discord_webhook=webhook)
 
+    async def get_webhooks(self) -> List[WebhookProxy]:
+        """
+        Fetch the list of webhooks associated with the LLM.
+
+        Args:
+            bot (commands.Bot): The Discord bot instance.
+
+        Returns:
+            List[discord.Webhook]: The list of webhooks associated with the LLM.
+        """
+        bot = svc.get(Bot)
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        webhooks = []
+        async with Session() as session:
+            llm = (await session.scalars(
+                select(LLM).options(selectinload(LLM.webhooks)).where(LLM.id == self._db_obj.id)
+            )).one_or_none()
+            if llm:
+                for db_webhook in llm.webhooks:
+                    try:
+                        discord_webhook = await bot.fetch_webhook(db_webhook.id)
+                        webhooks.append(WebhookProxy(discord_webhook=discord_webhook, db_webhook=db_webhook))
+                    except Exception as e:
+                        logger.error(f"Error fetching webhook {db_webhook.id} for LLM {self._db_obj.name}: {e}")
+            else:
+                logger.error(f"Error fetching LLM {self._db_obj.name}")
+
+        return webhooks
+
     async def generate_raw_response(
         self, messages: List[LiteLLMMessage]
     ) -> ModelResponse:
@@ -258,11 +287,10 @@ Current Discord Channel: {channel_name}
         await self.edit(avatar=filename)
 
         # Update the avatar for all associated webhooks
-        bot = svc.get(Bot)
-        webhooks = await self.get_webhooks(bot)
+        webhooks = await self.get_webhooks()
         for webhook in webhooks:
             try:
-                await webhook.edit(avatar=avatar)
+                await webhook.set_avatar(avatar=avatar)
             except Exception as e:
                 logger.error(f"Failed to update avatar for webhook {webhook.id}: {e}")
 
