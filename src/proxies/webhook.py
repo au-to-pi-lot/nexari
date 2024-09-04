@@ -14,7 +14,7 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         super().__init__(discord_webhook, db_webhook)
 
     @classmethod
-    async def get(cls, identifier: int) -> Optional["WebhookProxy"]:
+    async def get(cls, identifier: int, *, llm_id: int = None) -> Optional["WebhookProxy"]:
         bot: Bot = await svc.get(Bot)
         Session: type[AsyncSession] = svc.get(type[AsyncSession])
         discord_webhook = await bot.fetch_webhook(identifier)
@@ -28,7 +28,7 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
                     id=identifier,
                     token=discord_webhook.token,
                     channel_id=discord_webhook.channel_id,
-                    llm_id=None  # This might need to be set separately
+                    llm_id=llm_id
                 )
                 session.add(db_webhook)
                 await session.commit()
