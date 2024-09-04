@@ -78,8 +78,4 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         Raises:
             discord.HTTPException: If setting the avatar fails.
         """
-        try:
-            await self._discord_obj.edit(avatar=avatar)
-        except discord.HTTPException as e:
-            logger.error(f"Failed to set avatar for webhook {self._discord_obj.id}: {e}")
-            raise
+        await self._discord_obj.edit(avatar=avatar)
