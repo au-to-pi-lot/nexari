@@ -16,6 +16,7 @@ from src.const import AVATAR_DIR
 from src.db.models import LLM, Webhook
 from src.db.models.llm import LLMCreate
 from src.proxies import ChannelProxy, WebhookProxy
+from src.proxies.message import MessageProxy
 from src.services import svc
 from src.types.litellm_message import LiteLLMMessage
 from src.types.proxy import BaseProxy
@@ -200,8 +201,8 @@ Current Discord Guild: {guild_name}
 Current Discord Channel: {channel_name}
     """
 
-    def mentioned_in_message(self, message: discord.Message) -> bool:
-        mentioned = f"@{self._db_obj.name.lower()}" in message.content.lower()
+    def mentioned_in_message(self, message: MessageProxy) -> bool:
+        mentioned = f"@{self.name.lower()}" in message.content.lower()
         if mentioned:
             return True
 
