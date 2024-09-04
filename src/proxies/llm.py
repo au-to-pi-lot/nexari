@@ -233,7 +233,7 @@ Current Discord Channel: {channel_name}
         new_llm = await self.create(LLMCreate(**new_llm_data))
         return new_llm
 
-    async def set_avatar(self, avatar: bytes, content_type: str) -> None:
+    async def set_avatar(self, avatar: bytes, filename: str) -> None:
         """
         Set the avatar for the LLM.
 
@@ -244,26 +244,20 @@ Current Discord Channel: {channel_name}
         Raises:
             ValueError: If the avatar file is not an image or is too large.
         """
-        if not content_type.startswith('image/'):
-            raise ValueError("The file is not an image.")
         
         if len(avatar) > 1024 * 1024 * 8:  # 8 MB limit
             raise ValueError("The image file is too large. Maximum size is 8 MB.")
 
-        # Generate a unique filename
-        file_extension = content_type.split('/')[-1]
-        avatar_filename = f"{self._db_obj.name}.{file_extension}"
-        avatar_path = AVATAR_DIR / avatar_filename
+        avatar_path = AVATAR_DIR / filename
 
         # Save the avatar file
         with open(avatar_path, 'wb') as f:
             f.write(avatar)
 
         # Update the LLM's avatar in the database
-        self._db_obj.avatar = avatar_filename
-        await self.save()
+        await self.edit(avatar=filename)
 
-        logger.info(f"Avatar set for LLM {self._db_obj.name}: {avatar_filename}")
+        logger.info(f"Avatar set for LLM {self._db_obj.name}: {filename}")
 
     async def respond(self, channel_id: int, messages: List[LiteLLMMessage]) -> None:
         """
