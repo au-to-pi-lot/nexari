@@ -1,4 +1,6 @@
 import logging
+import os
+import shutil
 from datetime import datetime
 from typing import List, Optional, Self
 
@@ -214,8 +216,19 @@ Current Discord Channel: {channel_name}
             "repetition_penalty": self._db_obj.repetition_penalty,
             "min_p": self._db_obj.min_p,
             "top_a": self._db_obj.top_a,
-            "avatar": self._db_obj.avatar
         }
+        
+        # Copy the avatar file if it exists
+        if self._db_obj.avatar:
+            source_avatar_path = AVATAR_DIR / self._db_obj.avatar
+            if os.path.exists(source_avatar_path):
+                file_extension = os.path.splitext(self._db_obj.avatar)[1]
+                new_avatar_filename = f"{new_name}{file_extension}"
+                new_avatar_path = AVATAR_DIR / new_avatar_filename
+                shutil.copy2(source_avatar_path, new_avatar_path)
+                new_llm_data["avatar"] = new_avatar_filename
+            else:
+                logger.warning(f"Avatar file {source_avatar_path} not found. New LLM will not have an avatar.")
         
         new_llm = await self.create(LLMCreate(**new_llm_data))
         return new_llm
