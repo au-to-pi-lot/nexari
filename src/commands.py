@@ -335,20 +335,25 @@ class LLMCommands(commands.GroupCog, name="llm"):
             async with aiohttp.ClientSession() as session:
                 async with session.get(image_url) as resp:
                     if resp.status != 200:
-                        raise ValueError(f"Failed to download image from URL: {image_url}")
-                    
+                        raise ValueError(
+                            f"Failed to download image from URL: {image_url}"
+                        )
+
                     content_type = resp.headers.get("Content-Type", "").lower()
                     if content_type not in ["image/jpeg", "image/png", "image/gif"]:
                         raise ValueError("The image must be a JPEG, PNG, or GIF file.")
-                    
-                    image_data = await resp.read()
-                    if len(image_data) > 8 * 1024 * 1024:  # 8MB
-                        raise ValueError("The image file size must be less than 8MB.")
 
-            await llm.set_avatar(image_data, content_type)
-            
+                    file_extension = content_type.split("/")[-1]
+                    filename = f"{llm.name}.{file_extension}"
+
+                    image_data = await resp.read()
+
+            await llm.set_avatar(image_data, filename)
+
             embed = Embed(title="Avatar Set", color=discord.Color.green())
-            embed.description = f"Avatar for '{name}' has been set and applied to all webhooks."
+            embed.description = (
+                f"Avatar for '{name}' has been set and applied to all webhooks."
+            )
             await interaction.followup.send(embed=embed)
         except ValueError as e:
             embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
