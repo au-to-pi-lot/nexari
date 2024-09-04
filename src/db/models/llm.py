@@ -91,7 +91,7 @@ class LLMUpdate(BaseModel):
     repetition_penalty: Optional[float] = None
     min_p: Optional[float] = None
     top_a: Optional[float] = None
-    avatar: Optional[str] = None
+    avatar: Optional[bytes] = None
 
 
 class LLM(Base):
