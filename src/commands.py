@@ -293,9 +293,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(embed=embed)
             return
 
-
-
-
         try:
             new_llm = await source_llm.copy(new_name)
             embed = Embed(title="LLM Copied", color=discord.Color.green())
