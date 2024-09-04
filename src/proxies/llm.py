@@ -247,12 +247,12 @@ Current Discord Channel: {channel_name}
         if not content_type.startswith('image/'):
             raise ValueError("The file is not an image.")
         
-        if len(avatar) > 1024 * 1024:  # 1 MB limit
-            raise ValueError("The image file is too large. Maximum size is 1 MB.")
+        if len(avatar) > 1024 * 1024 * 8:  # 8 MB limit
+            raise ValueError("The image file is too large. Maximum size is 8 MB.")
 
         # Generate a unique filename
         file_extension = content_type.split('/')[-1]
-        avatar_filename = f"{self._db_obj.name}_{uuid.uuid4()}.{file_extension}"
+        avatar_filename = f"{self._db_obj.name}.{file_extension}"
         avatar_path = AVATAR_DIR / avatar_filename
 
         # Save the avatar file
