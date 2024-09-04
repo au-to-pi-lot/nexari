@@ -63,7 +63,7 @@ class MessageProxy(BaseProxy[discord.Message, DBMessage]):
 
     @classmethod
     async def get_or_create(cls, discord_message: discord.Message) -> Self:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             db_message = await session.get(DBMessage, discord_message.id)
             if db_message is None:
