@@ -1,21 +1,17 @@
 import logging
-import os
 from textwrap import dedent
+from typing import List, Optional
 
 import aiohttp
-from typing import Optional, List
-from pathlib import Path
-
 import discord
-from discord import app_commands, Embed, Interaction
+from discord import Embed, Interaction, app_commands
 from discord.ext import commands
+from discord.ext.commands import Bot
 
-from src.bot import DiscordBot
-from src.db.engine import Session
+from src.const import AVATAR_DIR
 from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
-from src.llm import LLMHandler
-from src.const import AVATAR_DIR, ROOT_DIR
+from src.proxies import LLMProxy
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +19,7 @@ logger = logging.getLogger(__name__)
 class LLMCommands(commands.GroupCog, name="llm"):
     """A group of commands for managing LLMs."""
 
-    def __init__(self, bot: DiscordBot):
+    def __init__(self, bot: Bot):
         """Initialize the LLMCommands cog.
 
         Args:
@@ -41,8 +37,8 @@ class LLMCommands(commands.GroupCog, name="llm"):
         Returns:
             List[str]: A list of LLM names.
         """
-        handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
-        return [handler.llm.name for handler in handlers]
+        llms = await LLMProxy.get_all(interaction.guild_id)
+        return [llm.name for llm in llms]
 
     async def autocomplete_llm_name(
         self, interaction: Interaction, current: str
@@ -66,13 +62,13 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.command()
     async def list(self, interaction: discord.Interaction):
         """List all available LLMs for the current guild"""
-        handlers = await LLMHandler.get_llm_handlers(interaction.guild_id)
+        llms = await LLMProxy.get_all(interaction.guild_id)
         embed = Embed(title="Available LLMs", color=discord.Color.blue())
-        if handlers:
-            for handler in handlers:
+        if llms:
+            for llm in llms:
                 embed.add_field(
-                    name=handler.llm.name,
-                    value=f"Model: {handler.llm.llm_name}",
+                    name=llm.name,
+                    value=f"Model: {llm.llm_name}",
                     inline=False,
                 )
         else:
@@ -250,15 +246,15 @@ class LLMCommands(commands.GroupCog, name="llm"):
     )
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM"""
-        handler = await LLMHandler.get_handler(name, interaction.guild_id)
-        if not handler:
+        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
+        if not llm:
             embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
             embed.description = f"'{name}' not found."
             await interaction.response.send_message(embed=embed)
             return
 
         try:
-            await self.bot.remove_llm_handler(handler.llm)
+            await llm.delete()
             embed = Embed(title="LLM Deleted", color=discord.Color.green())
             embed.description = f"'{name}' deleted successfully!"
             await interaction.response.send_message(embed=embed)
@@ -281,15 +277,15 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a deep copy of an existing LLM with a new name"""
         await interaction.response.defer(ephemeral=True)
 
-        source_handler = await LLMHandler.get_handler(source_name, interaction.guild_id)
-        if not source_handler:
+        source_llm = await LLMProxy.get_by_name(source_name, interaction.guild_id)
+        if not source_llm:
             embed = Embed(title="Error Copying LLM", color=discord.Color.red())
             embed.description = f"'{source_name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
 
-        existing_handler = await LLMHandler.get_handler(new_name, interaction.guild_id)
-        if existing_handler:
+        existing_llm = await LLMProxy.get_by_name(new_name, interaction.guild_id)
+        if existing_llm:
             embed = Embed(title="Error Copying LLM", color=discord.Color.red())
             embed.description = (
                 f"An LLM with the name '{new_name}' already exists in this guild."
@@ -297,30 +293,11 @@ class LLMCommands(commands.GroupCog, name="llm"):
             await interaction.followup.send(embed=embed)
             return
 
-        source_model = source_handler.llm
 
-        # Create a new LLM instance with the same attributes as the source
-        new_model_data = LLMCreate(
-            name=new_name,
-            api_base=source_model.api_base,
-            llm_name=source_model.llm_name,
-            api_key=source_model.api_key,
-            max_tokens=source_model.max_tokens,
-            system_prompt=source_model.system_prompt,
-            context_length=source_model.context_length,
-            message_limit=source_model.message_limit,
-            temperature=source_model.temperature,
-            top_p=source_model.top_p,
-            top_k=source_model.top_k,
-            frequency_penalty=source_model.frequency_penalty,
-            presence_penalty=source_model.presence_penalty,
-            repetition_penalty=source_model.repetition_penalty,
-            min_p=source_model.min_p,
-            top_a=source_model.top_a,
-        )
+
 
         try:
-            await self.bot.add_llm_handler(new_model_data, interaction.guild)
+            await source_llm.copy(new_name)
             embed = Embed(title="LLM Copied", color=discord.Color.green())
             embed.description = (
                 f"LLM '{source_name}' successfully copied to '{new_name}'!"
@@ -526,7 +503,8 @@ class LLMCommands(commands.GroupCog, name="llm"):
         # Commands section
         embed.add_field(
             name="Commands",
-            value=dedent("""
+            value=dedent(
+                """
         `/llm list`: List all available LLMs
         `/llm create`: Register a new LLM (Admin only)
         `/llm modify`: Modify an existing LLM (Admin only)
@@ -536,38 +514,39 @@ class LLMCommands(commands.GroupCog, name="llm"):
         `/llm print`: Print the configuration of an LLM
         `/llm sync`: Sync bot commands with the current guild (Admin only)
         `/llm help`: Show this help message
-        """),
+        """
+            ),
             inline=False,
         )
 
         # LLM Interaction section
         embed.add_field(
             name="Interacting with LLMs",
-            value=dedent("""
+            value=dedent(
+                """
         To interact with an LLM, simply mention it in your message:
         `@LLM_Name Your message here`
 
         The LLM will then respond to your message in the channel.
         You can have conversations by continuing to mention the LLM in your replies.
         You can also trigger a response by replying to a message sent by the LLM.
-        """),
+        """
+            ),
             inline=False,
         )
 
         # Tips section
         embed.add_field(
             name="Tips",
-            value=dedent("""
+            value=dedent(
+                """
         - Each LLM has its own personality and capabilities based on its configuration.
         - You can use the `/llm print` command to view an LLM's configuration.
         - Administrators can manage LLMs using the create, modify, delete, and copy commands.
         - If you're unsure which LLMs are available, use the `/llm list` command.
-        """),
+        """
+            ),
             inline=False,
         )
 
         await interaction.response.send_message(embed=embed)
-
-
-async def setup(bot: DiscordBot):
-    await bot.add_cog(LLMCommands(bot))
