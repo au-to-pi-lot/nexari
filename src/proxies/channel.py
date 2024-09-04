@@ -45,15 +45,11 @@ class ChannelProxy(BaseProxy[discord.TextChannel, DBChannel]):
 
     async def send(self, content: str = None, **kwargs) -> MessageProxy:
         discord_message = await self._discord_obj.send(content, **kwargs)
-        return await MessageProxy.get(discord_message.id)
+        return await MessageProxy.get_or_create(discord_message)
 
     async def fetch_message(self, message_id: int) -> MessageProxy:
         discord_message = await self._discord_obj.fetch_message(message_id)
-        return await MessageProxy.get(discord_message.id)
-
-    async def purge(self, limit: int = 100, **kwargs) -> List[MessageProxy]:
-        discord_messages = await self._discord_obj.purge(limit=limit, **kwargs)
-        return [await MessageProxy.get(message.id) for message in discord_messages]
+        return await MessageProxy.get_or_create(discord_message)
 
     async def set_permissions(self, target: Union[discord.Role, discord.Member], **permissions):
         await self._discord_obj.set_permissions(target, **permissions)
@@ -65,4 +61,4 @@ class ChannelProxy(BaseProxy[discord.TextChannel, DBChannel]):
         return await self._discord_obj.webhooks()
 
     async def history(self, **kwargs) -> List[MessageProxy]:
-        return [await MessageProxy.get(message.id) async for message in self._discord_obj.history(**kwargs)]
+        return [await MessageProxy.get_or_create(message) async for message in self._discord_obj.history(**kwargs)]
