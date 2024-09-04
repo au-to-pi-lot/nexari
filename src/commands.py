@@ -297,17 +297,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
 
         try:
-            await source_llm.copy(new_name)
+            new_llm = await source_llm.copy(new_name)
             embed = Embed(title="LLM Copied", color=discord.Color.green())
             embed.description = (
                 f"LLM '{source_name}' successfully copied to '{new_name}'!"
             )
-            embed.add_field(name="Model", value=source_model.llm_name, inline=False)
+            embed.add_field(name="Model", value=new_llm.llm_name, inline=False)
             embed.add_field(
-                name="Max Tokens", value=str(source_model.max_tokens), inline=True
+                name="Max Tokens", value=str(new_llm.max_tokens), inline=True
             )
             embed.add_field(
-                name="Temperature", value=str(source_model.temperature), inline=True
+                name="Temperature", value=str(new_llm.temperature), inline=True
             )
             await interaction.followup.send(embed=embed)
         except ValueError as e:
@@ -379,14 +379,12 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Print the configuration of an LLM"""
         await interaction.response.defer(ephemeral=True)
 
-        handler = await LLMHandler.get_handler(name, interaction.guild_id)
-        if not handler:
+        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
+        if not llm:
             embed = Embed(title="Error", color=discord.Color.red())
             embed.description = f"LLM '{name}' not found in this guild."
             await interaction.followup.send(embed=embed)
             return
-
-        llm = handler.llm
         embed = Embed(title=f"Configuration for {llm.name}", color=discord.Color.blue())
         embed.add_field(name="API Base", value=llm.api_base, inline=False)
         embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
