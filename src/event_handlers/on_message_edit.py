@@ -10,6 +10,8 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
         before (discord.Message): The message before the edit.
         after (discord.Message): The message after the edit.
     """
-    message_proxy = await MessageProxy.get(after.id)
+    message_proxy = await MessageProxy.get(after)
     if message_proxy:
         await message_proxy.edit(content=after.content)
+    else:
+        await MessageProxy.create(after)
