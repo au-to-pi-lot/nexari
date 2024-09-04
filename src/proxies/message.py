@@ -6,6 +6,8 @@ import discord
 from src.db.models.message import Message as DBMessage, MessageCreate
 from src.services import svc
 from src.types.proxy import BaseProxy
+from src.proxies.guild import GuildProxy
+from src.proxies.channel import ChannelProxy
 
 class MessageProxy(BaseProxy[discord.Message, DBMessage]):
     def __init__(self, discord_message: discord.Message, db_message: DBMessage):
@@ -60,6 +62,12 @@ class MessageProxy(BaseProxy[discord.Message, DBMessage]):
             await session.delete(self._db_obj)
             await session.commit()
         self._db_obj = None
+
+    async def get_guild(self) -> GuildProxy:
+        return await GuildProxy.get(self._discord_obj.guild.id)
+
+    async def get_channel(self) -> ChannelProxy:
+        return await ChannelProxy.get(self._discord_obj.channel.id)
 
     @classmethod
     async def get_or_create(cls, discord_message: discord.Message) -> Self:
