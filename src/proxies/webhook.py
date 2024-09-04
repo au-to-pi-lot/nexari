@@ -3,13 +3,14 @@ from typing import Optional
 
 import discord
 
-logger = logging.getLogger(__name__)
 from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Webhook as DBWebhook
 from src.services import svc
 from src.types.proxy import BaseProxy
+
+logger = logging.getLogger(__name__)
 
 
 class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
@@ -79,8 +80,6 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         """
         try:
             await self._discord_obj.edit(avatar=avatar)
-            # Note: We don't need to update the database object for webhooks,
-            # as Discord doesn't provide a way to store avatar data for webhooks in the database.
         except discord.HTTPException as e:
             logger.error(f"Failed to set avatar for webhook {self._discord_obj.id}: {e}")
             raise
