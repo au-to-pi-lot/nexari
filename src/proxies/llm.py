@@ -8,9 +8,9 @@ import discord
 from discord.ext.commands import Bot
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
-from src.types.litellm_message import LiteLLMMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.const import AVATAR_DIR
 from src.db.models import LLM, Webhook
@@ -113,20 +113,20 @@ class LLMProxy(BaseProxy[None, LLM]):
                 webhook = await bot.fetch_webhook(webhook_id=db_webhook.id)
             else:
                 avatar = None
-                if self.llm.avatar:
-                    avatar_path = AVATAR_DIR / self.llm.avatar
+                if self._db_obj.avatar:
+                    avatar_path = AVATAR_DIR / self._db_obj.avatar
                     if avatar_path.exists():
                         with open(avatar_path, "rb") as avatar_file:
                             avatar = avatar_file.read()
 
                 webhook = await channel.create_webhook(
-                    name=self.llm.name, avatar=avatar
+                    name=self._db_obj.name, avatar=avatar
                 )
                 db_webhook = Webhook(
                     id=webhook.id,
                     token=webhook.token,
                     channel_id=channel.id,
-                    llm_id=self.llm.id,
+                    llm_id=self._db_obj.id,
                 )
                 session.add(db_webhook)
                 await session.commit()
@@ -172,7 +172,7 @@ Current Discord Channel: {channel_name}
     """
 
     def mentioned_in_message(self, message: discord.Message) -> bool:
-        mentioned = f"@{self.llm.name.lower()}" in message.content.lower()
+        mentioned = f"@{self._db_obj.name.lower()}" in message.content.lower()
         if mentioned:
             return True
 
