@@ -55,7 +55,7 @@ class ChannelProxy(BaseProxy[discord.TextChannel, DBChannel]):
         await self._discord_obj.set_permissions(target, **permissions)
 
     async def create_webhook(self, name: str, **kwargs) -> discord.Webhook:
-        return await self._discord_obj.create_webhook(name, **kwargs)
+        return await self._discord_obj.create_webhook(name=name, **kwargs)
 
     async def webhooks(self) -> list[discord.Webhook]:
         return await self._discord_obj.webhooks()
