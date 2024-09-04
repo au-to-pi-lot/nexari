@@ -54,6 +54,8 @@ class MessageProxy(BaseProxy[discord.Message, DBMessage]):
         for key, value in kwargs.items():
             if hasattr(self._db_obj, key):
                 setattr(self._db_obj, key, value)
+        if 'content' in kwargs:
+            self._db_obj.content = kwargs['content']
         await self.save()
 
     async def delete(self) -> None:
