@@ -324,81 +324,36 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Set an avatar for an LLM"""
         await interaction.response.defer(ephemeral=True)
 
-        # Validate LLM exists
-        async with Session(expire_on_commit=False) as db_session:
-            handler = await LLMHandler.get_handler(
-                name, interaction.guild_id, session=db_session
-            )
-            if not handler:
-                embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                embed.description = f"'{name}' not found in this guild."
-                await interaction.followup.send(embed=embed)
-                return
+        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
+        if not llm:
+            embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+            embed.description = f"'{name}' not found in this guild."
+            await interaction.followup.send(embed=embed)
+            return
 
-            # Download and validate image
-            async with aiohttp.ClientSession() as http_session:
-                async with http_session.get(image_url) as resp:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as resp:
                     if resp.status != 200:
-                        embed = Embed(
-                            title="Error Setting Avatar", color=discord.Color.red()
-                        )
-                        embed.description = (
-                            f"Failed to download image from URL: {image_url}"
-                        )
-                        await interaction.followup.send(embed=embed)
-                        return
-
+                        raise ValueError(f"Failed to download image from URL: {image_url}")
+                    
                     content_type = resp.headers.get("Content-Type", "").lower()
                     if content_type not in ["image/jpeg", "image/png", "image/gif"]:
-                        embed = Embed(
-                            title="Error Setting Avatar", color=discord.Color.red()
-                        )
-                        embed.description = (
-                            "The image must be a JPEG, PNG, or GIF file."
-                        )
-                        await interaction.followup.send(embed=embed)
-                        return
-
+                        raise ValueError("The image must be a JPEG, PNG, or GIF file.")
+                    
                     image_data = await resp.read()
                     if len(image_data) > 8 * 1024 * 1024:  # 8MB
-                        embed = Embed(
-                            title="Error Setting Avatar", color=discord.Color.red()
-                        )
-                        embed.description = "The image file size must be less than 8MB."
-                        await interaction.followup.send(embed=embed)
-                        return
+                        raise ValueError("The image file size must be less than 8MB.")
 
-                    file_extension = content_type.split("/")[-1]
-
-            # Delete old avatar if it exists
-            if handler.llm.avatar:
-                old_avatar_path = AVATAR_DIR / handler.llm.avatar
-                if old_avatar_path.exists():
-                    old_avatar_path.unlink()
-
-            # Save the new image
-            AVATAR_DIR.mkdir(exist_ok=True)
-            avatar_filename = f"{name}.{file_extension}"
-            avatar_path = AVATAR_DIR / avatar_filename
-
-            with open(avatar_path, "wb") as f:
-                f.write(image_data)
-
-            # Update LLM model
-            update_data = LLMUpdate(avatar=avatar_filename)
-            await self.bot.modify_llm_handler(
-                handler.llm.id, update_data, session=db_session
-            )
-
-        # Update existing webhooks
-        for webhook in await handler.get_webhooks(self.bot):
-            await webhook.edit(avatar=image_data)
-
-        embed = Embed(title="Avatar Set", color=discord.Color.green())
-        embed.description = (
-            f"Avatar for '{name}' has been set and applied to all webhooks."
-        )
-        await interaction.followup.send(embed=embed)
+            await llm.set_avatar(discord.File(image_data, filename=f"avatar.{content_type.split('/')[-1]}"))
+            
+            embed = Embed(title="Avatar Set", color=discord.Color.green())
+            embed.description = f"Avatar for '{name}' has been set and applied to all webhooks."
+            await interaction.followup.send(embed=embed)
+        except ValueError as e:
+            embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Sync the bot commands with the current guild")
     @app_commands.checks.has_permissions(administrator=True)
