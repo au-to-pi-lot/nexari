@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.db.models import Webhook as DBWebhook
 from src.services import svc
 from src.types.proxy import BaseProxy
+from src.proxies.llm import LLMProxy
 
 logger = logging.getLogger(__name__)
 
@@ -100,3 +101,14 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
             discord.HTTPException: If setting the avatar fails.
         """
         await self._discord_obj.edit(avatar=avatar)
+
+    async def get_llm(self) -> Optional[LLMProxy]:
+        """
+        Retrieve the LLMProxy associated with this webhook.
+
+        Returns:
+            Optional[LLMProxy]: The associated LLMProxy, or None if not found.
+        """
+        if self._db_obj.llm_id is None:
+            return None
+        return await LLMProxy.get(self._db_obj.llm_id)
