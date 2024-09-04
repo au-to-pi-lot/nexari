@@ -28,7 +28,7 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["GuildProxy"]:
-        bot = await svc.get(DiscordBot)()
+        bot = await svc.aget(Bot)
         discord_guild = bot.get_guild(identifier)
         if not discord_guild:
             return None
