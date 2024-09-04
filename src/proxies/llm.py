@@ -235,14 +235,14 @@ Current Discord Channel: {channel_name}
 
     async def set_avatar(self, avatar: bytes, filename: str) -> None:
         """
-        Set the avatar for the LLM.
+        Set the avatar for the LLM and all its associated webhooks.
 
         Args:
             avatar (bytes): The avatar image data.
-            content_type (str): The content type of the image.
+            filename (str): The filename for the avatar.
 
         Raises:
-            ValueError: If the avatar file is not an image or is too large.
+            ValueError: If the avatar file is too large.
         """
         
         if len(avatar) > 1024 * 1024 * 8:  # 8 MB limit
@@ -257,7 +257,16 @@ Current Discord Channel: {channel_name}
         # Update the LLM's avatar in the database
         await self.edit(avatar=filename)
 
-        logger.info(f"Avatar set for LLM {self._db_obj.name}: {filename}")
+        # Update the avatar for all associated webhooks
+        bot = svc.get(Bot)
+        webhooks = await self.get_webhooks(bot)
+        for webhook in webhooks:
+            try:
+                await webhook.edit(avatar=avatar)
+            except Exception as e:
+                logger.error(f"Failed to update avatar for webhook {webhook.id}: {e}")
+
+        logger.info(f"Avatar set for LLM {self._db_obj.name} and its webhooks: {filename}")
 
     async def respond(self, channel_id: int, messages: List[LiteLLMMessage]) -> None:
         """
