@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 
 import discord
+
+logger = logging.getLogger(__name__)
 from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,3 +66,21 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
             if hasattr(self._db_obj, key):
                 setattr(self._db_obj, key, value)
         await self.save()
+
+    async def set_avatar(self, avatar: bytes):
+        """
+        Set the avatar for this webhook.
+
+        Args:
+            avatar (bytes): The avatar image data.
+
+        Raises:
+            discord.HTTPException: If setting the avatar fails.
+        """
+        try:
+            await self._discord_obj.edit(avatar=avatar)
+            # Note: We don't need to update the database object for webhooks,
+            # as Discord doesn't provide a way to store avatar data for webhooks in the database.
+        except discord.HTTPException as e:
+            logger.error(f"Failed to set avatar for webhook {self._discord_obj.id}: {e}")
+            raise
