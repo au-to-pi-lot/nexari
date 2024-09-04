@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Self
 
 import discord
 
@@ -32,6 +32,33 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
             return None
 
         return cls(discord_webhook, db_webhook)
+
+    @classmethod
+    async def create(cls, channel: discord.TextChannel, name: str, **kwargs) -> Self:
+        discord_webhook = await channel.create_webhook(name=name, **kwargs)
+        
+        db_webhook = DBWebhook(
+            id=discord_webhook.id,
+            token=discord_webhook.token,
+            channel_id=channel.id,
+            llm_id=kwargs.get('llm_id')
+        )
+        
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
+            session.add(db_webhook)
+            await session.commit()
+        
+        return cls(discord_webhook, db_webhook)
+
+    @classmethod
+    async def get_or_create(cls, channel: discord.TextChannel, name: str, **kwargs) -> Self:
+        existing_webhooks = await channel.webhooks()
+        for webhook in existing_webhooks:
+            if webhook.name == name:
+                return await cls.get(webhook.id)
+        
+        return await cls.create(channel, name, **kwargs)
 
     async def save(self):
         async with svc.get(type[AsyncSession])() as session:
