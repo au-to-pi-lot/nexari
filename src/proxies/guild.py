@@ -1,6 +1,6 @@
-import discord
-from typing import Optional, List, Sequence, Self
+from typing import List, Optional, Sequence, TYPE_CHECKING
 
+import discord
 from discord import (
     CategoryChannel,
     ForumChannel,
@@ -9,15 +9,17 @@ from discord import (
     TextChannel,
     VoiceChannel,
 )
-from sqlalchemy.orm import selectinload
+from discord.ext.commands import Bot
 from sqlalchemy import select
-
-from src.db.models import Guild as DBGuild, Guild, LLM
-from src.proxies.llm import LLMProxy
-from src.types.proxy import BaseProxy
-from src.services import svc
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.bot import DiscordBot
+from sqlalchemy.orm import selectinload
+
+from src.db.models import Guild, Guild as DBGuild
+from src.services import svc
+from src.types.proxy import BaseProxy
+
+if TYPE_CHECKING:
+    from src.proxies import LLMProxy
 
 
 class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
@@ -66,12 +68,18 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     def roles(self) -> Sequence[Role]:
         return self._discord_obj.roles
 
-    async def get_llms(self) -> Sequence[LLMProxy]:
+    async def get_llms(self) -> Sequence["LLMProxy"]:
+        from src.proxies.llm import LLMProxy
+
         Session: type[AsyncSession] = svc.get(type[AsyncSession])()
         async with Session() as session:
-            guild = (await session.scalars(
-                select(Guild).options(selectinload(Guild.llms)).where(Guild.id == self._db_obj.id)
-            )).one()
+            guild = (
+                await session.scalars(
+                    select(Guild)
+                    .options(selectinload(Guild.llms))
+                    .where(Guild.id == self._db_obj.id)
+                )
+            ).one()
             llm_db_objs = guild.llms
         return [LLMProxy(llm_db_obj) for llm_db_obj in llm_db_objs]
 
