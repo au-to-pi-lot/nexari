@@ -345,7 +345,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
                     if len(image_data) > 8 * 1024 * 1024:  # 8MB
                         raise ValueError("The image file size must be less than 8MB.")
 
-            await llm.set_avatar(discord.File(image_data, filename=f"avatar.{content_type.split('/')[-1]}"))
+            await llm.set_avatar(image_data, content_type)
             
             embed = Embed(title="Avatar Set", color=discord.Color.green())
             embed.description = f"Avatar for '{name}' has been set and applied to all webhooks."
