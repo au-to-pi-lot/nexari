@@ -2,24 +2,29 @@ import logging
 import os
 import shutil
 from datetime import datetime
-from typing import List, Optional, Self
+from typing import List, Optional, Self, TYPE_CHECKING
 
 import discord
+from discord import NotFound
 from discord.ext.commands import Bot
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
-from sqlalchemy import select
+from regex import regex
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.const import AVATAR_DIR
 from src.db.models import LLM, Webhook
 from src.db.models.llm import LLMCreate
-from src.proxies import ChannelProxy, WebhookProxy
+from src.proxies import WebhookProxy
 from src.proxies.message import MessageProxy
 from src.services import svc
 from src.types.litellm_message import LiteLLMMessage
 from src.types.proxy import BaseProxy
+
+if TYPE_CHECKING:
+    from src.proxies import ChannelProxy
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +35,7 @@ class LLMProxy(BaseProxy[None, LLM]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional[Self]:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             llm = (
                 await session.scalars(select(LLM).filter(LLM.id == identifier))
@@ -50,7 +55,8 @@ class LLMProxy(BaseProxy[None, LLM]):
         Returns:
             List[Self]: A list of LLMProxy instances for all LLMs in the guild.
         """
-        async with svc.get(type[AsyncSession])() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             stmt = select(LLM).where(LLM.guild_id == guild_id)
             result = await session.execute(stmt)
             llms = result.scalars().all()
@@ -58,7 +64,7 @@ class LLMProxy(BaseProxy[None, LLM]):
 
     @classmethod
     async def get_by_name(cls, name: str, guild_id: int) -> Optional[Self]:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             llm = (
                 await session.scalars(
@@ -78,15 +84,23 @@ class LLMProxy(BaseProxy[None, LLM]):
         return self._db_obj.llm_name
 
     @classmethod
-    async def create(cls, llm_data: LLMCreate) -> Self:
-        async with svc.get(type[AsyncSession])() as session:
+    async def create(cls, llm_data: LLMCreate, *, session: AsyncSession = None) -> Self:
+        async def _create(s: AsyncSession):
             db_llm = LLM(**llm_data.dict())
             session.add(db_llm)
             await session.commit()
-        return cls(db_llm)
+            await session.refresh(db_llm)
+            return cls(db_llm)
+
+        if session is None:
+            Session: type[AsyncSession] = svc.get(type[AsyncSession])
+            async with Session() as session:
+                return await _create(session)
+        else:
+            return await _create(session)
 
     async def save(self) -> None:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(self._db_obj)
             await session.commit()
@@ -99,19 +113,21 @@ class LLMProxy(BaseProxy[None, LLM]):
         await self.save()
 
     async def get_webhook(self, channel_id) -> WebhookProxy:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        from src.proxies import ChannelProxy
+
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         bot = svc.get(Bot)
 
         channel = await ChannelProxy.get(channel_id)
 
         async with Session() as session:
             query = select(Webhook).where(
-                Webhook.channel_id == channel_id and Webhook.llm_id == self._db_obj
+                Webhook.channel_id == channel_id, Webhook.llm_id == self._db_obj.id
             )
             db_webhook = (await session.scalars(query)).one_or_none()
 
             if db_webhook:
-                webhook = await bot.fetch_webhook(webhook_id=db_webhook.id)
+                webhook = await bot.fetch_webhook(db_webhook.id)
             else:
                 avatar = None
                 if self._db_obj.avatar:
@@ -131,6 +147,7 @@ class LLMProxy(BaseProxy[None, LLM]):
                 )
                 session.add(db_webhook)
                 await session.commit()
+                await session.refresh(db_webhook)
 
         return WebhookProxy(db_webhook=db_webhook, discord_webhook=webhook)
 
@@ -148,16 +165,26 @@ class LLMProxy(BaseProxy[None, LLM]):
         Session: type[AsyncSession] = svc.get(type[AsyncSession])
         webhooks = []
         async with Session() as session:
-            llm = (await session.scalars(
-                select(LLM).options(selectinload(LLM.webhooks)).where(LLM.id == self._db_obj.id)
-            )).one_or_none()
+            llm = (
+                await session.scalars(
+                    select(LLM)
+                    .options(selectinload(LLM.webhooks))
+                    .where(LLM.id == self._db_obj.id)
+                )
+            ).one_or_none()
             if llm:
                 for db_webhook in llm.webhooks:
                     try:
                         discord_webhook = await bot.fetch_webhook(db_webhook.id)
-                        webhooks.append(WebhookProxy(discord_webhook=discord_webhook, db_webhook=db_webhook))
+                        webhooks.append(
+                            WebhookProxy(
+                                discord_webhook=discord_webhook, db_webhook=db_webhook
+                            )
+                        )
                     except Exception as e:
-                        logger.error(f"Error fetching webhook {db_webhook.id} for LLM {self._db_obj.name}: {e}")
+                        logger.error(
+                            f"Error fetching webhook {db_webhook.id} for LLM {self._db_obj.name}: {e}"
+                        )
             else:
                 logger.error(f"Error fetching LLM {self._db_obj.name}")
 
@@ -184,7 +211,7 @@ class LLMProxy(BaseProxy[None, LLM]):
                 **{key: val for key, val in sampling_config.items() if val is not None},
                 api_base=self._db_obj.api_base,
                 api_key=self._db_obj.api_key,
-                stop=["<|begin_metadata|>"],
+                stop=["\n<"],
             )
             return response
         except Exception as e:
@@ -201,24 +228,24 @@ Current Discord Guild: {guild_name}
 Current Discord Channel: {channel_name}
     """
 
-    def mentioned_in_message(self, message: MessageProxy) -> bool:
+    async def mentioned_in_message(self, message: MessageProxy) -> bool:
         mentioned = f"@{self.name.lower()}" in message.content.lower()
         if mentioned:
             return True
 
-        webhook = self.get_webhook(message.channel)
+        webhook = await self.get_webhook(message.channel.id)
 
     async def delete(self) -> None:
         """
         Delete the LLM from the database.
         """
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             await session.delete(self._db_obj)
             await session.commit()
         self._db_obj = None
 
-    async def copy(self, new_name: str) -> "LLMProxy":
+    async def copy(self, new_name: str, *, session: AsyncSession = None) -> "LLMProxy":
         """
         Create a new instance of LLM with all the same values as the source instance, but with a different name.
 
@@ -247,7 +274,7 @@ Current Discord Channel: {channel_name}
             "min_p": self._db_obj.min_p,
             "top_a": self._db_obj.top_a,
         }
-        
+
         # Copy the avatar file if it exists
         if self._db_obj.avatar:
             source_avatar_path = AVATAR_DIR / self._db_obj.avatar
@@ -258,10 +285,20 @@ Current Discord Channel: {channel_name}
                 shutil.copy2(source_avatar_path, new_avatar_path)
                 new_llm_data["avatar"] = new_avatar_filename
             else:
-                logger.warning(f"Avatar file {source_avatar_path} not found. New LLM will not have an avatar.")
-        
-        new_llm = await self.create(LLMCreate(**new_llm_data))
-        return new_llm
+                logger.warning(
+                    f"Avatar file {source_avatar_path} not found. New LLM will not have an avatar."
+                )
+
+        async def _copy(s: AsyncSession):
+            new_llm = await self.create(LLMCreate(**new_llm_data), session=s)
+            return new_llm
+
+        if not session:
+            Session: type[AsyncSession] = svc.get(type[AsyncSession])
+            async with Session() as session:
+                return await _copy(session)
+        else:
+            return await _copy(session)
 
     async def set_avatar(self, avatar: bytes, filename: str) -> None:
         """
@@ -274,14 +311,14 @@ Current Discord Channel: {channel_name}
         Raises:
             ValueError: If the avatar file is too large.
         """
-        
+
         if len(avatar) > 1024 * 1024 * 8:  # 8 MB limit
             raise ValueError("The image file is too large. Maximum size is 8 MB.")
 
         avatar_path = AVATAR_DIR / filename
 
         # Save the avatar file
-        with open(avatar_path, 'wb') as f:
+        with open(avatar_path, "wb") as f:
             f.write(avatar)
 
         # Update the LLM's avatar in the database
@@ -295,31 +332,71 @@ Current Discord Channel: {channel_name}
             except Exception as e:
                 logger.error(f"Failed to update avatar for webhook {webhook.id}: {e}")
 
-        logger.info(f"Avatar set for LLM {self._db_obj.name} and its webhooks: {filename}")
+        logger.info(
+            f"Avatar set for LLM {self._db_obj.name} and its webhooks: {filename}"
+        )
 
-    async def respond(self, channel_id: int, messages: List[LiteLLMMessage]) -> None:
+    async def respond(self, channel: "ChannelProxy") -> None:
         """
         Generate a response and post it in the given channel.
 
         Args:
-            channel_id (int): The ID of the channel to post the response in.
-            messages (List[LiteLLMMessage]): The conversation history to generate a response from.
+            channel (ChannelProxy): The channel to post the response in.
         """
+        history = await channel.history(limit=self._db_obj.message_limit)
+        webhook = await self.get_webhook(channel.id)
+        guild = await channel.get_guild()
+
+        bot = await svc.aget(Bot)
+
+        messages: List[str] = []
+        if self._db_obj.system_prompt is not None:
+            messages.append(self._db_obj.system_prompt)
+        for message in reversed(history):
+            if not message.content:
+                continue
+
+            if message.webhook_id:
+                try:
+                    msg_webhook = await bot.fetch_webhook(message.webhook_id)
+                except NotFound as e:
+                    continue
+                username = msg_webhook.name
+            else:
+                username = message.author.name
+            content = f"<{username}>: {message.content}"
+            messages.append(content)
+
         try:
             # Generate the response
-            response = await self.generate_raw_response(messages)
-            
-            # Get the channel
-            channel = await ChannelProxy.get(channel_id)
-            if not channel:
-                logger.error(f"Channel with ID {channel_id} not found")
+            response = await self.generate_raw_response(
+                [LiteLLMMessage(role="system", content="\n".join(messages))]
+            )
+            response_str = response.choices[0].message.content
+
+            match = regex.match(r"^<(?<username>[^>]*)>: (?<message>.*)$", response_str)
+
+            if not match:
+                await webhook.send(response_str)
+                logger.warning(
+                    f"{self._db_obj.name} didn't include a username before their message"
+                )
                 return
 
-            # Get or create the webhook for this channel
-            webhook = await self.get_webhook(channel_id)
+            username = match.group("username")
+            message = match.group("message")
 
-            # Send the response using the webhook
-            await webhook.send(content=response.choices[0].message.content)
+            if username == self._db_obj.name:
+                # If the message is from this LLM, send it
+                await webhook.send(message)
+            else:
+                # Otherwise, pass control to other LLM, if it exists
+                other_llm = await LLMProxy.get_by_name(username, self._db_obj.guild_id)
+                if other_llm:
+                    await other_llm.respond(channel)
+                elif member := guild.get_member_named(username):
+                    # Or, if it's a human's username, mention them
+                    await webhook.send(f"<@{member.id}>")
 
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
