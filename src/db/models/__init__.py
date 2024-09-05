@@ -10,5 +10,6 @@ from src.db.models.channel import Channel
 from src.db.models.llm import LLM
 from src.db.models.webhook import Webhook
 from src.db.models.user import User
+from src.db.models.message import Message
 
 metadata = Base.metadata
