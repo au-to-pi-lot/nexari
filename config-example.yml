@@ -1,1 +1,2 @@
 bot_token: your_discord_bot_token_here  # Your Discord bot token for authentication, get here https://discord.com/developers/applications
+database_url: "sqlite:///data.db"  # Database connection string
