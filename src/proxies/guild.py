@@ -33,7 +33,8 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
         if not discord_guild:
             return None
 
-        async with svc.get(type[AsyncSession])() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             db_guild = await session.get(DBGuild, identifier)
             if not db_guild:
                 db_guild = DBGuild(id=identifier, name=discord_guild.name)
@@ -43,7 +44,8 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
         return cls(discord_guild, db_guild)
 
     async def save(self):
-        async with svc.get(AsyncSession)() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             self._db_obj.name = self._discord_obj.name
             session.add(self._db_obj)
             await session.commit()
@@ -71,7 +73,7 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     async def get_llms(self) -> Sequence["LLMProxy"]:
         from src.proxies.llm import LLMProxy
 
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])()
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             guild = (
                 await session.scalars(
@@ -98,6 +100,9 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
 
     def get_member(self, user_id: int) -> Optional[discord.Member]:
         return self._discord_obj.get_member(user_id)
+
+    def get_member_named(self, name: str) -> Optional[discord.Member]:
+        return self._discord_obj.get_member_named(name)
 
     async def fetch_member(self, user_id: int) -> discord.Member:
         return await self._discord_obj.fetch_member(user_id)

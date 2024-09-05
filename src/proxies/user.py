@@ -3,7 +3,6 @@ from typing import Optional, Self
 import discord
 from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
 from src.db.models.user import User as DBUser
 from src.services import svc
@@ -16,12 +15,13 @@ class UserProxy(BaseProxy[discord.User, DBUser]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional[Self]:
-        bot: Bot = await svc.get(Bot)
+        bot: Bot = await svc.aget(Bot)
         discord_user = await bot.fetch_user(identifier)
         if not discord_user:
             return None
 
-        async with svc.get(type[AsyncSession])() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             db_user = await session.get(DBUser, identifier)
             if not db_user:
                 db_user = DBUser(
@@ -35,9 +35,14 @@ class UserProxy(BaseProxy[discord.User, DBUser]):
         return cls(discord_user, db_user)
 
     async def save(self):
-        async with svc.get(type[AsyncSession])() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             session.add(self._db_obj)
             await session.commit()
+
+    @property
+    def id(self) -> int:
+        return self._discord_obj.id
 
     @property
     def name(self) -> str:

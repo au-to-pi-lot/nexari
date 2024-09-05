@@ -1,4 +1,11 @@
+import random
+
 import discord
+from discord.ext.commands import Bot
+
+from src.proxies import LLMProxy
+from src.proxies import MessageProxy
+from src.services import svc
 
 
 async def on_message(message: discord.Message):
@@ -8,25 +15,23 @@ async def on_message(message: discord.Message):
     Args:
         message (discord.Message): The received message.
     """
-    if message.author == self.user:
+    message = await MessageProxy.get_or_create(message)
+
+    bot = await svc.aget(Bot)
+    if message.author.id == bot.user.id:
         return
 
-    await self.process_commands(message)
+    await bot.process_commands(message)
 
-    guild = message.guild
-    channel = message.channel
+    guild = await message.get_guild()
+    channel = await message.get_channel()
 
-    llm_handlers = await LLMHandler.get_llm_handlers(guild.id)
+    if channel.last_responder_id:
+        llm = await LLMProxy.get(channel.last_responder_id)
+    else:
+        llms = await LLMProxy.get_all(guild.id)
+        if not llms:
+            return
+        llm = random.choice(llms)
 
-    # Set to keep track of which LLMs have been pinged in this message
-    pinged_llms = set()
-
-    for llm_handler in llm_handlers:
-        if llm_handler.mentioned_in_message(message):
-            pinged_llms.add(llm_handler)
-
-    self.typing_sets[channel.id].update(pinged_llms)
-
-    # Process the set
-    if not self.typing_locks[channel.id].locked():
-        await asyncio.create_task(self.process_typing_set(channel))
+    await llm.respond(channel)

@@ -1,15 +1,16 @@
 import logging
-from typing import Optional, Self
+from typing import Optional, Self, TYPE_CHECKING
 
 import discord
-
 from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import Webhook as DBWebhook
+from src.db.models import Webhook as DBWebhook, Webhook
 from src.services import svc
 from src.types.proxy import BaseProxy
-from src.proxies.llm import LLMProxy
+
+if TYPE_CHECKING:
+    from src.proxies.llm import LLMProxy
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["WebhookProxy"]:
-        bot: Bot = await svc.get(Bot)
+        bot: Bot = await svc.aget(Bot)
         Session: type[AsyncSession] = svc.get(type[AsyncSession])
 
         async with Session() as session:
@@ -37,32 +38,24 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
     @classmethod
     async def create(cls, channel: discord.TextChannel, name: str, **kwargs) -> Self:
         discord_webhook = await channel.create_webhook(name=name, **kwargs)
-        
+
         db_webhook = DBWebhook(
             id=discord_webhook.id,
             token=discord_webhook.token,
             channel_id=channel.id,
-            llm_id=kwargs.get('llm_id')
+            llm_id=kwargs.get("llm_id"),
         )
-        
+
         Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(db_webhook)
             await session.commit()
-        
+
         return cls(discord_webhook, db_webhook)
 
-    @classmethod
-    async def get_or_create(cls, channel: discord.TextChannel, name: str, **kwargs) -> Self:
-        existing_webhooks = await channel.webhooks()
-        for webhook in existing_webhooks:
-            if webhook.name == name:
-                return await cls.get(webhook.id)
-        
-        return await cls.create(channel, name, **kwargs)
-
     async def save(self):
-        async with svc.get(type[AsyncSession])() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             session.add(self._db_obj)
             await session.commit()
 
@@ -79,7 +72,8 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
 
     async def delete(self, **kwargs):
         await self._discord_obj.delete(**kwargs)
-        async with svc.get(type[AsyncSession])() as session:
+        Session: type[AsyncSession] = svc.get(type[AsyncSession])
+        async with Session() as session:
             await session.delete(self._db_obj)
             await session.commit()
 
@@ -102,13 +96,13 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         """
         await self._discord_obj.edit(avatar=avatar)
 
-    async def get_llm(self) -> Optional[LLMProxy]:
+    async def get_llm(self) -> "LLMProxy":
         """
         Retrieve the LLMProxy associated with this webhook.
 
         Returns:
             Optional[LLMProxy]: The associated LLMProxy, or None if not found.
         """
-        if self._db_obj.llm_id is None:
-            return None
+        from src.proxies.llm import LLMProxy
+
         return await LLMProxy.get(self._db_obj.llm_id)

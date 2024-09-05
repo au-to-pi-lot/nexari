@@ -7,11 +7,11 @@ import discord
 from discord import Embed, Interaction, app_commands
 from discord.ext import commands
 from discord.ext.commands import Bot
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.const import AVATAR_DIR
-from src.db.models import LLM
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.proxies import LLMProxy
+from src.services import svc
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +196,8 @@ class LLMCommands(commands.GroupCog, name="llm"):
     ):
         await interaction.response.defer(ephemeral=True)
 
-        model = await LLM.get_by_name(name, interaction.guild_id)
-        if not model:
+        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
+        if not llm:
             embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
             embed.description = f"LLM '{name}' not found in this guild."
             await interaction.followup.send(embed=embed)
@@ -223,7 +223,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         )
 
         try:
-            await self.bot.modify_llm_handler(model.id, update_data)
+            await llm.edit(**{key: value for key, value in update_data if value is not None})
             embed = Embed(title="LLM Modified", color=discord.Color.green())
             embed.add_field(name="Name", value=new_name or name, inline=False)
             if llm_name:
@@ -294,19 +294,21 @@ class LLMCommands(commands.GroupCog, name="llm"):
             return
 
         try:
-            new_llm = await source_llm.copy(new_name)
-            embed = Embed(title="LLM Copied", color=discord.Color.green())
-            embed.description = (
-                f"LLM '{source_name}' successfully copied to '{new_name}'!"
-            )
-            embed.add_field(name="Model", value=new_llm.llm_name, inline=False)
-            embed.add_field(
-                name="Max Tokens", value=str(new_llm.max_tokens), inline=True
-            )
-            embed.add_field(
-                name="Temperature", value=str(new_llm.temperature), inline=True
-            )
-            await interaction.followup.send(embed=embed)
+            Session: type[AsyncSession] = svc.get(type[AsyncSession])
+            async with Session() as session:
+                new_llm = await source_llm.copy(new_name, session=session)
+                embed = Embed(title="LLM Copied", color=discord.Color.green())
+                embed.description = (
+                    f"LLM '{source_name}' successfully copied to '{new_name}'!"
+                )
+                embed.add_field(name="Model", value=new_llm.llm_name, inline=False)
+                embed.add_field(
+                    name="Max Tokens", value=str(new_llm.max_tokens), inline=True
+                )
+                embed.add_field(
+                    name="Temperature", value=str(new_llm.temperature), inline=True
+                )
+                await interaction.followup.send(embed=embed)
         except ValueError as e:
             embed = Embed(title="Error Copying LLM", color=discord.Color.red())
             embed.description = str(e)
