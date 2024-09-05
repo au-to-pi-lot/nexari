@@ -107,10 +107,21 @@ class LLMProxy(BaseProxy[None, LLM]):
 
     async def edit(self, **kwargs):
         columns = LLM.__table__.columns.keys()
+        old_name = self._db_obj.name
         for key, value in kwargs.items():
             if key in columns:
                 setattr(self._db_obj, key, value)
+        
         await self.save()
+
+        # If the name has changed, update all associated webhooks
+        if 'name' in kwargs and kwargs['name'] != old_name:
+            webhooks = await self.get_webhooks()
+            for webhook in webhooks:
+                try:
+                    await webhook.edit(name=kwargs['name'])
+                except Exception as e:
+                    logger.error(f"Failed to update webhook {webhook.id} name: {e}")
 
     async def get_webhook(self, channel_id) -> WebhookProxy:
         from src.proxies import ChannelProxy
