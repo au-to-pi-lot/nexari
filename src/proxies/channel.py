@@ -5,7 +5,8 @@ from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Channel
-from src.services import svc
+from src.services.db import Session
+from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
 from src.proxies.message import MessageProxy
 
@@ -19,12 +20,10 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["ChannelProxy"]:
-        bot: Bot = await svc.aget(Bot)
         discord_channel = bot.get_channel(identifier)
         if not discord_channel or not isinstance(discord_channel, discord.TextChannel):
             return None
 
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             db_channel = await session.get(Channel, identifier)
             if not db_channel:
@@ -35,7 +34,6 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
         return cls(discord_channel, db_channel)
 
     async def save(self):
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(self._db_obj)
             await session.commit()

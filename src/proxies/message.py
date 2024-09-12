@@ -1,13 +1,12 @@
 from typing import Optional, Self, TYPE_CHECKING
 
 import discord
-from discord.ext.commands import Bot
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.message import Message
 from src.proxies.guild import GuildProxy
-from src.services import svc
+from src.services.db import Session
+from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
 
 if TYPE_CHECKING:
@@ -21,7 +20,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional[Self]:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             db_message = (
                 await session.scalars(select(Message).filter(Message.id == identifier))
@@ -29,7 +27,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             if db_message is None:
                 return None
 
-            bot = svc.get(Bot)
             discord_message = await bot.get_channel(
                 db_message.channel_id
             ).fetch_message(db_message.id)
@@ -37,7 +34,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             return cls(discord_message, db_message)
 
     async def save(self) -> None:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(self._db_obj)
             await session.commit()
@@ -53,7 +49,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             created_at=discord_message.created_at,
         )
 
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(db_message)
             await session.commit()
@@ -86,7 +81,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
         await self.save()
 
     async def delete(self) -> None:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             await session.delete(self._db_obj)
             await session.commit()
@@ -102,7 +96,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
 
     @classmethod
     async def get_or_create(cls, discord_message: discord.Message) -> Self:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             db_message = await session.get(Message, discord_message.id)
             if db_message is None:

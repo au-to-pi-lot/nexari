@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.db.models import Guild, Guild as DBGuild
-from src.services import svc
+from src.services.db import Session
+from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
 
 if TYPE_CHECKING:
@@ -28,12 +29,10 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["GuildProxy"]:
-        bot = await svc.aget(Bot)
         discord_guild = bot.get_guild(identifier)
         if not discord_guild:
             return None
 
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             db_guild = await session.get(DBGuild, identifier)
             if not db_guild:
@@ -44,7 +43,6 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
         return cls(discord_guild, db_guild)
 
     async def save(self):
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             self._db_obj.name = self._discord_obj.name
             session.add(self._db_obj)
@@ -73,7 +71,6 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     async def get_llms(self) -> Sequence["LLMProxy"]:
         from src.proxies.llm import LLMProxy
 
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             guild = (
                 await session.scalars(

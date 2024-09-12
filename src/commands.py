@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.proxies import LLMProxy
-from src.services import svc
+from src.services.db import Session
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +294,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
             return
 
         try:
-            Session: type[AsyncSession] = svc.get(type[AsyncSession])
             async with Session() as session:
                 new_llm = await source_llm.copy(new_name, session=session)
                 embed = Embed(title="LLM Copied", color=discord.Color.green())

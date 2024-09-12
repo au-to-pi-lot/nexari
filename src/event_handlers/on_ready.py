@@ -1,9 +1,7 @@
 import logging
 
-from discord.ext.commands import Bot
-
 from src.proxies import GuildProxy
-from src.services import svc
+from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +10,6 @@ async def on_ready():
     """
     Called when the bot is ready and connected to Discord.
     """
-    bot = svc.get(Bot)
     logger.info(f"{bot.user} has connected to Discord!")
 
     for guild in bot.guilds:

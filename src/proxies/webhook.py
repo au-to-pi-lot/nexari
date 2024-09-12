@@ -2,11 +2,11 @@ import logging
 from typing import Optional, Self, TYPE_CHECKING
 
 import discord
-from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import Webhook as DBWebhook, Webhook
-from src.services import svc
+from src.db.models import Webhook as DBWebhook
+from src.services.db import Session
+from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
 
 if TYPE_CHECKING:
@@ -21,9 +21,6 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["WebhookProxy"]:
-        bot: Bot = await svc.aget(Bot)
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
-
         async with Session() as session:
             db_webhook = await session.get(DBWebhook, identifier)
             if not db_webhook:
@@ -46,7 +43,6 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
             llm_id=kwargs.get("llm_id"),
         )
 
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(db_webhook)
             await session.commit()
@@ -54,7 +50,6 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         return cls(discord_webhook, db_webhook)
 
     async def save(self):
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(self._db_obj)
             await session.commit()
@@ -72,7 +67,6 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
 
     async def delete(self, **kwargs):
         await self._discord_obj.delete(**kwargs)
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             await session.delete(self._db_obj)
             await session.commit()

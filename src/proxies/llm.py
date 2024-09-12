@@ -20,7 +20,8 @@ from src.db.models import LLM, Webhook
 from src.db.models.llm import LLMCreate
 from src.proxies import WebhookProxy
 from src.proxies.message import MessageProxy
-from src.services import svc
+from src.services.db import Session
+from src.services.discord_client import bot
 from src.types.litellm_message import LiteLLMMessage
 from src.types.proxy import BaseProxy
 
@@ -36,7 +37,6 @@ class LLMProxy(BaseProxy[None, LLM]):
 
     @classmethod
     async def get(cls, identifier: int) -> Optional[Self]:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             llm = (
                 await session.scalars(select(LLM).filter(LLM.id == identifier))
@@ -56,7 +56,6 @@ class LLMProxy(BaseProxy[None, LLM]):
         Returns:
             List[Self]: A list of LLMProxy instances for all LLMs in the guild.
         """
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             stmt = select(LLM).where(LLM.guild_id == guild_id)
             result = await session.execute(stmt)
@@ -65,7 +64,6 @@ class LLMProxy(BaseProxy[None, LLM]):
 
     @classmethod
     async def get_by_name(cls, name: str, guild_id: int) -> Optional[Self]:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             llm = (
                 await session.scalars(
@@ -102,14 +100,12 @@ class LLMProxy(BaseProxy[None, LLM]):
             return cls(db_llm)
 
         if session is None:
-            Session: type[AsyncSession] = svc.get(type[AsyncSession])
             async with Session() as session:
                 return await _create(session)
         else:
             return await _create(session)
 
     async def save(self) -> None:
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             session.add(self._db_obj)
             await session.commit()
@@ -134,9 +130,6 @@ class LLMProxy(BaseProxy[None, LLM]):
 
     async def get_webhook(self, channel_id) -> WebhookProxy:
         from src.proxies import ChannelProxy
-
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
-        bot = svc.get(Bot)
 
         channel = await ChannelProxy.get(channel_id)
 
@@ -179,8 +172,6 @@ class LLMProxy(BaseProxy[None, LLM]):
         Returns:
             List[discord.Webhook]: The list of webhooks associated with the LLM.
         """
-        bot = svc.get(Bot)
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         webhooks = []
         async with Session() as session:
             llm = (
@@ -257,7 +248,6 @@ Current Discord Channel: {channel_name}
         """
         Delete the LLM from the database.
         """
-        Session: type[AsyncSession] = svc.get(type[AsyncSession])
         async with Session() as session:
             await session.delete(self._db_obj)
             await session.commit()
@@ -312,7 +302,6 @@ Current Discord Channel: {channel_name}
             return new_llm
 
         if not session:
-            Session: type[AsyncSession] = svc.get(type[AsyncSession])
             async with Session() as session:
                 return await _copy(session)
         else:
@@ -362,8 +351,6 @@ Current Discord Channel: {channel_name}
         history = await channel.history(limit=self._db_obj.message_limit)
         webhook = await self.get_webhook(channel.id)
         guild = await channel.get_guild()
-
-        bot = await svc.aget(Bot)
 
         messages: List[LiteLLMMessage] = []
         if self._db_obj.system_prompt is not None:

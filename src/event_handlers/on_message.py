@@ -5,7 +5,7 @@ from discord.ext.commands import Bot
 
 from src.proxies import LLMProxy
 from src.proxies import MessageProxy
-from src.services import svc
+from src.services.discord_client import bot
 
 
 async def on_message(message: discord.Message):
@@ -17,7 +17,6 @@ async def on_message(message: discord.Message):
     """
     message = await MessageProxy.get_or_create(message)
 
-    bot = await svc.aget(Bot)
     if message.author.id == bot.user.id:
         return
 
