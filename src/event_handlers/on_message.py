@@ -31,7 +31,11 @@ async def on_message(message: discord.Message):
     guild = await message.get_guild()
     channel = await message.get_channel()
 
-    async with channel_locks[channel.id]:
+    lock = channel_locks[channel.id]
+    if lock.locked():
+        return
+
+    async with lock:
         llms = await LLMProxy.get_all(guild.id)
 
         # Set to keep track of which LLMs have been pinged in this message
