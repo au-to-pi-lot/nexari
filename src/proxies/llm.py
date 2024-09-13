@@ -239,10 +239,7 @@ Current Discord Channel: {channel_name}
 
     async def mentioned_in_message(self, message: MessageProxy) -> bool:
         mentioned = f"@{self.name.lower()}" in message.content.lower()
-        if mentioned:
-            return True
-
-        webhook = await self.get_webhook(message.channel.id)
+        return mentioned
 
     async def delete(self) -> None:
         """
@@ -361,16 +358,18 @@ Current Discord Channel: {channel_name}
             if not message.content:
                 continue
 
-            role = "user"
             if message.webhook_id:
                 try:
                     msg_webhook = await bot.fetch_webhook(message.webhook_id)
                 except NotFound as e:
                     continue
                 username = msg_webhook.name
+                role = "assistant" if msg_webhook.id == webhook.id else "user"
             else:
                 username = message.author.name
-            content = f"<{username}>: {message.content}"
+                role = "user"
+
+            content = f"<{username}> {message.content}"
             messages.append(LiteLLMMessage(role=role, content=content))
 
         try:
@@ -383,14 +382,14 @@ Current Discord Channel: {channel_name}
                 return
 
             match = regex.match(
-                r"^<(?P<username>[^>]+)>: (?P<message>.*)$",
+                r"^<(?P<username>[^>]+)> (?P<message>.*)$",
                 response_str,
                 flags=re.DOTALL,
             )
 
             if not match:
                 await webhook.send(response_str)
-                await channel.edit(last_responder_id=self.id)
+                logger.info(f"Msg in channel {channel.id} from {self.name}: {response_str}")
                 logger.warning(
                     f"{self.name} didn't include a username before their message"
                 )
@@ -402,7 +401,6 @@ Current Discord Channel: {channel_name}
             if username == self.name:
                 # If the message is from this LLM, send it
                 await webhook.send(message)
-                await channel.edit(last_responder_id=self.id)
                 logger.info(f"Msg in channel {channel.id} from {username}: {message}")
             else:
                 # Otherwise, pass control to other LLM, if it exists

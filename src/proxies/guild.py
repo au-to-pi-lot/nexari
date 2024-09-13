@@ -36,7 +36,7 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
         async with Session() as session:
             db_guild = await session.get(DBGuild, identifier)
             if not db_guild:
-                db_guild = DBGuild(id=identifier, name=discord_guild.name)
+                db_guild = DBGuild(id=identifier)
                 session.add(db_guild)
                 await session.commit()
 

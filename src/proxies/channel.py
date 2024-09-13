@@ -54,6 +54,10 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
     def name(self) -> str:
         return self._discord_obj.name
 
+    @property
+    def guild(self) -> discord.Guild:
+        return self._discord_obj.guild
+
     async def get_guild(self) -> "GuildProxy":
         from src.proxies import GuildProxy
 

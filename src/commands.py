@@ -105,7 +105,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         max_tokens: int,
         context_length: int,
         message_limit: int,
-        system_prompt: str = "",
+        system_prompt: Optional[str] = "",
         temperature: float = 1.0,
         top_p: Optional[float] = None,
         top_k: Optional[int] = None,
@@ -139,7 +139,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         )
 
         try:
-            await self.bot.add_llm_handler(model_data, interaction.guild)
+            await LLMProxy.create(model_data)
             embed = Embed(title="LLM Created", color=discord.Color.green())
             embed.add_field(name="Name", value=name, inline=False)
             embed.add_field(name="Model", value=llm_name, inline=False)
