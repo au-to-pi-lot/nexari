@@ -10,9 +10,29 @@ from src.simulator import Simulator
 
 logger = logging.getLogger(__name__)
 
-channel_locks = defaultdict(asyncio.Lock)
+class ChannelQueue:
+    def __init__(self):
+        self.lock = asyncio.Lock()
+        self.queue = asyncio.Queue(maxsize=1)
 
+channel_queues = defaultdict(ChannelQueue)
 
+async def process_message(message: MessageProxy, channel: 'ChannelProxy', guild: 'GuildProxy'):
+    llms = await LLMProxy.get_all(guild.id)
+    pinged_llms: set[LLMProxy] = set()
+
+    for llm in llms:
+        if await llm.mentioned_in_message(message):
+            pinged_llms.add(llm)
+            logger.info(f"Pinged {llm.name}")
+
+    if pinged_llms:
+        for llm in pinged_llms:
+            await llm.respond(channel)
+    else:
+        llm = await Simulator.get_next_participant(channel)
+        if llm is not None:
+            await llm.respond(channel)
 
 async def on_message(message: discord.Message):
     """
@@ -31,25 +51,15 @@ async def on_message(message: discord.Message):
     guild = await message.get_guild()
     channel = await message.get_channel()
 
-    lock = channel_locks[channel.id]
-    if lock.locked():
+    channel_queue = channel_queues[channel.id]
+
+    try:
+        channel_queue.queue.put_nowait(message)
+    except asyncio.QueueFull:
+        logger.info(f"Queue full for channel {channel.id}, ignoring message")
         return
 
-    async with lock:
-        llms = await LLMProxy.get_all(guild.id)
-
-        # Set to keep track of which LLMs have been pinged in this message
-        pinged_llms: set[LLMProxy] = set()
-
-        for llm in llms:
-            if await llm.mentioned_in_message(message):
-                pinged_llms.add(llm)
-                logger.info(f"Pinged {llm.name}")
-
-        if pinged_llms:
-            for llm in pinged_llms:
-                await llm.respond(channel)
-        else:
-            llm = await Simulator.get_next_participant(channel)
-            if llm is not None:
-                await llm.respond(channel)
+    async with channel_queue.lock:
+        while not channel_queue.queue.empty():
+            queued_message = await channel_queue.queue.get()
+            await process_message(queued_message, channel, guild)
