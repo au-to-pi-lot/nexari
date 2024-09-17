@@ -14,15 +14,25 @@ from src.types.litellm_message import LiteLLMMessage
 
 logger = logging.getLogger(__name__)
 
+
 class Simulator:
     def __init__(self):
         pass
 
     @classmethod
     async def get_next_participant(cls, channel: ChannelProxy) -> Optional[LLMProxy]:
-        history = await channel.history(limit=100)
-
         messages = []
+
+        guild = await channel.get_guild()
+        llms_in_guild = await guild.get_llms()
+
+        if not llms_in_guild:
+            return None
+
+        for llm in llms_in_guild:
+            messages.append(f"* {llm.name} joined")
+
+        history = await channel.history(limit=100)
         for message in reversed(history):
             if not message.content:
                 continue
@@ -36,11 +46,25 @@ class Simulator:
             else:
                 username = message.author.name
 
-            role = "user"
-            content = f"<{username}> {message.content}"
-            messages.append(LiteLLMMessage(role=role, content=content))
+            matches = re.finditer(r"<@(?P<user_id>\d+)>", message.content)
 
-        response = await cls.generate_raw_response(messages)
+            message_replaced_mentions = message.content
+            for match in matches:
+                user_id = match.group("user_id")
+                try:
+                    user = await bot.fetch_user(user_id)
+                    message_replaced_mentions = message_replaced_mentions.replace(
+                        f"<@{user_id}>", f"@{user.name}"
+                    )
+                except NotFound:
+                    continue
+
+            content = f"<{username}> {message_replaced_mentions}"
+            messages.append(content)
+
+        prompt = "\n\n\n".join(messages) + "\n\n\n"
+
+        response = await cls.generate_raw_response(prompt=prompt)
         response_str = response.choices[0].message.content
 
         logger.info(f"Received simulator response: {response_str}")
@@ -52,7 +76,7 @@ class Simulator:
         )
 
         if not match:
-            logger.info(f'No match for username ')
+            logger.info(f"No match for username ")
             return None
 
         username = match.group("username")
@@ -60,12 +84,10 @@ class Simulator:
         return await LLMProxy.get_by_name(username, channel.guild.id)
 
     @classmethod
-    async def generate_raw_response(
-        cls, messages: List[LiteLLMMessage]
-    ) -> ModelResponse:
+    async def generate_raw_response(cls, prompt: str) -> ModelResponse:
         response = await acompletion(
             model="openrouter/meta-llama/llama-3.1-405b",
-            messages=messages,
+            prompt=prompt,
             max_tokens=256,
             api_base="https://openrouter.ai/api/v1",
             api_key=config.openrouter_api_key,
