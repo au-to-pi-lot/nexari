@@ -3,8 +3,9 @@ import re
 from typing import List, Optional
 
 from discord import NotFound
-from litellm import acompletion
-from litellm.types.utils import ModelResponse
+import aiohttp
+import json
+from typing import Dict, Any
 from regex import regex
 
 from src.config import config
@@ -84,13 +85,21 @@ class Simulator:
         return await LLMProxy.get_by_name(username, channel.guild.id)
 
     @classmethod
-    async def generate_raw_response(cls, prompt: str) -> ModelResponse:
-        response = await acompletion(
-            model="openrouter/meta-llama/llama-3.1-405b",
-            prompt=prompt,
-            max_tokens=256,
-            api_base="https://openrouter.ai/api/v1",
-            api_key=config.openrouter_api_key,
-            stop=[],
-        )
-        return response
+    async def generate_raw_response(cls, prompt: str) -> Dict[str, Any]:
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {config.openrouter_api_key}",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "model": "openrouter/meta-llama/llama-3.1-405b",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 256,
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    raise Exception(f"Error {response.status}: {await response.text()}")
