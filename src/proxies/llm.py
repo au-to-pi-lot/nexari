@@ -2,20 +2,23 @@ import logging
 import os
 import re
 import shutil
+import textwrap
 from datetime import datetime
-from typing import List, Optional, Self, TYPE_CHECKING
+from itertools import cycle
+from typing import List, Literal, Optional, Self, TYPE_CHECKING
 
 import discord
 from discord import NotFound
 from discord.ext.commands import Bot
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
+from pydantic import BaseModel
 from regex import regex
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.const import AVATAR_DIR
+from src.const import AVATAR_DIR, DISCORD_MESSAGE_MAX_CHARS
 from src.db.models import LLM, Webhook
 from src.db.models.llm import LLMCreate
 from src.proxies import WebhookProxy
@@ -24,6 +27,7 @@ from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.litellm_message import LiteLLMMessage
 from src.types.proxy import BaseProxy
+from src.util import drop_both_ends
 
 if TYPE_CHECKING:
     from src.proxies import ChannelProxy
@@ -387,20 +391,22 @@ Current Discord Channel: {channel_name}
                 flags=re.DOTALL,
             )
 
-            if not match:
-                await webhook.send(response_str)
-                logger.info(f"Msg in channel {channel.id} from {self.name}: {response_str}")
+            if match:
+                username = match.group("username")
+                message = match.group("message")
+            else:
+                message = response_str
+                username = None
                 logger.warning(
                     f"{self.name} didn't include a username before their message"
                 )
-                return
 
-            username = match.group("username")
-            message = match.group("message")
+            messages_to_send = self.break_messages(message)
 
-            if username == self.name:
+            if username == self.name or username is None:
                 # If the message is from this LLM, send it
-                await webhook.send(message)
+                for message in messages_to_send:
+                    await webhook.send(message)
                 logger.info(f"Msg in channel {channel.id} from {username}: {message}")
             else:
                 # Otherwise, pass control to other LLM, if it exists
@@ -415,3 +421,89 @@ Current Discord Channel: {channel_name}
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
             # Optionally, you could send an error message to the channel here
+
+    @staticmethod
+    def break_messages(content: str) -> List[str]:
+        """
+        Break a long message into smaller chunks that fit within Discord's message limit.
+
+        Args:
+            content (str): The content to break into messages.
+
+        Returns:
+            List[str]: A list of message chunks.
+        """
+
+        class CharBlock(BaseModel):
+            content: str
+            block_type: Literal["text", "code"]
+
+        char_blocks = (
+            CharBlock(content=content, block_type=block_type)
+            for content, block_type in zip(
+                content.split("```"), cycle(["text", "code"])
+            )
+            if content
+        )
+
+        blocks = []
+        for block in char_blocks:
+            if block.block_type == "text":
+                block.content = block.content.strip()
+                if block:
+                    blocks.append(block)
+            else:
+                blocks.append(block)
+
+        messages = []
+        for block in blocks:
+            if block.block_type == "text":
+                messages.extend(
+                    [
+                        nonempty_message
+                        for paragraph in block.content.split("\n\n")
+                        for message in textwrap.wrap(
+                            paragraph,
+                            width=DISCORD_MESSAGE_MAX_CHARS,
+                            expand_tabs=False,
+                            replace_whitespace=False,
+                        )
+                        if (nonempty_message := message.strip())
+                    ]
+                )
+            elif block.block_type == "code":
+                lines = block.content.split("\n")
+
+                potential_language_marker = None
+                if lines[0] != "":
+                    potential_language_marker = lines[0]
+                    lines = lines[1:]
+
+                lines = drop_both_ends(lambda ln: ln == "", lines)
+
+                if not lines and potential_language_marker:
+                    lines = [potential_language_marker]
+
+                if lines:
+                    message_lines = []
+                    current_length = 0
+                    for index, line in enumerate(lines):
+                        estimated_length = (
+                            current_length + len(line) + len("```\n") + len("\n```") + 1
+                        )
+                        if estimated_length <= DISCORD_MESSAGE_MAX_CHARS:
+                            message_lines.append(line)
+                            current_length += len(line) + 1  # plus one for newline
+                        else:
+                            messages.append(
+                                "```\n" + "\n".join(message_lines) + "\n```"
+                            )
+                            message_lines = []
+                            current_length = 0
+
+                    if message_lines:
+                        messages.append("```\n" + "\n".join(message_lines) + "\n```")
+                else:  # empty code block
+                    messages.append("```\n```")
+
+        return messages

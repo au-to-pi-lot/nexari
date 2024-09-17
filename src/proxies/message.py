@@ -67,6 +67,10 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
     def author(self) -> discord.User:
         return self._discord_obj.author
 
+    @property
+    def reference(self) -> Optional[discord.MessageReference]:
+        return self._discord_obj.reference
+
     async def get_author(self) -> "UserProxy":
         from src.proxies import UserProxy
 

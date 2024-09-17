@@ -65,8 +65,9 @@ class Simulator:
 
         prompt = "\n\n\n".join(messages) + "\n\n\n"
 
+        logger.info(f"Simulating conversation in #{channel.name}...")
         response = await cls.generate_raw_response(prompt=prompt)
-        response_str = response.choices[0].message.content
+        response_str = response["choices"][0]["text"]
 
         logger.info(f"Received simulator response: {response_str}")
 
@@ -92,8 +93,8 @@ class Simulator:
             "Content-Type": "application/json"
         }
         data = {
-            "model": "openrouter/meta-llama/llama-3.1-405b",
-            "messages": [{"role": "user", "content": prompt}],
+            "model": "meta-llama/llama-3.1-405b",
+            "prompt": prompt,
             "max_tokens": 256,
         }
 

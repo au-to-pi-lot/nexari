@@ -55,6 +55,10 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
             await session.commit()
 
     @property
+    def id(self) -> int:
+        return self._discord_obj.id
+
+    @property
     def name(self) -> str:
         return self._discord_obj.name
 
