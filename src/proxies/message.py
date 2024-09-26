@@ -1,9 +1,12 @@
 from typing import Optional, Self, TYPE_CHECKING
+import logging
 
 import discord
 from sqlalchemy import select
+import sqlalchemy
 
 from src.db.models.message import Message
+from src.db.models import User, Channel, Guild
 from src.proxies.guild import GuildProxy
 from src.services.db import Session
 from src.services.discord_client import bot
@@ -12,6 +15,8 @@ from src.types.proxy import BaseProxy
 if TYPE_CHECKING:
     from src.proxies import ChannelProxy
     from src.proxies import UserProxy
+
+logger = logging.getLogger(__name__)
 
 
 class MessageProxy(BaseProxy[discord.Message, Message]):

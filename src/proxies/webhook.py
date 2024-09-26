@@ -3,8 +3,9 @@ from typing import Optional, Self, TYPE_CHECKING
 
 import discord
 from sqlalchemy.ext.asyncio import AsyncSession
+import sqlalchemy
 
-from src.db.models import Webhook as DBWebhook
+from src.db.models import Webhook as DBWebhook, Channel, LLM
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.proxy import BaseProxy

@@ -1,4 +1,5 @@
 from typing import List, Optional, Sequence, TYPE_CHECKING
+import logging
 
 import discord
 from discord import (
@@ -13,6 +14,7 @@ from discord.ext.commands import Bot
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+import sqlalchemy
 
 from src.db.models import Guild, Guild as DBGuild
 from src.services.db import Session
@@ -21,6 +23,8 @@ from src.types.proxy import BaseProxy
 
 if TYPE_CHECKING:
     from src.proxies import LLMProxy
+
+logger = logging.getLogger(__name__)
 
 
 class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
