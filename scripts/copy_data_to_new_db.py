@@ -2,6 +2,7 @@ import asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import MetaData, Table, select, insert
+from sqlalchemy.sql import sqltypes
 
 # Adjust these imports to match your project structure
 from src.db.models import Base
@@ -14,6 +15,34 @@ POSTGRES_URL = "postgresql+asyncpg://nexari:Uf1BVvenzrhcwfmNRpxBQwMlL5YcpOKfprXX
 sqlite_engine = create_async_engine(SQLITE_URL)
 postgres_engine = create_async_engine(POSTGRES_URL)
 
+def get_table_order(metadata):
+    """
+    Determine the order in which tables should be populated to satisfy foreign key constraints.
+    """
+    tables = list(metadata.tables.values())
+    table_graph = {table.name: set() for table in tables}
+    
+    for table in tables:
+        for fk in table.foreign_keys:
+            table_graph[table.name].add(fk.column.table.name)
+    
+    table_order = []
+    while table_graph:
+        # Find tables with no dependencies
+        independent_tables = [name for name, deps in table_graph.items() if not deps]
+        if not independent_tables:
+            raise ValueError("Circular dependency detected")
+        
+        # Add these tables to our order
+        table_order.extend(independent_tables)
+        
+        # Remove these tables from the graph
+        for name in independent_tables:
+            del table_graph[name]
+        for deps in table_graph.values():
+            deps.difference_update(independent_tables)
+    
+    return table_order
 
 async def transfer_data():
     metadata = Base.metadata
@@ -22,15 +51,18 @@ async def transfer_data():
     async with postgres_engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
 
-        # Create sessions
+    # Create sessions
     SQLiteSession = async_sessionmaker(bind=sqlite_engine)
     PostgresSession = async_sessionmaker(bind=postgres_engine, class_=AsyncSession)
 
     sqlite_session = SQLiteSession()
     postgres_session = PostgresSession()
 
-    # Transfer data for each table
-    for table_name in metadata.tables:
+    # Get the correct order for table transfers
+    table_order = get_table_order(metadata)
+
+    # Transfer data for each table in the correct order
+    for table_name in table_order:
         print(f"Transferring data for table: {table_name}")
 
         # Get the table objects
@@ -43,14 +75,22 @@ async def transfer_data():
         # Insert data into PostgreSQL
         if sqlite_data:
             async with postgres_session.begin():
-                await postgres_session.execute(insert(postgres_table), list(map(lambda row: row._mapping, sqlite_data)))
+                # Convert SQLite BLOB to PostgreSQL BYTEA if necessary
+                insert_data = []
+                for row in sqlite_data:
+                    row_dict = row._mapping
+                    for key, value in row_dict.items():
+                        if isinstance(sqlite_table.c[key].type, sqltypes.BLOB):
+                            row_dict[key] = bytes(value)
+                    insert_data.append(row_dict)
+                
+                await postgres_session.execute(insert(postgres_table), insert_data)
 
-                # Close sessions
+    # Close sessions
     await sqlite_session.close()
     await postgres_session.close()
 
     print("Data transfer complete!")
-
 
 # Run the transfer
 asyncio.run(transfer_data())
