@@ -39,19 +39,35 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             await session.commit()
 
     @classmethod
-    async def create(cls, discord_message: discord.Message) -> Self:
-        db_message = Message(
-            id=discord_message.id,
-            content=discord_message.content,
-            author_id=discord_message.author.id,
-            channel_id=discord_message.channel.id,
-            guild_id=discord_message.guild.id,
-            created_at=discord_message.created_at,
-        )
-
+    async def create(cls, discord_message: discord.Message) -> Optional[Self]:
         async with Session() as session:
+            # Check if author, channel, and guild exist in the database
+            db_user = await session.get(User, discord_message.author.id)
+            db_channel = await session.get(Channel, discord_message.channel.id)
+            db_guild = await session.get(Guild, discord_message.guild.id)
+
+            if not db_user or not db_channel or not db_guild:
+                logger.error(f"Failed to create message {discord_message.id}: "
+                             f"User {discord_message.author.id}, "
+                             f"Channel {discord_message.channel.id}, or "
+                             f"Guild {discord_message.guild.id} not found in database")
+                return None
+
+            db_message = Message(
+                id=discord_message.id,
+                content=discord_message.content,
+                author_id=discord_message.author.id,
+                channel_id=discord_message.channel.id,
+                created_at=discord_message.created_at,
+            )
+
             session.add(db_message)
-            await session.commit()
+            try:
+                await session.commit()
+            except sqlalchemy.exc.IntegrityError:
+                await session.rollback()
+                logger.error(f"Failed to create message {discord_message.id} due to integrity error")
+                return None
 
         return cls(discord_message, db_message)
 

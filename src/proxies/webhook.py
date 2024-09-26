@@ -33,19 +33,36 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         return cls(discord_webhook, db_webhook)
 
     @classmethod
-    async def create(cls, channel: discord.TextChannel, name: str, **kwargs) -> Self:
+    async def create(cls, channel: discord.TextChannel, name: str, **kwargs) -> Optional[Self]:
         discord_webhook = await channel.create_webhook(name=name, **kwargs)
 
-        db_webhook = DBWebhook(
-            id=discord_webhook.id,
-            token=discord_webhook.token,
-            channel_id=channel.id,
-            llm_id=kwargs.get("llm_id"),
-        )
-
         async with Session() as session:
+            # Check if channel and LLM exist in the database
+            db_channel = await session.get(Channel, channel.id)
+            db_llm = await session.get(LLM, kwargs.get("llm_id"))
+
+            if not db_channel or (kwargs.get("llm_id") and not db_llm):
+                logger.error(f"Failed to create webhook: "
+                             f"Channel {channel.id} or "
+                             f"LLM {kwargs.get('llm_id')} not found in database")
+                await discord_webhook.delete()
+                return None
+
+            db_webhook = DBWebhook(
+                id=discord_webhook.id,
+                token=discord_webhook.token,
+                channel_id=channel.id,
+                llm_id=kwargs.get("llm_id"),
+            )
+
             session.add(db_webhook)
-            await session.commit()
+            try:
+                await session.commit()
+            except sqlalchemy.exc.IntegrityError:
+                await session.rollback()
+                logger.error(f"Failed to create webhook {discord_webhook.id} due to integrity error")
+                await discord_webhook.delete()
+                return None
 
         return cls(discord_webhook, db_webhook)
 

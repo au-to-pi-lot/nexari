@@ -27,9 +27,20 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
         async with Session() as session:
             db_channel = await session.get(Channel, identifier)
             if not db_channel:
+                # Check if the guild exists in the database
+                db_guild = await session.get(Guild, discord_channel.guild.id)
+                if not db_guild:
+                    logger.error(f"Guild {discord_channel.guild.id} not found in database")
+                    return None
+
                 db_channel = Channel(id=identifier, guild_id=discord_channel.guild.id)
                 session.add(db_channel)
-                await session.commit()
+                try:
+                    await session.commit()
+                except sqlalchemy.exc.IntegrityError:
+                    await session.rollback()
+                    logger.error(f"Failed to create channel {identifier} due to integrity error")
+                    return None
 
         return cls(discord_channel, db_channel)
 

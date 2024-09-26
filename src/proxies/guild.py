@@ -38,7 +38,12 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
             if not db_guild:
                 db_guild = DBGuild(id=identifier)
                 session.add(db_guild)
-                await session.commit()
+                try:
+                    await session.commit()
+                except sqlalchemy.exc.IntegrityError:
+                    await session.rollback()
+                    logger.error(f"Failed to create guild {identifier} due to integrity error")
+                    return None
 
         return cls(discord_guild, db_guild)
 

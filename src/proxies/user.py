@@ -29,7 +29,12 @@ class UserProxy(BaseProxy[discord.User, DBUser]):
                     discriminator=discord_user.discriminator
                 )
                 session.add(db_user)
-                await session.commit()
+                try:
+                    await session.commit()
+                except sqlalchemy.exc.IntegrityError:
+                    await session.rollback()
+                    logger.error(f"Failed to create user {identifier} due to integrity error")
+                    return None
 
         return cls(discord_user, db_user)
 
