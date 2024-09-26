@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.exc import IntegrityError
 
 
 # revision identifiers, used by Alembic.
@@ -68,6 +69,25 @@ def upgrade() -> None:
     )
     op.add_column("message", sa.Column("user_id", sa.BigInteger(), nullable=True))
     op.add_column("message", sa.Column("webhook_id", sa.BigInteger(), nullable=True))
+    
+    # Transition existing values from author_id to user_id or webhook_id
+    connection = op.get_bind()
+    message_table = sa.Table('message', sa.MetaData(), autoload_with=connection)
+    user_table = sa.Table('user', sa.MetaData(), autoload_with=connection)
+    webhook_table = sa.Table('webhook', sa.MetaData(), autoload_with=connection)
+
+    for message in connection.execute(message_table.select()):
+        author_id = message.author_id
+        user = connection.execute(user_table.select().where(user_table.c.id == author_id)).first()
+        webhook = connection.execute(webhook_table.select().where(webhook_table.c.id == author_id)).first()
+
+        if user:
+            connection.execute(message_table.update().where(message_table.c.id == message.id).values(user_id=author_id))
+        elif webhook:
+            connection.execute(message_table.update().where(message_table.c.id == message.id).values(webhook_id=author_id))
+        else:
+            raise IntegrityError("Author ID not found in user or webhook table", params={}, orig=None)
+
     op.drop_constraint(None, "message", type_="foreignkey")
     op.create_foreign_key(None, "message", "webhook", ["webhook_id"], ["id"])
     op.create_foreign_key(None, "message", "user", ["user_id"], ["id"])
