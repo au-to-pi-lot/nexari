@@ -4,6 +4,7 @@ import logging
 import discord
 from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import sqlalchemy
 
 from src.db.models import Channel, Guild
