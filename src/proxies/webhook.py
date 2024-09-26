@@ -3,6 +3,7 @@ from typing import Optional, Self, TYPE_CHECKING
 
 import discord
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import sqlalchemy
 
 from src.db.models import Webhook as DBWebhook, Channel, LLM
