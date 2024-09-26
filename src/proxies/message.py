@@ -26,41 +26,52 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
     @staticmethod
     async def ensure_linked_tables_exist():
         async with Session() as session:
-            # Ensure Users exist
-            discord_users = [member for guild in bot.guilds for member in guild.members]
-            db_users = (await session.execute(select(User))).scalars().all()
-            db_user_ids = {user.id for user in db_users}
-            
-            for discord_user in discord_users:
-                if discord_user.id not in db_user_ids:
-                    new_user = User(id=discord_user.id, name=discord_user.name, discriminator=discord_user.discriminator)
-                    session.add(new_user)
-
-            # Ensure Channels exist
-            discord_channels = [channel for guild in bot.guilds for channel in guild.channels if isinstance(channel, discord.TextChannel)]
-            db_channels = (await session.execute(select(Channel))).scalars().all()
-            db_channel_ids = {channel.id for channel in db_channels}
-            
-            for discord_channel in discord_channels:
-                if discord_channel.id not in db_channel_ids:
-                    new_channel = Channel(id=discord_channel.id, guild_id=discord_channel.guild.id)
-                    session.add(new_channel)
-
             # Ensure Guilds exist
             discord_guilds = bot.guilds
             db_guilds = (await session.execute(select(Guild))).scalars().all()
             db_guild_ids = {guild.id for guild in db_guilds}
-            
+
             for discord_guild in discord_guilds:
                 if discord_guild.id not in db_guild_ids:
                     new_guild = Guild(id=discord_guild.id)
                     session.add(new_guild)
 
+            # Ensure Channels exist
+            discord_channels = [
+                channel
+                for guild in bot.guilds
+                for channel in guild.channels
+                if isinstance(channel, discord.TextChannel)
+            ]
+            db_channels = (await session.execute(select(Channel))).scalars().all()
+            db_channel_ids = {channel.id for channel in db_channels}
+
+            for discord_channel in discord_channels:
+                if discord_channel.id not in db_channel_ids:
+                    new_channel = Channel(
+                        id=discord_channel.id, guild_id=discord_channel.guild.id
+                    )
+                    session.add(new_channel)
+
+            # Ensure Users exist
+            for guild in bot.guilds:
+                async for member in guild.fetch_members(limit=None):
+                    db_user = await session.get(User, member.id)
+                    if db_user is None:
+                        new_user = User(
+                            id=member.id,
+                            name=member.name,
+                            discriminator=member.discriminator,
+                        )
+                        session.add(new_user)
+
             try:
                 await session.commit()
             except sqlalchemy.exc.IntegrityError:
                 await session.rollback()
-                logger.error("Failed to ensure linked tables exist due to integrity error")
+                logger.error(
+                    "Failed to ensure linked tables exist due to integrity error"
+                )
 
     @classmethod
     async def get(cls, identifier: int) -> Optional[Self]:
@@ -91,10 +102,12 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             db_guild = await session.get(Guild, discord_message.guild.id)
 
             if not db_user or not db_channel or not db_guild:
-                logger.error(f"Failed to create message {discord_message.id}: "
-                             f"User {discord_message.author.id}, "
-                             f"Channel {discord_message.channel.id}, or "
-                             f"Guild {discord_message.guild.id} not found in database")
+                logger.error(
+                    f"Failed to create message {discord_message.id}: "
+                    f"User {discord_message.author.id}, "
+                    f"Channel {discord_message.channel.id}, or "
+                    f"Guild {discord_message.guild.id} not found in database"
+                )
                 return None
 
             db_message = Message(
@@ -110,7 +123,9 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
                 await session.commit()
             except sqlalchemy.exc.IntegrityError:
                 await session.rollback()
-                logger.error(f"Failed to create message {discord_message.id} due to integrity error")
+                logger.error(
+                    f"Failed to create message {discord_message.id} due to integrity error"
+                )
                 return None
 
         return cls(discord_message, db_message)
