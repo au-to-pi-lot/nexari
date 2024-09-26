@@ -1,13 +1,17 @@
 from typing import Optional, Self
+import logging
 
 import discord
 from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
+import sqlalchemy
 
 from src.db.models.user import User as DBUser
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
+
+logger = logging.getLogger(__name__)
 
 
 class UserProxy(BaseProxy[discord.User, DBUser]):
