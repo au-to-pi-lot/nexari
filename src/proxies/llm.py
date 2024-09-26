@@ -1,13 +1,16 @@
+import asyncio
 import logging
 import os
 import re
 import shutil
 import textwrap
+from collections import defaultdict
 from datetime import datetime
 from itertools import cycle
 from typing import List, Literal, Optional, Self, TYPE_CHECKING
 
 import discord
+import sqlalchemy
 from discord import NotFound
 from discord.ext.commands import Bot
 from litellm import acompletion
@@ -33,6 +36,11 @@ if TYPE_CHECKING:
     from src.proxies import ChannelProxy
 
 logger = logging.getLogger(__name__)
+
+
+channel_locks: defaultdict[int, asyncio.Lock] = defaultdict(
+    asyncio.Lock
+)  # keyed by channel ID
 
 
 class LLMProxy(BaseProxy[None, LLM]):
@@ -132,39 +140,72 @@ class LLMProxy(BaseProxy[None, LLM]):
                 except Exception as e:
                     logger.error(f"Failed to update webhook {webhook.id} name: {e}")
 
-    async def get_webhook(self, channel_id) -> WebhookProxy:
+    async def get_webhook(self, channel_id: int) -> WebhookProxy:
         from src.proxies import ChannelProxy
 
         channel = await ChannelProxy.get(channel_id)
 
-        async with Session() as session:
-            query = select(Webhook).where(
-                Webhook.channel_id == channel_id, Webhook.llm_id == self.id
-            )
-            db_webhook = (await session.scalars(query)).one_or_none()
-
-            if db_webhook:
-                webhook = await bot.fetch_webhook(db_webhook.id)
-            else:
-                avatar = None
-                if self.avatar:
-                    avatar_path = AVATAR_DIR / self.avatar
-                    if avatar_path.exists():
-                        with open(avatar_path, "rb") as avatar_file:
-                            avatar = avatar_file.read()
-
-                webhook = await channel.create_webhook(name=self.name, avatar=avatar)
-                db_webhook = Webhook(
-                    id=webhook.id,
-                    token=webhook.token,
-                    channel_id=channel.id,
-                    llm_id=self.id,
+        async with channel_locks[channel_id]:
+            async with Session() as session:
+                query = select(Webhook).where(
+                    Webhook.channel_id == channel_id, Webhook.llm_id == self.id
                 )
-                session.add(db_webhook)
-                await session.commit()
-                await session.refresh(db_webhook)
+                db_webhook = (await session.scalars(query)).one_or_none()
+
+                if db_webhook:
+                    webhook = await bot.fetch_webhook(db_webhook.id)
+                else:
+                    avatar = None
+                    if self.avatar:
+                        avatar_path = AVATAR_DIR / self.avatar
+                        if avatar_path.exists():
+                            with open(avatar_path, "rb") as avatar_file:
+                                avatar = avatar_file.read()
+
+                    webhook = await channel.create_webhook(
+                        name=self.name, avatar=avatar
+                    )
+                    db_webhook = Webhook(
+                        id=webhook.id,
+                        token=webhook.token,
+                        channel_id=channel.id,
+                        llm_id=self.id,
+                    )
+                    session.add(db_webhook)
+                    await session.commit()
+                    await session.refresh(db_webhook)
 
         return WebhookProxy(db_webhook=db_webhook, discord_webhook=webhook)
+
+    @staticmethod
+    async def cleanup_duplicate_webhooks():
+        async with Session() as session:
+            # Find duplicates
+            duplicates = await session.execute(
+                select(Webhook.channel_id, Webhook.llm_id)
+                .group_by(Webhook.channel_id, Webhook.llm_id)
+                .having(sqlalchemy.func.count() > 1)
+            )
+
+            for channel_id, llm_id in duplicates:
+                webhooks = await session.execute(
+                    select(Webhook)
+                    .where(Webhook.channel_id == channel_id, Webhook.llm_id == llm_id)
+                    .order_by(Webhook.id)
+                )
+                webhooks = webhooks.scalars().all()
+
+                # Keep the first one, delete the rest
+                for webhook in webhooks[1:]:
+                    await session.delete(webhook)
+                    # Also delete the Discord webhook if it exists
+                    try:
+                        discord_webhook = await bot.fetch_webhook(webhook.id)
+                        await discord_webhook.delete()
+                    except discord.NotFound:
+                        pass
+
+            await session.commit()
 
     async def get_webhooks(self) -> List[WebhookProxy]:
         """

@@ -69,7 +69,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(nullable=False)
 
     user: Mapped[Optional["User"]] = relationship(back_populates="messages")
-    webhook: Mapped[Optional["Webhook"]] = relationship()
+    webhook: Mapped[Optional["Webhook"]] = relationship(back_populates="messages")
     channel: Mapped["Channel"] = relationship(back_populates="messages")
 
     __table_args__ = (

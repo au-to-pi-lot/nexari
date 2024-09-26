@@ -1,7 +1,7 @@
 from typing import List, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
-from sqlalchemy import ForeignKey, Text, UniqueConstraint
+from sqlalchemy import ForeignKey, Text, UniqueConstraint, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from src.db.models import Base
@@ -33,6 +33,7 @@ class LLMCreate(BaseModel):
         min_p (Optional[float]): The min_p parameter for the LLM.
         top_a (Optional[float]): The top_a parameter for the LLM.
     """
+
     name: str
     guild_id: int
     api_base: str
@@ -75,6 +76,7 @@ class LLMUpdate(BaseModel):
         top_a (Optional[float]): The new top_a parameter for the LLM.
         avatar (Optional[str]): The new avatar for the LLM.
     """
+
     name: Optional[str] = None
     api_base: Optional[str] = None
     llm_name: Optional[str] = None
@@ -121,11 +123,12 @@ class LLM(Base):
         guild (Guild): The Guild object this LLM belongs to.
         webhooks (List[Webhook]): List of Webhook objects associated with this LLM.
     """
+
     __tablename__ = "llm"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False, index=True)
-    guild_id: Mapped[int] = mapped_column(ForeignKey("guild.id"), nullable=False)
+    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"), nullable=False)
     api_base: Mapped[str] = mapped_column(Text)
     llm_name: Mapped[str] = mapped_column(Text)
     api_key: Mapped[str] = mapped_column(Text)

@@ -2,6 +2,7 @@ from typing import List, TYPE_CHECKING, Union
 
 import discord
 from pydantic import BaseModel
+from sqlalchemy import BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.models import Base
@@ -40,7 +41,7 @@ class Guild(Base):
     """
     __tablename__ = "guild"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
 
     channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
     llms: Mapped[List["LLM"]] = relationship(back_populates="guild")

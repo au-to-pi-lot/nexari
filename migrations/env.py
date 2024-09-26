@@ -7,6 +7,8 @@ from alembic import context
 
 from src.db.models import metadata
 
+from src.config import config as app_config
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -63,13 +65,11 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-    url = config.get_main_option("sqlalchemy.url")
 
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=url.startswith("sqlite"),
         )
 
         with context.begin_transaction():

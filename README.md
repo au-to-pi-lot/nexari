@@ -7,6 +7,7 @@ This project implements a Discord chatbot using discord.py and LiteLLM. The bot 
 - Python 3.12 or higher
 - A Discord bot token
 - An API key for your chosen LLM provider (e.g., OpenAI)
+- A PostgreSQL database
 
 ## Installation
 
@@ -37,7 +38,7 @@ This project implements a Discord chatbot using discord.py and LiteLLM. The bot 
 2. Open the `config.yml` file and update the values:
    - Replace `your_discord_bot_token_here` with your actual Discord bot token.
    - Replace `your_discord_client_id_here` with your actual Discord client ID.
-   - Update the `database_url` if you want to use a different database (default is SQLite).
+   - Update the `database_url`.
 
 3. The `config-example.yml` file contains explanations for all available settings. Refer to it for more information on configuring your bot.
 

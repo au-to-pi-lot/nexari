@@ -75,16 +75,7 @@ async def transfer_data():
         # Insert data into PostgreSQL
         if sqlite_data:
             async with postgres_session.begin():
-                # Convert SQLite BLOB to PostgreSQL BYTEA if necessary
-                insert_data = []
-                for row in sqlite_data:
-                    row_dict = row._mapping
-                    for key, value in row_dict.items():
-                        if isinstance(sqlite_table.c[key].type, sqltypes.BLOB):
-                            row_dict[key] = bytes(value)
-                    insert_data.append(row_dict)
-                
-                await postgres_session.execute(insert(postgres_table), insert_data)
+                await postgres_session.execute(insert(postgres_table), list(map(lambda row: row._mapping, sqlite_data)))
 
     # Close sessions
     await sqlite_session.close()

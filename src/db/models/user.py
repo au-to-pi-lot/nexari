@@ -47,8 +47,8 @@ class User(Base):
     """
     __tablename__ = "user"
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     name: Mapped[str] = mapped_column(nullable=False)
     discriminator: Mapped[str] = mapped_column(nullable=False)
 
-    messages: Mapped[List["Message"]] = relationship(back_populates="author")
+    messages: Mapped[List["Message"]] = relationship(back_populates="user")

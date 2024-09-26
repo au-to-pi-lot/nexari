@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 class Config(BaseModel):
     bot_token: str
     client_id: str
-    database_url: str = Field(default="sqlite+aiosqlite:///data.db")
+    database_url: str
     openrouter_api_key: str
 
     # noinspection PyNestedDecorators

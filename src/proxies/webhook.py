@@ -34,18 +34,6 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
                     new_channel = Channel(id=discord_channel.id, guild_id=discord_channel.guild.id)
                     session.add(new_channel)
 
-            # Ensure LLMs exist
-            # Note: This assumes you have a way to get all LLMs from Discord. 
-            # If not, you might need to adjust this part.
-            discord_llms = await LLMProxy.get_all_llms()
-            db_llms = (await session.execute(select(LLM))).scalars().all()
-            db_llm_ids = {llm.id for llm in db_llms}
-            
-            for discord_llm in discord_llms:
-                if discord_llm.id not in db_llm_ids:
-                    new_llm = LLM(id=discord_llm.id, name=discord_llm.name)
-                    session.add(new_llm)
-
             try:
                 await session.commit()
             except sqlalchemy.exc.IntegrityError:

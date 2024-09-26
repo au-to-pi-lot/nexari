@@ -1,7 +1,7 @@
 import logging
 
 from src.config import config
-from src.proxies import GuildProxy
+from src.proxies import GuildProxy, WebhookProxy, MessageProxy, ChannelProxy
 from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
