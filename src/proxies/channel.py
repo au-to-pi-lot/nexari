@@ -22,6 +22,35 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
     def __init__(self, discord_channel: discord.TextChannel, db_channel: Channel):
         super().__init__(discord_channel, db_channel)
 
+    @staticmethod
+    async def ensure_linked_tables_exist():
+        async with Session() as session:
+            # Ensure Guilds exist
+            discord_guilds = bot.guilds
+            db_guilds = (await session.execute(select(Guild))).scalars().all()
+            db_guild_ids = {guild.id for guild in db_guilds}
+            
+            for discord_guild in discord_guilds:
+                if discord_guild.id not in db_guild_ids:
+                    new_guild = Guild(id=discord_guild.id)
+                    session.add(new_guild)
+
+            # Ensure Channels exist
+            discord_channels = [channel for guild in bot.guilds for channel in guild.channels if isinstance(channel, discord.TextChannel)]
+            db_channels = (await session.execute(select(Channel))).scalars().all()
+            db_channel_ids = {channel.id for channel in db_channels}
+            
+            for discord_channel in discord_channels:
+                if discord_channel.id not in db_channel_ids:
+                    new_channel = Channel(id=discord_channel.id, guild_id=discord_channel.guild.id)
+                    session.add(new_channel)
+
+            try:
+                await session.commit()
+            except sqlalchemy.exc.IntegrityError:
+                await session.rollback()
+                logger.error("Failed to ensure linked tables exist due to integrity error")
+
     @classmethod
     async def get(cls, identifier: int) -> Optional["ChannelProxy"]:
         discord_channel = bot.get_channel(identifier)

@@ -20,6 +20,37 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
     def __init__(self, discord_webhook: discord.Webhook, db_webhook: DBWebhook):
         super().__init__(discord_webhook, db_webhook)
 
+    @staticmethod
+    async def ensure_linked_tables_exist():
+        async with Session() as session:
+            # Ensure Channels exist
+            discord_channels = [channel for guild in bot.guilds for channel in guild.channels if isinstance(channel, discord.TextChannel)]
+            db_channels = (await session.execute(select(Channel))).scalars().all()
+            db_channel_ids = {channel.id for channel in db_channels}
+            
+            for discord_channel in discord_channels:
+                if discord_channel.id not in db_channel_ids:
+                    new_channel = Channel(id=discord_channel.id, guild_id=discord_channel.guild.id)
+                    session.add(new_channel)
+
+            # Ensure LLMs exist
+            # Note: This assumes you have a way to get all LLMs from Discord. 
+            # If not, you might need to adjust this part.
+            discord_llms = await LLMProxy.get_all_llms()
+            db_llms = (await session.execute(select(LLM))).scalars().all()
+            db_llm_ids = {llm.id for llm in db_llms}
+            
+            for discord_llm in discord_llms:
+                if discord_llm.id not in db_llm_ids:
+                    new_llm = LLM(id=discord_llm.id, name=discord_llm.name)
+                    session.add(new_llm)
+
+            try:
+                await session.commit()
+            except sqlalchemy.exc.IntegrityError:
+                await session.rollback()
+                logger.error("Failed to ensure linked tables exist due to integrity error")
+
     @classmethod
     async def get(cls, identifier: int) -> Optional["WebhookProxy"]:
         async with Session() as session:
