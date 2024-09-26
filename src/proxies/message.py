@@ -1,4 +1,4 @@
-from typing import Optional, Self, TYPE_CHECKING
+from typing import Optional, Self, TYPE_CHECKING, Union
 import logging
 
 import discord
@@ -6,15 +6,14 @@ from sqlalchemy import select
 import sqlalchemy
 
 from src.db.models.message import Message
-from src.db.models import User, Channel, Guild
+from src.db.models import User, Channel, Guild, Webhook
 from src.proxies.guild import GuildProxy
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
 
 if TYPE_CHECKING:
-    from src.proxies import ChannelProxy
-    from src.proxies import UserProxy
+    from src.proxies import ChannelProxy, UserProxy, WebhookProxy
 
 logger = logging.getLogger(__name__)
 
@@ -96,27 +95,41 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
     @classmethod
     async def create(cls, discord_message: discord.Message) -> Optional[Self]:
         async with Session() as session:
-            # Check if author, channel, and guild exist in the database
-            db_user = await session.get(User, discord_message.author.id)
+            is_webhook = discord_message.webhook_id is not None
+            
+            # Check if channel exists in the database
             db_channel = await session.get(Channel, discord_message.channel.id)
-            db_guild = await session.get(Guild, discord_message.guild.id)
-
-            if not db_user or not db_channel or not db_guild:
-                logger.error(
-                    f"Failed to create message {discord_message.id}: "
-                    f"User {discord_message.author.id}, "
-                    f"Channel {discord_message.channel.id}, or "
-                    f"Guild {discord_message.guild.id} not found in database"
-                )
+            if not db_channel:
+                logger.error(f"Failed to create message {discord_message.id}: "
+                             f"Channel {discord_message.channel.id} not found in database")
                 return None
 
-            db_message = Message(
-                id=discord_message.id,
-                content=discord_message.content,
-                author_id=discord_message.author.id,
-                channel_id=discord_message.channel.id,
-                created_at=discord_message.created_at,
-            )
+            if is_webhook:
+                db_webhook = await session.get(Webhook, discord_message.webhook_id)
+                if not db_webhook:
+                    logger.error(f"Failed to create message {discord_message.id}: "
+                                 f"Webhook {discord_message.webhook_id} not found in database")
+                    return None
+                db_message = Message(
+                    id=discord_message.id,
+                    content=discord_message.content,
+                    webhook_id=discord_message.webhook_id,
+                    channel_id=discord_message.channel.id,
+                    created_at=discord_message.created_at,
+                )
+            else:
+                db_user = await session.get(User, discord_message.author.id)
+                if not db_user:
+                    logger.error(f"Failed to create message {discord_message.id}: "
+                                 f"User {discord_message.author.id} not found in database")
+                    return None
+                db_message = Message(
+                    id=discord_message.id,
+                    content=discord_message.content,
+                    user_id=discord_message.author.id,
+                    channel_id=discord_message.channel.id,
+                    created_at=discord_message.created_at,
+                )
 
             session.add(db_message)
             try:
@@ -139,17 +152,20 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
         return self._discord_obj.content
 
     @property
-    def author(self) -> discord.User:
+    def author(self) -> Union[discord.User, discord.Member, discord.WebhookMessage.author]:
         return self._discord_obj.author
 
     @property
     def reference(self) -> Optional[discord.MessageReference]:
         return self._discord_obj.reference
 
-    async def get_author(self) -> "UserProxy":
-        from src.proxies import UserProxy
-
-        return await UserProxy.get(self._discord_obj.author.id)
+    async def get_author(self) -> Union["UserProxy", "WebhookProxy"]:
+        if self._db_obj.webhook_id is not None:
+            from src.proxies import WebhookProxy
+            return await WebhookProxy.get(self._db_obj.webhook_id)
+        else:
+            from src.proxies import UserProxy
+            return await UserProxy.get(self._db_obj.user_id)
 
     async def edit(self, **kwargs):
         for key, value in kwargs.items():
@@ -170,7 +186,6 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
 
     async def get_channel(self) -> "ChannelProxy":
         from src.proxies.channel import ChannelProxy
-
         return await ChannelProxy.get(self._discord_obj.channel.id)
 
     @classmethod
@@ -178,14 +193,5 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
         async with Session() as session:
             db_message = await session.get(Message, discord_message.id)
             if db_message is None:
-                db_message = Message(
-                    id=discord_message.id,
-                    content=discord_message.content,
-                    author_id=discord_message.author.id,
-                    channel_id=discord_message.channel.id,
-                    created_at=discord_message.created_at,
-                )
-                session.add(db_message)
-                await session.commit()
-
-        return cls(discord_message, db_message)
+                return await cls.create(discord_message)
+            return cls(discord_message, db_message)
