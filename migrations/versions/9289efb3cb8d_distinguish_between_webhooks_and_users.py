@@ -41,7 +41,8 @@ def upgrade() -> None:
         elif webhook:
             connection.execute(message_table.update().where(message_table.c.id == message.id).values(webhook_id=author_id))
         else:
-            raise IntegrityError("Author ID not found in user or webhook table", params={}, orig=None)
+            # Delete the message if no matching user or webhook is found
+            connection.execute(message_table.delete().where(message_table.c.id == message.id))
 
     op.drop_constraint(None, "message", type_="foreignkey")
     op.create_foreign_key(None, "message", "webhook", ["webhook_id"], ["id"])
