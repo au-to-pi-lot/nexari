@@ -28,8 +28,9 @@ class Simulator:
         return [match.group("username") for match in matches]
 
     @classmethod
-    async def get_next_participant(cls, channel: ChannelProxy, last_speaker: Optional[str] = None) -> Optional[LLMProxy]:
+    async def get_next_participant(cls, channel: ChannelProxy) -> Optional[LLMProxy]:
         messages = []
+        last_speaker = None
 
         guild = await channel.get_guild()
         llms_in_guild = await guild.get_llms()
@@ -53,6 +54,9 @@ class Simulator:
                 username = msg_webhook.name
             else:
                 username = message.author.name
+
+            if last_speaker is None:
+                last_speaker = username
 
             matches = re.finditer(r"<@(?P<user_id>\d+)>", message.content)
 
