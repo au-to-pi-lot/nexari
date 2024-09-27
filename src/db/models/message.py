@@ -1,9 +1,8 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
-from datetime import datetime
 
 from pydantic import BaseModel
-from sqlalchemy import BigInteger, ForeignKey, Text, CheckConstraint
+from sqlalchemy import BigInteger, ForeignKey, Text, CheckConstraint, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.models import Base
@@ -66,7 +65,7 @@ class Message(Base):
     user_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("user.id"), nullable=True)
     webhook_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("webhook.id"), nullable=True)
     channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channel.id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
 
     user: Mapped[Optional["User"]] = relationship(back_populates="messages")
     webhook: Mapped[Optional["Webhook"]] = relationship(back_populates="messages")
