@@ -28,7 +28,7 @@ class Simulator:
         return [match.group("username") for match in matches]
 
     @classmethod
-    async def get_next_participant(cls, channel: ChannelProxy) -> Optional[LLMProxy]:
+    async def get_next_participant(cls, channel: ChannelProxy, last_speaker: Optional[str] = None) -> Optional[LLMProxy]:
         messages = []
 
         guild = await channel.get_guild()
@@ -84,7 +84,14 @@ class Simulator:
             logger.info("No usernames found in the response")
             return None
 
-        return await LLMProxy.get_by_name(usernames[0], channel.guild.id)
+        # Find the first username that's different from the last speaker
+        next_speaker = next((username for username in usernames if username != last_speaker), None)
+
+        if next_speaker is None:
+            logger.info("No new speaker found in the response")
+            return None
+
+        return await LLMProxy.get_by_name(next_speaker, channel.guild.id)
 
     @classmethod
     async def generate_raw_response(cls, prompt: str) -> Dict[str, Any]:
