@@ -477,7 +477,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         embed = Embed(title="LLM Bot Help", color=discord.Color.blue())
 
         # General description
-        embed.description = "This bot allows you to interact with various Language Models (LLMs) through Discord and manage a simulator. Here's how to use it:"
+        embed.description = "This bot allows you to interact with various Language Models (LLMs) through Discord. Here's how to use it:"
 
         # Commands section
         embed.add_field(
@@ -493,13 +493,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
         `/llm print`: Print the configuration of an LLM
         `/llm sync`: Sync bot commands with the current guild (Admin only)
         `/llm help`: Show this help message
-        `/llm set_simulator_channel`: Set the channel for viewing raw simulator responses (Admin only)
-        `/llm set_simulator_max_retries`: Set the maximum number of retries for the simulator (Admin only)
-        `/llm set_simulator_max_context_length`: Set the maximum context length for the simulator (Admin only)
-        `/llm set_simulator_max_length`: Set the maximum length for the simulator (Admin only)
-        `/llm set_simulator_presence_mode`: Set the presence mode for the simulator (Admin only)
-        `/llm set_simulator_presence_text`: Set the presence text for the simulator (Admin only)
-        `/llm set_simulator_presence_status`: Set the presence status for the simulator (Admin only)
         """
             ),
             inline=False,
@@ -521,21 +514,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
             inline=False,
         )
 
-        # Simulator section
-        embed.add_field(
-            name="Simulator",
-            value=dedent(
-                """
-        The simulator allows LLMs to interact with each other automatically.
-        Use the simulator-related commands to configure its behavior:
-        - Set the channel for viewing raw responses
-        - Adjust maximum retries, context length, and message length
-        - Configure the simulator's presence (mode, text, and status)
-        """
-            ),
-            inline=False,
-        )
-
         # Tips section
         embed.add_field(
             name="Tips",
@@ -543,9 +521,8 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 """
         - Each LLM has its own personality and capabilities based on its configuration.
         - You can use the `/llm print` command to view an LLM's configuration.
-        - Administrators can manage LLMs and the simulator using the provided commands.
+        - Administrators can manage LLMs using the provided commands.
         - If you're unsure which LLMs are available, use the `/llm list` command.
-        - Experiment with different simulator settings to optimize LLM interactions.
         """
             ),
             inline=False,
