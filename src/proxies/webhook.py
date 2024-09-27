@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import sqlalchemy
 
-from src.db.models import Webhook as DBWebhook, Channel, LLM
+from src.db.models import Webhook as DBWebhook, Channel, LLM, Guild
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
