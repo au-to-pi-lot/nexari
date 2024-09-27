@@ -63,7 +63,7 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
             if not db_channel:
                 db_guild = await session.get(Guild, channel.guild.id)
                 if not db_guild:
-                    db_guild = Guild(id=channel.guild.id, name=channel.guild.name)
+                    db_guild = Guild(id=channel.guild.id)
                     session.add(db_guild)
                 db_channel = Channel(id=channel.id, guild_id=channel.guild.id)
                 session.add(db_channel)
