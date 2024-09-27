@@ -90,10 +90,11 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         try:
             await guild.edit(simulator_channel_id=channel.id)
+            await guild.save()  # Ensure changes are saved to the database
             embed = Embed(title="Simulator Channel Set", color=discord.Color.green())
             embed.description = f"Raw simulator responses will now be sent to {channel.mention}."
             await interaction.followup.send(embed=embed)
-        except ValueError as e:
+        except Exception as e:
             embed = Embed(title="Error Setting Simulator Channel", color=discord.Color.red())
             embed.description = str(e)
             await interaction.followup.send(embed=embed)

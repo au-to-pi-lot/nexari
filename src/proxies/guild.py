@@ -81,6 +81,12 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     def simulator_channel_id(self) -> Optional[int]:
         return self._db_obj.simulator_channel_id
 
+    async def edit(self, **kwargs):
+        for key, value in kwargs.items():
+            if hasattr(self._db_obj, key):
+                setattr(self._db_obj, key, value)
+        await self.save()
+
     async def get_llms(self) -> Sequence["LLMProxy"]:
         from src.proxies.llm import LLMProxy
 
