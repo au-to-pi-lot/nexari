@@ -77,6 +77,10 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
     def roles(self) -> Sequence[Role]:
         return self._discord_obj.roles
 
+    @property
+    def simulator_channel_id(self) -> Optional[int]:
+        return self._db_obj.simulator_channel_id
+
     async def get_llms(self) -> Sequence["LLMProxy"]:
         from src.proxies.llm import LLMProxy
 

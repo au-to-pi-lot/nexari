@@ -40,6 +40,11 @@ async def on_message(message: discord.Message):
 
     guild = await message.get_guild()
     channel = await message.get_channel()
+
+    # Ignore messages from the simulator dump channel
+    if guild.simulator_channel_id == channel.id:
+        return
+
     llms = await guild.get_llms()
 
     channel_queue = channel_queues[channel.id]
