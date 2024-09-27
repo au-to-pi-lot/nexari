@@ -10,7 +10,7 @@ from discord.ext.commands import Bot
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.llm import LLMCreate, LLMUpdate
-from src.proxies import LLMProxy
+from src.proxies import LLMProxy, GuildProxy
 from src.services.db import Session
 
 logger = logging.getLogger(__name__)
@@ -81,15 +81,15 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Set the channel for viewing raw simulator responses"""
         await interaction.response.defer(ephemeral=True)
 
-        guild_proxy = await interaction.guild.get_guild_proxy()
-        if not guild_proxy:
+        guild = await GuildProxy.get(interaction.guild_id)
+        if not guild:
             embed = Embed(title="Error", color=discord.Color.red())
             embed.description = "Failed to get guild proxy."
             await interaction.followup.send(embed=embed)
             return
 
         try:
-            await guild_proxy.edit(simulator_channel_id=channel.id)
+            await guild.edit(simulator_channel_id=channel.id)
             embed = Embed(title="Simulator Channel Set", color=discord.Color.green())
             embed.description = f"Raw simulator responses will now be sent to {channel.mention}."
             await interaction.followup.send(embed=embed)
