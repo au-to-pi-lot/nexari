@@ -4,14 +4,12 @@ from typing import List, Optional
 
 from discord import NotFound
 import aiohttp
-import json
 from typing import Dict, Any
 from regex import regex
 
 from src.config import config
 from src.proxies import ChannelProxy, LLMProxy
 from src.services.discord_client import bot
-from src.types.litellm_message import LiteLLMMessage
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +17,15 @@ logger = logging.getLogger(__name__)
 class Simulator:
     def __init__(self):
         pass
+
+    @classmethod
+    def extract_usernames(cls, response_str: str) -> List[str]:
+        matches = regex.finditer(
+            r"^<(?P<username>[^>]+)>",
+            response_str,
+            flags=re.MULTILINE,
+        )
+        return [match.group("username") for match in matches]
 
     @classmethod
     async def get_next_participant(cls, channel: ChannelProxy) -> Optional[LLMProxy]:
@@ -41,7 +48,7 @@ class Simulator:
             if message.webhook_id:
                 try:
                     msg_webhook = await bot.fetch_webhook(message.webhook_id)
-                except NotFound as e:
+                except NotFound:
                     continue
                 username = msg_webhook.name
             else:
@@ -71,19 +78,13 @@ class Simulator:
 
         logger.info(f"Received simulator response: {response_str}")
 
-        match = regex.search(
-            r"^<(?P<username>[^>]+)>",
-            response_str,
-            flags=re.MULTILINE,
-        )
+        usernames = cls.extract_usernames(response_str)
 
-        if not match:
-            logger.info(f"No match for username ")
+        if not usernames:
+            logger.info("No usernames found in the response")
             return None
 
-        username = match.group("username")
-
-        return await LLMProxy.get_by_name(username, channel.guild.id)
+        return await LLMProxy.get_by_name(usernames[0], channel.guild.id)
 
     @classmethod
     async def generate_raw_response(cls, prompt: str) -> Dict[str, Any]:
