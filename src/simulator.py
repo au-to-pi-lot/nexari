@@ -1,6 +1,7 @@
 import logging
 import re
 from typing import List, Optional
+from pydantic import BaseModel
 
 from discord import NotFound
 import aiohttp
@@ -12,6 +13,11 @@ from src.proxies import ChannelProxy, LLMProxy
 from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
+
+
+class MessageData(BaseModel):
+    username: str
+    content: str
 
 
 class Simulator:
@@ -30,7 +36,7 @@ class Simulator:
     @classmethod
     async def get_next_participant(cls, channel: ChannelProxy) -> Optional[LLMProxy]:
         messages = []
-        last_speaker = None
+        message_data_list: List[MessageData] = []
 
         guild = await channel.get_guild()
         llms_in_guild = await guild.get_llms()
@@ -55,9 +61,6 @@ class Simulator:
             else:
                 username = message.author.name
 
-            if last_speaker is None:
-                last_speaker = username
-
             matches = re.finditer(r"<@(?P<user_id>\d+)>", message.content)
 
             message_replaced_mentions = message.content
@@ -71,8 +74,13 @@ class Simulator:
                 except NotFound:
                     continue
 
-            content = f"<{username}> {message_replaced_mentions}"
-            messages.append(content)
+            message_data_list.append(MessageData(username=username, content=message_replaced_mentions))
+
+        # Get the last speaker from the collected data
+        last_speaker = message_data_list[-1].username if message_data_list else None
+
+        # Transform message_data_list to strings
+        messages.extend([f"<{data.username}> {data.content}" for data in message_data_list])
 
         prompt = "\n\n\n".join(messages) + "\n\n\n"
 
