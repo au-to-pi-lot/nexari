@@ -1,6 +1,5 @@
-from typing import List, TYPE_CHECKING, Union
+from typing import List, TYPE_CHECKING
 
-import discord
 from pydantic import BaseModel
 from sqlalchemy import BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
