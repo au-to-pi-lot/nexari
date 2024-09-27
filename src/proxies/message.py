@@ -97,19 +97,22 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
         async with Session() as session:
             is_webhook = discord_message.webhook_id is not None
             
-            # Check if channel exists in the database
+            # Check if channel exists in the database, if not create it
             db_channel = await session.get(Channel, discord_message.channel.id)
             if not db_channel:
-                logger.error(f"Failed to create message {discord_message.id}: "
-                             f"Channel {discord_message.channel.id} not found in database")
-                return None
+                db_guild = await session.get(Guild, discord_message.guild.id)
+                if not db_guild:
+                    db_guild = Guild(id=discord_message.guild.id, name=discord_message.guild.name)
+                    session.add(db_guild)
+                db_channel = Channel(id=discord_message.channel.id, guild_id=discord_message.guild.id)
+                session.add(db_channel)
 
             if is_webhook:
                 db_webhook = await session.get(Webhook, discord_message.webhook_id)
                 if not db_webhook:
-                    logger.error(f"Failed to create message {discord_message.id}: "
-                                 f"Webhook {discord_message.webhook_id} not found in database")
-                    return None
+                    # Create a placeholder webhook if it doesn't exist
+                    db_webhook = Webhook(id=discord_message.webhook_id, channel_id=discord_message.channel.id)
+                    session.add(db_webhook)
                 db_message = Message(
                     id=discord_message.id,
                     content=discord_message.content,
@@ -120,9 +123,13 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             else:
                 db_user = await session.get(User, discord_message.author.id)
                 if not db_user:
-                    logger.error(f"Failed to create message {discord_message.id}: "
-                                 f"User {discord_message.author.id} not found in database")
-                    return None
+                    # Create a new user if it doesn't exist
+                    db_user = User(
+                        id=discord_message.author.id,
+                        name=discord_message.author.name,
+                        discriminator=discord_message.author.discriminator,
+                    )
+                    session.add(db_user)
                 db_message = Message(
                     id=discord_message.id,
                     content=discord_message.content,

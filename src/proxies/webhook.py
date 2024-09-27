@@ -58,22 +58,29 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
         discord_webhook = await channel.create_webhook(name=name, **kwargs)
 
         async with Session() as session:
-            # Check if channel and LLM exist in the database
+            # Check if channel exists in the database, if not create it
             db_channel = await session.get(Channel, channel.id)
-            db_llm = await session.get(LLM, kwargs.get("llm_id"))
+            if not db_channel:
+                db_guild = await session.get(Guild, channel.guild.id)
+                if not db_guild:
+                    db_guild = Guild(id=channel.guild.id, name=channel.guild.name)
+                    session.add(db_guild)
+                db_channel = Channel(id=channel.id, guild_id=channel.guild.id)
+                session.add(db_channel)
 
-            if not db_channel or (kwargs.get("llm_id") and not db_llm):
-                logger.error(f"Failed to create webhook: "
-                             f"Channel {channel.id} or "
-                             f"LLM {kwargs.get('llm_id')} not found in database")
-                await discord_webhook.delete()
-                return None
+            # Check if LLM exists in the database, if not create a placeholder
+            llm_id = kwargs.get("llm_id")
+            if llm_id:
+                db_llm = await session.get(LLM, llm_id)
+                if not db_llm:
+                    db_llm = LLM(id=llm_id, name="Placeholder LLM", guild_id=channel.guild.id)
+                    session.add(db_llm)
 
             db_webhook = DBWebhook(
                 id=discord_webhook.id,
                 token=discord_webhook.token,
                 channel_id=channel.id,
-                llm_id=kwargs.get("llm_id"),
+                llm_id=llm_id,
             )
 
             session.add(db_webhook)

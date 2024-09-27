@@ -61,11 +61,11 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
         async with Session() as session:
             db_channel = await session.get(Channel, identifier)
             if not db_channel:
-                # Check if the guild exists in the database
+                # Check if the guild exists in the database, if not create it
                 db_guild = await session.get(Guild, discord_channel.guild.id)
                 if not db_guild:
-                    logger.error(f"Guild {discord_channel.guild.id} not found in database")
-                    return None
+                    db_guild = Guild(id=discord_channel.guild.id, name=discord_channel.guild.name)
+                    session.add(db_guild)
 
                 db_channel = Channel(id=identifier, guild_id=discord_channel.guild.id)
                 session.add(db_channel)
