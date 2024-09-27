@@ -95,7 +95,7 @@ class Simulator:
         if guild.simulator_channel_id:
             simulator_channel = await ChannelProxy.get(guild.simulator_channel_id)
             if simulator_channel:
-                await simulator_channel.send(f"Raw simulator response for #{channel.name}:\n```\n{response_str}\n```")
+                await simulator_channel.send(f"{channel.mention}:\n```\n{response_str}\n```")
 
         usernames = cls.extract_usernames(response_str)
 
