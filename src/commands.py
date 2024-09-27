@@ -75,6 +75,29 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed.description = "No LLMs configured."
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(description="Set the channel for viewing raw simulator responses")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def set_simulator_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+        """Set the channel for viewing raw simulator responses"""
+        await interaction.response.defer(ephemeral=True)
+
+        guild_proxy = await interaction.guild.get_guild_proxy()
+        if not guild_proxy:
+            embed = Embed(title="Error", color=discord.Color.red())
+            embed.description = "Failed to get guild proxy."
+            await interaction.followup.send(embed=embed)
+            return
+
+        try:
+            await guild_proxy.edit(simulator_channel_id=channel.id)
+            embed = Embed(title="Simulator Channel Set", color=discord.Color.green())
+            embed.description = f"Raw simulator responses will now be sent to {channel.mention}."
+            await interaction.followup.send(embed=embed)
+        except ValueError as e:
+            embed = Embed(title="Error Setting Simulator Channel", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.followup.send(embed=embed)
+
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
     @app_commands.describe(

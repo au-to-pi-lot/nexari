@@ -1,4 +1,4 @@
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 
 from pydantic import BaseModel
 from sqlalchemy import BigInteger
@@ -24,9 +24,8 @@ class GuildCreate(BaseModel):
 class GuildUpdate(BaseModel):
     """
     Pydantic model for updating an existing Guild.
-    Currently empty as there are no updatable fields.
     """
-    pass
+    simulator_channel_id: Optional[int] = None
 
 
 class Guild(Base):
@@ -37,10 +36,12 @@ class Guild(Base):
         id (int): The unique identifier for the guild.
         channels (List[Channel]): List of Channel objects associated with this guild.
         llms (List[LLM]): List of LLM objects associated with this guild.
+        simulator_channel_id (Optional[int]): ID of the channel for simulator responses.
     """
     __tablename__ = "guild"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
+    simulator_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
 
     channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
     llms: Mapped[List["LLM"]] = relationship(back_populates="guild")

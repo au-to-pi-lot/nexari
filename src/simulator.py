@@ -90,6 +90,13 @@ class Simulator:
 
         logger.info(f"Received simulator response: {response_str}")
 
+        # Send raw simulator response to the designated channel if set
+        guild = await channel.get_guild()
+        if guild.simulator_channel_id:
+            simulator_channel = await ChannelProxy.get(guild.simulator_channel_id)
+            if simulator_channel:
+                await simulator_channel.send(f"Raw simulator response for #{channel.name}:\n```\n{response_str}\n```")
+
         usernames = cls.extract_usernames(response_str)
 
         if not usernames:
