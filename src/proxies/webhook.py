@@ -68,13 +68,12 @@ class WebhookProxy(BaseProxy[discord.Webhook, DBWebhook]):
                 db_channel = Channel(id=channel.id, guild_id=channel.guild.id)
                 session.add(db_channel)
 
-            # Check if LLM exists in the database, if not create a placeholder
+            # Check if LLM exists in the database, if not raise an error
             llm_id = kwargs.get("llm_id")
             if llm_id:
                 db_llm = await session.get(LLM, llm_id)
                 if not db_llm:
-                    db_llm = LLM(id=llm_id, name="Placeholder LLM", guild_id=channel.guild.id)
-                    session.add(db_llm)
+                    raise ValueError(f"LLM with id {llm_id} does not exist")
 
             db_webhook = DBWebhook(
                 id=discord_webhook.id,
