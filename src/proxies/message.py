@@ -217,10 +217,4 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
                 await session.delete(db_message)
                 await session.commit()
         
-        try:
-            discord_message = await bot.get_message(message_id)
-            await discord_message.delete()
-        except discord.NotFound:
-            logger.info(f"Discord message {message_id} not found, it may have already been deleted.")
-        except Exception as e:
-            logger.error(f"Error deleting Discord message {message_id}: {e}")
+        logger.info(f"Database entry for message {message_id} deleted.")
