@@ -202,3 +202,25 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             if db_message is None:
                 return await cls.create(discord_message)
             return cls(discord_message, db_message)
+
+    @classmethod
+    async def delete_by_id(cls, message_id: int) -> None:
+        """
+        Delete a message by its ID without creating a MessageProxy instance.
+
+        Args:
+            message_id (int): The ID of the message to delete.
+        """
+        async with Session() as session:
+            db_message = await session.get(Message, message_id)
+            if db_message:
+                await session.delete(db_message)
+                await session.commit()
+        
+        try:
+            discord_message = await bot.get_message(message_id)
+            await discord_message.delete()
+        except discord.NotFound:
+            logger.info(f"Discord message {message_id} not found, it may have already been deleted.")
+        except Exception as e:
+            logger.error(f"Error deleting Discord message {message_id}: {e}")
