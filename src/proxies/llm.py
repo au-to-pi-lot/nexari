@@ -430,16 +430,21 @@ Current Discord Channel: {channel_name}
             lines = response_str.split('\n')
             processed_lines = []
             usernames = []
+            current_username = None
 
             for line in lines:
-                while True:
-                    match = regex.match(r'^<(?P<username>[^>]+)> (?P<message>.*)$', line)
-                    if match:
-                        usernames.append(match.group("username"))
-                        line = match.group("message")
-                    else:
+                match = regex.match(r'^<(?P<username>[^>]+)> (?P<message>.*)$', line)
+                if match:
+                    new_username = match.group("username")
+                    if current_username is None:
+                        current_username = new_username
+                        usernames.append(new_username)
+                    elif new_username != current_username:
+                        # If a new username is encountered, stop processing
                         break
-                processed_lines.append(line)
+                    processed_lines.append(match.group("message"))
+                else:
+                    processed_lines.append(line)
 
             message = '\n'.join(processed_lines)
             messages_to_send = self.break_messages(message)
