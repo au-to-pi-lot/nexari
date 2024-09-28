@@ -31,15 +31,24 @@ async def on_message(message: discord.Message):
     Args:
         message (discord.Message): The received message.
     """
-    message = await MessageProxy.get_or_create(message)
+    if message.flags.ephemeral:
+        return
 
     if message.author.id == bot.user.id:
         return
 
-    await bot.process_commands(message)
+    message_proxy = await MessageProxy.get_or_create(message)
 
-    guild = await message.get_guild()
-    channel = await message.get_channel()
+    if not message_proxy:
+        raise ValueError("")
+
+    if message_proxy.author.id == bot.user.id:
+        return
+
+    await bot.process_commands(message_proxy)
+
+    guild = await message_proxy.get_guild()
+    channel = await message_proxy.get_channel()
 
     # Ignore messages from the simulator dump channel
     if guild.simulator_channel_id == channel.id:
@@ -50,8 +59,8 @@ async def on_message(message: discord.Message):
     channel_queue = channel_queues[channel.id]
 
     replied_to_webhook_id: Optional[int] = None
-    if message.reference and message.reference.message_id:
-        other_msg_id: int = message.reference.message_id
+    if message_proxy.reference and message_proxy.reference.message_id:
+        other_msg_id: int = message_proxy.reference.message_id
         other_msg = await channel.fetch_message(other_msg_id)
         if other_msg.webhook_id:
             replied_to_webhook_id = other_msg.webhook_id
@@ -61,7 +70,7 @@ async def on_message(message: discord.Message):
         webhook = await llm.get_webhook(channel.id)
         if replied_to_webhook_id and replied_to_webhook_id == webhook.id:
             pinged_llms.add(llm)
-        if await llm.mentioned_in_message(message):
+        if await llm.mentioned_in_message(message_proxy):
             pinged_llms.add(llm)
             logger.info(f"Pinged {llm.name}")
 
@@ -71,7 +80,7 @@ async def on_message(message: discord.Message):
                 await llm.respond(channel)
     else:
         try:
-            channel_queue.queue.put_nowait(message)
+            channel_queue.queue.put_nowait(message_proxy)
         except asyncio.QueueFull:
             logger.info(f"Queue full for channel {channel.id}, ignoring message")
             return

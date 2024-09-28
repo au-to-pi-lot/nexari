@@ -9,6 +9,5 @@ async def on_message_delete(message: discord.Message):
     Args:
         message (discord.Message): The deleted message.
     """
-    message_proxy = await MessageProxy.get(message.id)
-    if message_proxy:
-        await message_proxy.delete()
+    await MessageProxy.delete_by_id(message.id)
+

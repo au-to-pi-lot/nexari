@@ -109,14 +109,10 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
 
             if is_webhook:
                 db_webhook = await session.get(Webhook, discord_message.webhook_id)
-                if not db_webhook:
-                    # Create a placeholder webhook if it doesn't exist
-                    db_webhook = Webhook(id=discord_message.webhook_id, channel_id=discord_message.channel.id)
-                    session.add(db_webhook)
                 db_message = Message(
                     id=discord_message.id,
                     content=discord_message.content,
-                    webhook_id=discord_message.webhook_id,
+                    webhook_id=discord_message.webhook_id if db_webhook else None,
                     channel_id=discord_message.channel.id,
                     created_at=discord_message.created_at,
                 )
@@ -141,7 +137,7 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
             session.add(db_message)
             try:
                 await session.commit()
-            except sqlalchemy.exc.IntegrityError:
+            except sqlalchemy.exc.IntegrityError as e:
                 await session.rollback()
                 logger.error(
                     f"Failed to create message {discord_message.id} due to integrity error"

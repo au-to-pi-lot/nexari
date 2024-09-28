@@ -135,4 +135,5 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
         return [
             await MessageProxy.get_or_create(message)
             async for message in self._discord_obj.history(**kwargs)
+            if message.author.id != bot.user.id
         ]
