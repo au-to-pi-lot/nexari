@@ -56,14 +56,7 @@ class Simulator:
             if not message.content:
                 continue
 
-            if message.webhook_id:
-                try:
-                    msg_webhook = await bot.fetch_webhook(message.webhook_id)
-                except NotFound:
-                    continue
-                username = msg_webhook.name
-            else:
-                username = message.author.name
+            username = message.author.name
 
             matches = re.finditer(r"<@(?P<user_id>\d+)>", message.content)
 
