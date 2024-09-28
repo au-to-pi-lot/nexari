@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from discord import NotFound
 import aiohttp
+from aiohttp.client_exceptions import ClientPayloadError
 from typing import Dict, Any
 from regex import regex
 
@@ -137,17 +138,18 @@ class Simulator:
             async with session.post(url, headers=headers, json=data) as response:
                 for attempt in range(3):
                     if response.status == 200:
-                        # TODO: sometimes this throws a aiohttp.client_exceptions.ClientPayloadError
-                        # if that happens, retry instead.
-                        result = await response.json()
-
-                        if result:
-                            return result
-                        else:
-                            logger.warning(f"Empty response received. Attempt {attempt + 1} of 3.")
-                            if attempt < 2:
-                                continue
+                        try:
+                            result = await response.json()
+                            if result:
+                                return result
+                            else:
+                                logger.warning(f"Empty response received. Attempt {attempt + 1} of 3.")
+                        except aiohttp.client_exceptions.ClientPayloadError as e:
+                            logger.warning(f"ClientPayloadError occurred: {e}. Attempt {attempt + 1} of 3.")
+                        
+                        if attempt < 2:
+                            continue
                     else:
                         raise Exception(f"Error {response.status}: {await response.text()}")
 
-                raise ValueError("Empty response after 3 attempts")
+                raise ValueError("Failed to get a valid response after 3 attempts")
