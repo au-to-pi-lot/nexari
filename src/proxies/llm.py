@@ -426,18 +426,25 @@ Current Discord Channel: {channel_name}
                 logger.info(f"{self.name} declined to respond in channel {channel.id}")
                 return
 
-            # Remove usernames at the start of the message and each newline
+            # Process the response line by line
             lines = response_str.split('\n')
             processed_lines = []
-            usernames = []
+            active_username = None
 
             for line in lines:
                 # Match multiple usernames at the start of the line
                 match = regex.match(r'^(<[^>]+>\s*)+(?P<message>.*)$', line)
                 if match:
-                    # Extract all usernames
-                    line_usernames = regex.findall(r'<([^>]+)>', match.group(0))
-                    usernames.append(line_usernames[0])
+                    # Extract the first username
+                    first_username = regex.search(r'<([^>]+)>', match.group(0)).group(1)
+                    
+                    if active_username is None:
+                        active_username = first_username
+                    
+                    if first_username != active_username:
+                        # Stop processing if a different username is encountered
+                        break
+                    
                     processed_lines.append(match.group("message"))
                 else:
                     processed_lines.append(line)
@@ -445,31 +452,18 @@ Current Discord Channel: {channel_name}
             message = '\n'.join(processed_lines)
             messages_to_send = self.break_messages(message)
 
-            if not usernames:
+            if active_username is None:
                 # If no usernames were found, assume it's from this LLM
-                username = self.name
-            else:
-                username = usernames[0]  # Use the first username found
+                active_username = self.name
 
-            if username == self.name:
+            if active_username == self.name:
                 # If the message is from this LLM, send it
                 for message in messages_to_send:
                     await webhook.send(message)
-                logger.info(f"Msg in channel {channel.id} from {username}: {message}")
+                logger.info(f"Msg in channel {channel.id} from {active_username}: {message}")
             else:
-                # Otherwise, pass control to other LLM, if it exists
-                other_llm = await LLMProxy.get_by_name(username, self._db_obj.guild_id)
-                if other_llm:
-                    logger.info(f"{self.name} passed to {other_llm.name}")
-                    await other_llm.respond(channel)
-                elif member := guild.get_member_named(username):
-                    # Or, if it's a human's username, mention them
-                    await webhook.send(f"<@{member.id}>")
-                else:
-                    # If no matching LLM or user found, send the message as is
-                    for message in messages_to_send:
-                        await webhook.send(message)
-                    logger.warning(f"{self.name} sent a message with unknown username: {username}")
+                # Log that the message was dropped due to username mismatch
+                logger.info(f"Message dropped in channel {channel.id} due to username mismatch. Expected: {self.name}, Found: {active_username}")
 
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
