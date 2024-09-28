@@ -436,7 +436,7 @@ Current Discord Channel: {channel_name}
                 match = regex.match(r'^(<[^>]+>\s*)+(?P<message>.*)$', line)
                 if match:
                     # Extract the first username
-                    first_username = regex.search(r'<([^>]+)>', match.group(0)).group(1)
+                    first_username = regex.search(r'<([^>]+)>', match.group(0)).group(0)
                     
                     if active_username is None:
                         active_username = first_username
