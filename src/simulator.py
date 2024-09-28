@@ -47,8 +47,11 @@ class Simulator:
         for llm in llms_in_guild:
             messages.append(f"* {llm.name} joined")
 
-        history = await channel.history(limit=100)
-        for message in reversed(history):
+        history = list(reversed(await channel.history(limit=100)))
+        for message in history:
+            if not message:
+                raise ValueError("Empty history")
+
             if not message.content:
                 continue
 
@@ -86,6 +89,10 @@ class Simulator:
 
         logger.info(f"Simulating conversation in #{channel.name}...")
         response = await cls.generate_raw_response(prompt=prompt)
+
+        if not response:
+            raise ValueError("empty response")
+
         response_str = response["choices"][0]["text"]
 
         logger.info(f"Received simulator response: {response_str}")
@@ -95,7 +102,8 @@ class Simulator:
         if guild.simulator_channel_id:
             simulator_channel = await ChannelProxy.get(guild.simulator_channel_id)
             if simulator_channel:
-                await simulator_channel.send(f"{channel.mention}:\n```\n{response_str}\n```")
+                last_message = history[-1]
+                await simulator_channel.send(f"{last_message.jump_url}:\n```\n{response_str}\n```")
 
         usernames = cls.extract_usernames(response_str)
 
@@ -128,6 +136,12 @@ class Simulator:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
                 if response.status == 200:
-                    return await response.json()
+                    result = await response.json()
+
+                    if not result:
+                        # TODO: retry up to 3 times instead of erroring out
+                        raise ValueError("Empty response")
+
+                    return result
                 else:
                     raise Exception(f"Error {response.status}: {await response.text()}")
