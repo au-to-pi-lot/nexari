@@ -137,6 +137,8 @@ class Simulator:
             async with session.post(url, headers=headers, json=data) as response:
                 for attempt in range(3):
                     if response.status == 200:
+                        # TODO: sometimes this throws a aiohttp.client_exceptions.ClientPayloadError
+                        # if that happens, retry instead.
                         result = await response.json()
 
                         if result:
