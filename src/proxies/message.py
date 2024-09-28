@@ -166,6 +166,10 @@ class MessageProxy(BaseProxy[discord.Message, Message]):
     def reference(self) -> Optional[discord.MessageReference]:
         return self._discord_obj.reference
 
+    @property
+    def jump_url(self) -> str:
+        return self._discord_obj.jump_url
+
     async def get_author(self) -> Union["UserProxy", "WebhookProxy"]:
         if self._db_obj.webhook_id is not None:
             from src.proxies import WebhookProxy
