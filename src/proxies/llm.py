@@ -437,8 +437,7 @@ Current Discord Channel: {channel_name}
                 if match:
                     # Extract all usernames
                     line_usernames = regex.findall(r'<([^>]+)>', match.group(0))
-                    if not usernames:
-                        usernames.extend(line_usernames)
+                    usernames.append(line_usernames[0])
                     processed_lines.append(match.group("message"))
                 else:
                     processed_lines.append(line)
