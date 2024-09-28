@@ -430,18 +430,15 @@ Current Discord Channel: {channel_name}
             lines = response_str.split('\n')
             processed_lines = []
             usernames = []
-            current_username = None
 
             for line in lines:
-                match = regex.match(r'^<(?P<username>[^>]+)> (?P<message>.*)$', line)
+                # Match multiple usernames at the start of the line
+                match = regex.match(r'^(<[^>]+>\s*)+(?P<message>.*)$', line)
                 if match:
-                    new_username = match.group("username")
-                    if current_username is None:
-                        current_username = new_username
-                        usernames.append(new_username)
-                    elif new_username != current_username:
-                        # If a new username is encountered, stop processing
-                        break
+                    # Extract all usernames
+                    line_usernames = regex.findall(r'<([^>]+)>', match.group(0))
+                    if not usernames:
+                        usernames.extend(line_usernames)
                     processed_lines.append(match.group("message"))
                 else:
                     processed_lines.append(line)
