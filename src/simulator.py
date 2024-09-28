@@ -135,13 +135,17 @@ class Simulator:
 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers=headers, json=data) as response:
-                if response.status == 200:
-                    result = await response.json()
+                for attempt in range(3):
+                    if response.status == 200:
+                        result = await response.json()
 
-                    if not result:
-                        # TODO: retry up to 3 times instead of erroring out
-                        raise ValueError("Empty response")
+                        if result:
+                            return result
+                        else:
+                            logger.warning(f"Empty response received. Attempt {attempt + 1} of 3.")
+                            if attempt < 2:
+                                continue
+                    else:
+                        raise Exception(f"Error {response.status}: {await response.text()}")
 
-                    return result
-                else:
-                    raise Exception(f"Error {response.status}: {await response.text()}")
+                raise ValueError("Empty response after 3 attempts")
