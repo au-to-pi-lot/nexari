@@ -426,25 +426,31 @@ Current Discord Channel: {channel_name}
                 logger.info(f"{self.name} declined to respond in channel {channel.id}")
                 return
 
-            match = regex.match(
-                r"^<(?P<username>[^>]+)> (?P<message>.*)$",
-                response_str,
-                flags=re.DOTALL,
-            )
+            # Remove usernames at the start of the message and each newline
+            lines = response_str.split('\n')
+            processed_lines = []
+            usernames = []
 
-            if match:
-                username = match.group("username")
-                message = match.group("message")
-            else:
-                message = response_str
-                username = None
-                logger.warning(
-                    f"{self.name} didn't include a username before their message"
-                )
+            for line in lines:
+                while True:
+                    match = regex.match(r'^<(?P<username>[^>]+)> (?P<message>.*)$', line)
+                    if match:
+                        usernames.append(match.group("username"))
+                        line = match.group("message")
+                    else:
+                        break
+                processed_lines.append(line)
 
+            message = '\n'.join(processed_lines)
             messages_to_send = self.break_messages(message)
 
-            if username == self.name or username is None:
+            if not usernames:
+                # If no usernames were found, assume it's from this LLM
+                username = self.name
+            else:
+                username = usernames[0]  # Use the first username found
+
+            if username == self.name:
                 # If the message is from this LLM, send it
                 for message in messages_to_send:
                     await webhook.send(message)
@@ -458,6 +464,11 @@ Current Discord Channel: {channel_name}
                 elif member := guild.get_member_named(username):
                     # Or, if it's a human's username, mention them
                     await webhook.send(f"<@{member.id}>")
+                else:
+                    # If no matching LLM or user found, send the message as is
+                    for message in messages_to_send:
+                        await webhook.send(message)
+                    logger.warning(f"{self.name} sent a message with unknown username: {username}")
 
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
