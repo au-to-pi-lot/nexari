@@ -50,13 +50,16 @@ class Message(Base):
     Attributes:
         id (int): The unique identifier for the message.
         content (str): The content of the message.
-        user_id (Optional[int]): The ID of the user who authored the message.
-        webhook_id (Optional[int]): The ID of the webhook that sent the message.
+        user_id (Optional[int]): The ID of the user who authored the message, or None if not applicable.
+        webhook_id (Optional[int]): The ID of the webhook that sent the message, or None if not applicable.
         channel_id (int): The ID of the channel the message belongs to.
         created_at (datetime): The timestamp when the message was created.
-        user (Optional[User]): The User object who authored this message.
-        webhook (Optional[Webhook]): The Webhook object that sent this message.
+        user (Optional[User]): The User object who authored this message, or None if not applicable.
+        webhook (Optional[Webhook]): The Webhook object that sent this message, or None if not applicable.
         channel (Channel): The Channel object this message belongs to.
+
+    Note:
+        Both user_id and webhook_id can be null if the message is from an uncontrolled webhook.
     """
     __tablename__ = "message"
 
@@ -72,6 +75,6 @@ class Message(Base):
     channel: Mapped["Channel"] = relationship(back_populates="messages")
 
     __table_args__ = (
-        CheckConstraint('(user_id IS NULL) != (webhook_id IS NULL)',
-                        name='user_xor_webhook'),
+        CheckConstraint('(user_id IS NULL AND webhook_id IS NULL) OR (user_id IS NOT NULL) != (webhook_id IS NOT NULL)',
+                        name='user_xor_webhook_or_both_null'),
     )
