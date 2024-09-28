@@ -10,11 +10,6 @@ class BaseProxy(ABC, Generic[DiscordObj, DBObj]):
         self._discord_obj: DiscordObj = discord_obj
         self._db_obj: DBObj = db_obj
 
-    def __getattr__(self, name: str):
-        if name in self._db_obj.__table__.columns.keys():
-            return getattr(self._db_obj, name)
-        return getattr(self._discord_obj, name)
-
     @classmethod
     @abstractmethod
     async def get(cls, identifier: Any) -> Optional[Self]:

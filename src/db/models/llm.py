@@ -1,5 +1,6 @@
 from typing import List, Optional, TYPE_CHECKING
 
+import sqlalchemy
 from pydantic import BaseModel, Field
 from sqlalchemy import ForeignKey, Text, UniqueConstraint, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
@@ -24,6 +25,9 @@ class LLMCreate(BaseModel):
         system_prompt (Optional[str]): The system prompt for the LLM.
         context_length (int): The context length for the LLM.
         message_limit (int): The message limit for the LLM.
+        instruct_tuned (bool): Whether the LLM is an instruct model.
+        message_formatter (str): The message formatter for the LLM.
+        enabled (bool): Whether the LLM will respond to messages.
         temperature (float): The temperature parameter for the LLM.
         top_p (Optional[float]): The top_p parameter for the LLM.
         top_k (Optional[int]): The top_k parameter for the LLM.
@@ -43,6 +47,9 @@ class LLMCreate(BaseModel):
     system_prompt: Optional[str]
     context_length: int
     message_limit: int
+    instruct_tuned: bool
+    message_formatter: Optional[str]
+    enabled: bool
     temperature: float = Field(default=1.0)
     top_p: Optional[float] = None
     top_k: Optional[int] = None
@@ -66,6 +73,9 @@ class LLMUpdate(BaseModel):
         system_prompt (Optional[str]): The new system prompt for the LLM.
         context_length (Optional[int]): The new context length for the LLM.
         message_limit (Optional[int]): The new message limit for the LLM.
+        instruct_tuned (Optional[bool]): The new instruction setting for the LLM.
+        message_formatter (Optional[str]): The new message formatter for the LLM.
+        enabled (Optional[bool]): Whether the LLM will respond to messages.
         temperature (Optional[float]): The new temperature parameter for the LLM.
         top_p (Optional[float]): The new top_p parameter for the LLM.
         top_k (Optional[int]): The new top_k parameter for the LLM.
@@ -85,6 +95,9 @@ class LLMUpdate(BaseModel):
     system_prompt: Optional[str] = None
     context_length: Optional[int] = None
     message_limit: Optional[int] = None
+    instruct_tuned: Optional[bool] = None
+    message_formatter: Optional[str] = None
+    enabled: Optional[bool] = None
     temperature: Optional[float] = None
     top_p: Optional[float] = None
     top_k: Optional[int] = None
@@ -111,6 +124,9 @@ class LLM(Base):
         system_prompt (Optional[str]): The system prompt for the LLM.
         context_length (int): The context length for the LLM.
         message_limit (int): The message limit for the LLM.
+        instruct_tuned (bool): The instruction setting for the LLM.
+        message_formatter (str): The message formatter for the LLM.
+        enabled (bool): Whether the LLM will respond to messages.
         temperature (float): The temperature parameter for the LLM.
         top_p (Optional[float]): The top_p parameter for the LLM.
         top_k (Optional[int]): The top_k parameter for the LLM.
@@ -126,9 +142,9 @@ class LLM(Base):
 
     __tablename__ = "llm"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(nullable=False, index=True)
-    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"), nullable=False)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(index=True)
+    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"))
     api_base: Mapped[str] = mapped_column(Text)
     llm_name: Mapped[str] = mapped_column(Text)
     api_key: Mapped[str] = mapped_column(Text)
@@ -136,6 +152,9 @@ class LLM(Base):
     system_prompt: Mapped[Optional[str]] = mapped_column(Text)
     context_length: Mapped[int]
     message_limit: Mapped[int]
+    instruct_tuned: Mapped[bool] = mapped_column(server_default=sqlalchemy.sql.true())
+    message_formatter: Mapped[str] = mapped_column(server_default="irc")
+    enabled: Mapped[bool] = mapped_column(server_default=sqlalchemy.sql.true())
 
     temperature: Mapped[float] = mapped_column(nullable=False, default=1.0)
     top_p: Mapped[Optional[float]]
@@ -145,9 +164,10 @@ class LLM(Base):
     repetition_penalty: Mapped[Optional[float]]
     min_p: Mapped[Optional[float]]
     top_a: Mapped[Optional[float]]
+
     avatar: Mapped[Optional[str]]
 
-    guild: Mapped["Guild"] = relationship(back_populates="llms")
+    guild: Mapped["Guild"] = relationship(back_populates="llms", foreign_keys=guild_id)
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="llm")
 
     __table_args__ = (UniqueConstraint("name", "guild_id", name="uq_name_guild_id"),)

@@ -1,7 +1,7 @@
 from typing import List, TYPE_CHECKING, Optional
 
 from pydantic import BaseModel
-from sqlalchemy import BigInteger
+from sqlalchemy import BigInteger, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.db.models import Base
@@ -41,7 +41,8 @@ class Guild(Base):
     __tablename__ = "guild"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
-    simulator_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    simulator_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("llm.id", use_alter=True))
+    simulator_channel_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("channel.id", use_alter=True), nullable=True)
 
-    channels: Mapped[List["Channel"]] = relationship(back_populates="guild")
-    llms: Mapped[List["LLM"]] = relationship(back_populates="guild")
+    channels: Mapped[List["Channel"]] = relationship(back_populates="guild", foreign_keys="Channel.guild_id")
+    llms: Mapped[List["LLM"]] = relationship(back_populates="guild", foreign_keys="LLM.guild_id")

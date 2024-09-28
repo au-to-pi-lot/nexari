@@ -45,7 +45,7 @@ async def on_message(message: discord.Message):
     if message_proxy.author.id == bot.user.id:
         return
 
-    await bot.process_commands(message_proxy)
+    await bot.process_commands(message)
 
     guild = await message_proxy.get_guild()
     channel = await message_proxy.get_channel()

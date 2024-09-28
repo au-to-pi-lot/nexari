@@ -7,7 +7,6 @@ import discord
 from discord import Embed, Interaction, app_commands
 from discord.ext import commands
 from discord.ext.commands import Bot
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models.llm import LLMCreate, LLMUpdate
 from src.proxies import LLMProxy, GuildProxy
@@ -66,14 +65,40 @@ class LLMCommands(commands.GroupCog, name="llm"):
         embed = Embed(title="Available LLMs", color=discord.Color.blue())
         if llms:
             for llm in llms:
+                enabled_text = "Enabled" if llm.enabled else "Disabled"
                 embed.add_field(
                     name=llm.name,
-                    value=f"Model: {llm.llm_name}",
+                    value=f"({enabled_text}) Model: {llm.llm_name}",
                     inline=False,
                 )
         else:
             embed.description = "No LLMs configured."
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(description="Set the LLM for simulating responses")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def set_simulator(self, interaction: discord.Interaction, name: str):
+        """Set the LLM for simulating responses"""
+        await interaction.response.defer(ephemeral=True)
+
+        guild = await GuildProxy.get(interaction.guild_id)
+        if not guild:
+            embed = Embed(title="Error", color=discord.Color.red())
+            embed.description = "Failed to get guild proxy."
+            await interaction.followup.send(embed=embed)
+            return
+
+        simulator = await LLMProxy.get_by_name(name, guild.id)
+
+        try:
+            await guild.edit(simulator_id=simulator.id)
+            embed = Embed(title="Simulator Set", color=discord.Color.green())
+            embed.description = f"The server simulator is now {simulator.name}"
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            embed = Embed(title="Error Setting Simulator", color=discord.Color.red())
+            embed.description = str(e)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Set the channel for viewing raw simulator responses")
     @app_commands.checks.has_permissions(administrator=True)
@@ -109,6 +134,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         system_prompt="System prompt to be displayed at start of context",
         context_length="Context length in tokens",
         message_limit="Number of messages to put in LLM's context",
+        instruct_tuned="Whether or not the LLM has been instruct tuned (default is true)",
+        message_formatter="Formatter to use for this LLM.",
+        enabled="Whether or not the llm should respond to message.",
         temperature="Sampling temperature (default is 1.0)",
         top_p="Sampling top_p value",
         top_k="Sampling top_k value (not supported by all APIs)",
@@ -137,9 +165,21 @@ class LLMCommands(commands.GroupCog, name="llm"):
         repetition_penalty: Optional[float] = None,
         min_p: Optional[float] = None,
         top_a: Optional[float] = None,
+        instruct_tuned: Optional[bool] = None,
+        message_formatter: Optional[str] = None,
+        enabled: Optional[bool] = None,
     ):
         """Create a new LLM"""
         await interaction.response.defer(ephemeral=True)
+
+        if instruct_tuned is None:
+            instruct_tuned = True
+
+        if message_formatter is None:
+            message_formatter = "irc"
+
+        if enabled is None:
+            enabled = True
 
         model_data = LLMCreate(
             name=name,
@@ -159,6 +199,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
             repetition_penalty=repetition_penalty,
             min_p=min_p,
             top_a=top_a,
+            instruct_tuned=instruct_tuned,
+            message_formatter=message_formatter,
+            enabled=enabled,
         )
 
         try:
@@ -187,6 +230,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         system_prompt="System prompt to be displayed at start of context",
         context_length="Context length in tokens",
         message_limit="Number of messages to put in LLM's context",
+        instruct_tuned="Whether or not the LLM has been instruct tuned (default is true)",
+        message_formatter="Formatter to use for this LLM.",
+        enabled="Whether or not the LLM will respond to messages",
         temperature="Sampling temperature (default is 1.0)",
         top_p="Sampling top_p value",
         top_k="Sampling top_k value (not supported by all APIs)",
@@ -208,6 +254,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         system_prompt: Optional[str] = None,
         context_length: Optional[int] = None,
         message_limit: Optional[int] = None,
+        instruct_tuned: Optional[bool] = None,
+        message_formatter: Optional[str] = None,
+        enabled: Optional[bool] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
         top_k: Optional[int] = None,
@@ -235,6 +284,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
             system_prompt=system_prompt,
             context_length=context_length,
             message_limit=message_limit,
+            instruct_tuned=instruct_tuned,
+            message_formatter=message_formatter,
+            enabled=enabled,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,

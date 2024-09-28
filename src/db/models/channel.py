@@ -55,7 +55,7 @@ class Channel(Base):
         ForeignKey("llm.id"), nullable=True
     )
 
-    guild: Mapped["Guild"] = relationship(back_populates="channels")
+    guild: Mapped["Guild"] = relationship(back_populates="channels", foreign_keys=[guild_id])
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel")
     messages: Mapped[Message] = relationship(back_populates="channel")
     last_responder: Mapped[Optional["LLM"]] = relationship()

@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import sqlalchemy
 
-from src.db.models import Guild, Guild as DBGuild
+from src.db.models import Guild, Guild as DBGuild, LLM
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
@@ -78,6 +78,10 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
         return self._discord_obj.roles
 
     @property
+    def simulator_id(self) -> Optional[int]:
+        return self._db_obj.simulator_id
+
+    @property
     def simulator_channel_id(self) -> Optional[int]:
         return self._db_obj.simulator_channel_id
 
@@ -99,7 +103,25 @@ class GuildProxy(BaseProxy[discord.Guild, DBGuild]):
                 )
             ).one()
             llm_db_objs = guild.llms
-        return [LLMProxy(llm_db_obj) for llm_db_obj in llm_db_objs]
+        return [
+            LLMProxy(llm_db_obj)
+            for llm_db_obj in llm_db_objs
+            if llm_db_obj.enabled
+        ]
+
+    async def get_simulator(self) -> Optional["LLMProxy"]:
+        from src.proxies.llm import LLMProxy
+
+        if self.simulator_id is None:
+            return None
+
+        async with Session() as session:
+            simulator = await session.get(LLM, self.simulator_id)
+
+            if simulator is None:
+                return None
+
+            return LLMProxy(simulator)
 
     async def fetch_members(self) -> List[discord.Member]:
         return [member async for member in self._discord_obj.fetch_members()]

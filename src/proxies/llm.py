@@ -1,36 +1,31 @@
 import asyncio
 import logging
 import os
-import re
 import shutil
-import textwrap
 from collections import defaultdict
-from datetime import datetime
-from itertools import cycle
-from typing import List, Literal, Optional, Self, TYPE_CHECKING
+from typing import List, Optional, Self, TYPE_CHECKING, Any
 
+import aiohttp
 import discord
 import sqlalchemy
-from discord import NotFound
-from discord.ext.commands import Bot
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
-from pydantic import BaseModel
-from regex import regex
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.const import AVATAR_DIR, DISCORD_MESSAGE_MAX_CHARS
+from src import message_formatters
+from src.const import AVATAR_DIR
 from src.db.models import LLM, Webhook
 from src.db.models.llm import LLMCreate
+from src.message_formatters import get_message_formatter
 from src.proxies import WebhookProxy
 from src.proxies.message import MessageProxy
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.litellm_message import LiteLLMMessage
+from src.types.message_formatter import MessageFormatter
 from src.types.proxy import BaseProxy
-from src.util import drop_both_ends
 
 if TYPE_CHECKING:
     from src.proxies import ChannelProxy
@@ -95,12 +90,44 @@ class LLMProxy(BaseProxy[None, LLM]):
         return self._db_obj.name
 
     @property
+    def api_base(self):
+        return self._db_obj.api_base
+
+    @property
     def llm_name(self) -> str:
         return self._db_obj.llm_name
 
     @property
+    def api_key(self) -> str:
+        return self._db_obj.api_key
+
+    @property
     def avatar(self) -> Optional[str]:
         return self._db_obj.avatar
+
+    @property
+    def system_prompt(self) -> Optional[str]:
+        return self._db_obj.system_prompt
+
+    @property
+    def max_tokens(self) -> int:
+        return self._db_obj.max_tokens
+
+    @property
+    def message_limit(self) -> int:
+        return self._db_obj.message_limit
+
+    @property
+    def instruct_tuned(self) -> bool:
+        return self._db_obj.instruct_tuned
+
+    @property
+    def message_formatter(self) -> Optional[MessageFormatter]:
+        return get_message_formatter(self._db_obj.message_formatter)
+
+    @property
+    def temperature(self) -> float:
+        return self._db_obj.temperature
 
     @classmethod
     async def create(cls, llm_data: LLMCreate, *, session: AsyncSession = None) -> Self:
@@ -126,19 +153,23 @@ class LLMProxy(BaseProxy[None, LLM]):
         columns = LLM.__table__.columns.keys()
         old_name = self.name
         for key, value in kwargs.items():
+            if key == "name" and value != old_name:
+                # If the name has changed, update all associated webhooks
+                webhooks = await self.get_webhooks()
+                for webhook in webhooks:
+                    try:
+                        await webhook.edit(name=kwargs["name"])
+                    except Exception as e:
+                        logger.error(f"Failed to update webhook {webhook.id} name: {e}")
+                        raise
+            elif key == "message_formatter":
+                if value not in message_formatters.formatters:
+                    raise ValueError(f"Invalid message formatter: {value}")
+
             if key in columns:
                 setattr(self._db_obj, key, value)
 
         await self.save()
-
-        # If the name has changed, update all associated webhooks
-        if "name" in kwargs and kwargs["name"] != old_name:
-            webhooks = await self.get_webhooks()
-            for webhook in webhooks:
-                try:
-                    await webhook.edit(name=kwargs["name"])
-                except Exception as e:
-                    logger.error(f"Failed to update webhook {webhook.id} name: {e}")
 
     async def get_webhook(self, channel_id: int) -> WebhookProxy:
         from src.proxies import ChannelProxy
@@ -244,7 +275,7 @@ class LLMProxy(BaseProxy[None, LLM]):
 
         return webhooks
 
-    async def generate_raw_response(
+    async def generate_instruct_response(
         self, messages: List[LiteLLMMessage]
     ) -> ModelResponse:
         try:
@@ -261,7 +292,7 @@ class LLMProxy(BaseProxy[None, LLM]):
             response = await acompletion(
                 model=self._db_obj.llm_name,
                 messages=messages,
-                max_tokens=self._db_obj.max_tokens,
+                max_tokens=self.max_tokens,
                 **{key: val for key, val in sampling_config.items() if val is not None},
                 api_base=self._db_obj.api_base,
                 api_key=self._db_obj.api_key,
@@ -272,15 +303,43 @@ class LLMProxy(BaseProxy[None, LLM]):
             logger.exception(f"Error in generate_response: {str(e)}")
             raise
 
-    def get_system_prompt(self, guild_name: str, channel_name: str) -> str:
-        return f"""\
-{self._db_obj.system_prompt}
+    async def generate_simulator_response(self, prompt: str, stop_words: list[str] = None) -> dict[str, Any]:
+        if stop_words is None:
+            stop_words = []
 
-You are: {self.name}
-Current Time: {datetime.now().isoformat()}
-Current Discord Guild: {guild_name}
-Current Discord Channel: {channel_name}
-    """
+        url = f"{self.api_base}/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "User-Agent": "Nexari/0.1.0"
+        }
+        data = {
+            "model": self.llm_name,
+            "prompt": prompt,
+            "max_tokens": self.max_tokens,
+            "stop": stop_words
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                for attempt in range(3):
+                    if response.status == 200:
+                        try:
+                            result = await response.json()
+                            if result:
+                                return result
+                            else:
+                                logger.warning(f"Empty simulator response received. Attempt {attempt + 1} of 3.")
+                                logger.warning(await response.text())
+                        except aiohttp.client_exceptions.ClientPayloadError as e:
+                            logger.warning(f"ClientPayloadError occurred: {e}. Attempt {attempt + 1} of 3.")
+
+                        if attempt < 2:
+                            continue
+                    else:
+                        raise Exception(f"Error {response.status}: {await response.text()}")
+
+                raise ValueError("Failed to get a valid response after 3 attempts")
 
     async def mentioned_in_message(self, message: MessageProxy) -> bool:
         mentioned = f"@{self.name.lower()}" in message.content.lower()
@@ -308,13 +367,16 @@ Current Discord Channel: {channel_name}
         new_llm_data = {
             "name": new_name,
             "guild_id": self._db_obj.guild_id,
-            "api_base": self._db_obj.api_base,
+            "api_base": self.api_base,
             "llm_name": self.llm_name,
-            "api_key": self._db_obj.api_key,
-            "max_tokens": self._db_obj.max_tokens,
-            "system_prompt": self._db_obj.system_prompt,
+            "api_key": self.api_key,
+            "max_tokens": self.max_tokens,
+            "system_prompt": self.system_prompt,
             "context_length": self._db_obj.context_length,
             "message_limit": self._db_obj.message_limit,
+            "instruct_tuned": self.instruct_tuned,
+            "enabled": self._db_obj.enabled,
+            "message_formatter": self._db_obj.message_formatter,
             "temperature": self._db_obj.temperature,
             "top_p": self._db_obj.top_p,
             "top_k": self._db_obj.top_k,
@@ -390,167 +452,56 @@ Current Discord Channel: {channel_name}
         Args:
             channel (ChannelProxy): The channel to post the response in.
         """
-        history = await channel.history(limit=self._db_obj.message_limit)
+        history = list(reversed(await channel.history(limit=self.message_limit)))
         webhook = await self.get_webhook(channel.id)
         guild = await channel.get_guild()
 
-        messages: List[LiteLLMMessage] = []
-        if self._db_obj.system_prompt is not None:
-            messages.append(
-                LiteLLMMessage(role="system", content=self._db_obj.system_prompt)
-            )
-        for message in reversed(history):
-            if not message.content:
-                continue
-
-            if message.webhook_id:
-                try:
-                    msg_webhook = await bot.fetch_webhook(message.webhook_id)
-                except NotFound as e:
-                    continue
-                username = msg_webhook.name
-                role = "assistant" if msg_webhook.id == webhook.id else "user"
-            else:
-                username = message.author.name
-                role = "user"
-
-            content = f"<{username}> {message.content}"
-            messages.append(LiteLLMMessage(role=role, content=content))
-
         try:
             # Generate the response
-            response = await self.generate_raw_response(messages)
-            response_str = response.choices[0].message.content
+            if self.instruct_tuned:
+                messages = await self.message_formatter.format_instruct(history, self.system_prompt, webhook)
+                response = await self.generate_instruct_response(messages)
+                response_str = response.choices[0].message.content
+            else:
+                llms_in_guild = await guild.get_llms()
+                prompt = await self.message_formatter.format_simulator(history, self.system_prompt, webhook, channel, [llm.name for llm in llms_in_guild], self.name)
+                response = await self.generate_simulator_response(prompt, ['\n\n\n'])
+                response_str = response["choices"][0]["text"]
+
+            logger.info(f"{self.name} (#{channel.name}): {response_str}")
 
             if response_str == "":
                 logger.info(f"{self.name} declined to respond in channel {channel.id}")
                 return
 
-            # Process the response line by line
-            lines = response_str.split('\n')
-            processed_lines = []
-            active_username = None
+            parse_response = await self.message_formatter.parse_messages(response_str)
+            response_messages = parse_response.split_messages
+            response_username = parse_response.username
 
-            for line in lines:
-                # Match multiple usernames at the start of the line
-                match = regex.match(r'^(<[^>]+>\s*)+(?P<message>.*)$', line)
-                if match:
-                    # Extract the first username without angle brackets
-                    first_username = regex.search(r'<([^>]+)>', match.group(0)).group(1)
-                    
-                    if active_username is None:
-                        active_username = first_username
-                    
-                    if first_username != active_username:
-                        # Stop processing if a different username is encountered
-                        break
-                    
-                    processed_lines.append(match.group("message"))
-                else:
-                    processed_lines.append(line)
-
-            message = '\n'.join(processed_lines)
-            messages_to_send = self.break_messages(message)
-
-            if active_username is None:
+            if response_username is None:
                 # If no usernames were found, assume it's from this LLM
-                active_username = self.name
+                response_username = self.name
 
-            if active_username == self.name:
+            if response_username == self.name:
                 # If the message is from this LLM, send it
-                for message in messages_to_send:
+                for message in response_messages:
                     await webhook.send(message)
-                logger.info(f"Msg in channel {channel.id} from {active_username}: {message}")
+                logger.info(f"Msg in channel {channel.id} from {response_username}: {parse_response.complete_message}")
             else:
-                # Log that the message was dropped due to username mismatch
-                logger.info(f"Message dropped in channel {channel.id} due to username mismatch. Expected: {self.name}, Found: {active_username}")
+                # Otherwise, pass control to other LLM, if it exists
+                other_llm = await LLMProxy.get_by_name(response_username, self._db_obj.guild_id)
+                if other_llm:
+                    logger.info(f"{self.name} passed to {other_llm.name}")
+                    await other_llm.respond(channel)
+                elif member := guild.get_member_named(response_username):
+                    # Or, if it's a human's username, mention them
+                    await webhook.send(f"<@{member.id}>")
+                else:
+                    # If no matching LLM or user found, send the message as is
+                    for message in response_messages:
+                        await webhook.send(message)
+                    logger.warning(f"{self.name} sent a message with unknown username: {response_username}")
 
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
             # Optionally, you could send an error message to the channel here
-
-    @staticmethod
-    def break_messages(content: str) -> List[str]:
-        """
-        Break a long message into smaller chunks that fit within Discord's message limit.
-
-        Args:
-            content (str): The content to break into messages.
-
-        Returns:
-            List[str]: A list of message chunks.
-        """
-
-        class CharBlock(BaseModel):
-            content: str
-            block_type: Literal["text", "code"]
-
-        char_blocks = (
-            CharBlock(content=content, block_type=block_type)
-            for content, block_type in zip(
-                content.split("```"), cycle(["text", "code"])
-            )
-            if content
-        )
-
-        blocks = []
-        for block in char_blocks:
-            if block.block_type == "text":
-                block.content = block.content.strip()
-                if block:
-                    blocks.append(block)
-            else:
-                blocks.append(block)
-
-        messages = []
-        for block in blocks:
-            if block.block_type == "text":
-                messages.extend(
-                    [
-                        nonempty_message
-                        for paragraph in block.content.split("\n\n")
-                        for message in textwrap.wrap(
-                            paragraph,
-                            width=DISCORD_MESSAGE_MAX_CHARS,
-                            expand_tabs=False,
-                            replace_whitespace=False,
-                        )
-                        if (nonempty_message := message.strip())
-                    ]
-                )
-            elif block.block_type == "code":
-                lines = block.content.split("\n")
-
-                potential_language_marker = None
-                if lines[0] != "":
-                    potential_language_marker = lines[0]
-                    lines = lines[1:]
-
-                lines = drop_both_ends(lambda ln: ln == "", lines)
-
-                if not lines and potential_language_marker:
-                    lines = [potential_language_marker]
-
-                if lines:
-                    message_lines = []
-                    current_length = 0
-                    for index, line in enumerate(lines):
-                        estimated_length = (
-                            current_length + len(line) + len("```\n") + len("\n```") + 1
-                        )
-                        if estimated_length <= DISCORD_MESSAGE_MAX_CHARS:
-                            message_lines.append(line)
-                            current_length += len(line) + 1  # plus one for newline
-                        else:
-                            messages.append(
-                                "```\n" + "\n".join(message_lines) + "\n```"
-                            )
-                            message_lines = []
-                            current_length = 0
-
-                    if message_lines:
-                        messages.append("```\n" + "\n".join(message_lines) + "\n```")
-                else:  # empty code block
-                    messages.append("```\n```")
-
-        return messages

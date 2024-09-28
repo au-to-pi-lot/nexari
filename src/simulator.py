@@ -1,17 +1,9 @@
 import logging
-import re
 from typing import List, Optional
+
 from pydantic import BaseModel
 
-from discord import NotFound
-import aiohttp
-from aiohttp.client_exceptions import ClientPayloadError
-from typing import Dict, Any
-from regex import regex
-
-from src.config import config
 from src.proxies import ChannelProxy, LLMProxy
-from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
 
@@ -26,123 +18,43 @@ class Simulator:
         pass
 
     @classmethod
-    def extract_usernames(cls, response_str: str) -> List[str]:
-        matches = regex.finditer(
-            r"^<(?P<username>[^>]+)>",
-            response_str,
-            flags=re.MULTILINE,
-        )
-        return [match.group("username") for match in matches]
-
-    @classmethod
     async def get_next_participant(cls, channel: ChannelProxy) -> Optional[LLMProxy]:
-        messages = []
-        message_data_list: List[MessageData] = []
-
         guild = await channel.get_guild()
+        simulator = await guild.get_simulator()
+
+        if not simulator:
+            return None
+
+        messages = list(reversed(await channel.history(limit=simulator.message_limit)))
         llms_in_guild = await guild.get_llms()
 
-        if not llms_in_guild:
-            return None
+        last_speaker = messages[-1].author.name if messages else None
 
-        for llm in llms_in_guild:
-            messages.append(f"* {llm.name} joined")
-
-        history = list(reversed(await channel.history(limit=100)))
-        for message in history:
-            if not message:
-                raise ValueError("Empty history")
-
-            if not message.content:
-                continue
-
-            username = message.author.name
-
-            matches = re.finditer(r"<@(?P<user_id>\d+)>", message.content)
-
-            message_replaced_mentions = message.content
-            for match in matches:
-                user_id = match.group("user_id")
-                try:
-                    user = await bot.fetch_user(user_id)
-                    message_replaced_mentions = message_replaced_mentions.replace(
-                        f"<@{user_id}>", f"@{user.name}"
-                    )
-                except NotFound:
-                    continue
-
-            message_data_list.append(MessageData(username=username, content=message_replaced_mentions))
-
-        # Get the last speaker from the collected data
-        last_speaker = message_data_list[-1].username if message_data_list else None
-
-        # Transform message_data_list to strings
-        messages.extend([f"<{data.username}> {data.content}" for data in message_data_list])
-
-        prompt = "\n\n\n".join(messages) + "\n\n\n"
+        prompt = await simulator.message_formatter.format_simulator(
+            messages=messages,
+            system_prompt=simulator.system_prompt,
+            webhook=None,
+            channel=channel,
+            users_in_channel=[llm.name for llm in llms_in_guild],
+        )
 
         logger.info(f"Simulating conversation in #{channel.name}...")
-        response = await cls.generate_raw_response(prompt=prompt)
-
-        if not response:
-            raise ValueError("empty response")
-
+        response = await simulator.generate_simulator_response(prompt=prompt)
         response_str = response["choices"][0]["text"]
-
-        logger.info(f"Received simulator response: {response_str}")
+        logger.info(f"Received simulator response (#{channel.name}): {response_str}")
 
         # Send raw simulator response to the designated channel if set
-        guild = await channel.get_guild()
-        if guild.simulator_channel_id:
+        if guild.simulator_channel_id is not None:
             simulator_channel = await ChannelProxy.get(guild.simulator_channel_id)
             if simulator_channel:
-                last_message = history[-1]
+                last_message = messages[-1]
                 await simulator_channel.send(f"{last_message.jump_url}:\n```\n{response_str}\n```")
 
-        usernames = cls.extract_usernames(response_str)
 
-        if not usernames:
-            logger.info("No usernames found in the response")
-            return None
+        next_user = await simulator.message_formatter.parse_next_user(response_str, last_speaker)
 
-        # Find the first username that's different from the last speaker
-        next_speaker = next((username for username in usernames if username != last_speaker), None)
-
-        if next_speaker is None:
+        if next_user is None:
             logger.info("No new speaker found in the response")
             return None
 
-        return await LLMProxy.get_by_name(next_speaker, channel.guild.id)
-
-    @classmethod
-    async def generate_raw_response(cls, prompt: str) -> Dict[str, Any]:
-        url = "https://openrouter.ai/api/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {config.openrouter_api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": "meta-llama/llama-3.1-405b",
-            "prompt": prompt,
-            "max_tokens": 256,
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data) as response:
-                for attempt in range(3):
-                    if response.status == 200:
-                        try:
-                            result = await response.json()
-                            if result:
-                                return result
-                            else:
-                                logger.warning(f"Empty response received. Attempt {attempt + 1} of 3.")
-                        except aiohttp.client_exceptions.ClientPayloadError as e:
-                            logger.warning(f"ClientPayloadError occurred: {e}. Attempt {attempt + 1} of 3.")
-                        
-                        if attempt < 2:
-                            continue
-                    else:
-                        raise Exception(f"Error {response.status}: {await response.text()}")
-
-                raise ValueError("Failed to get a valid response after 3 attempts")
+        return await LLMProxy.get_by_name(next_user, channel.guild.id)

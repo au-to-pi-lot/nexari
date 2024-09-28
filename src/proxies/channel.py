@@ -1,17 +1,17 @@
-from typing import Optional, TYPE_CHECKING, Union, List
 import logging
+from datetime import datetime
+from typing import Optional, TYPE_CHECKING, Union, List
 
 import discord
-from discord.ext.commands import Bot
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 import sqlalchemy
+from discord.abc import Snowflake
+from sqlalchemy import select
 
 from src.db.models import Channel, Guild
+from src.proxies.message import MessageProxy
 from src.services.db import Session
 from src.services.discord_client import bot
 from src.types.proxy import BaseProxy
-from src.proxies.message import MessageProxy
 
 if TYPE_CHECKING:
     from src.proxies import GuildProxy
@@ -30,27 +30,36 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
             discord_guilds = bot.guilds
             db_guilds = (await session.execute(select(Guild))).scalars().all()
             db_guild_ids = {guild.id for guild in db_guilds}
-            
+
             for discord_guild in discord_guilds:
                 if discord_guild.id not in db_guild_ids:
                     new_guild = Guild(id=discord_guild.id)
                     session.add(new_guild)
 
             # Ensure Channels exist
-            discord_channels = [channel for guild in bot.guilds for channel in guild.channels if isinstance(channel, discord.TextChannel)]
+            discord_channels = [
+                channel
+                for guild in bot.guilds
+                for channel in guild.channels
+                if isinstance(channel, discord.TextChannel)
+            ]
             db_channels = (await session.execute(select(Channel))).scalars().all()
             db_channel_ids = {channel.id for channel in db_channels}
-            
+
             for discord_channel in discord_channels:
                 if discord_channel.id not in db_channel_ids:
-                    new_channel = Channel(id=discord_channel.id, guild_id=discord_channel.guild.id)
+                    new_channel = Channel(
+                        id=discord_channel.id, guild_id=discord_channel.guild.id
+                    )
                     session.add(new_channel)
 
             try:
                 await session.commit()
             except sqlalchemy.exc.IntegrityError:
                 await session.rollback()
-                logger.error("Failed to ensure linked tables exist due to integrity error")
+                logger.error(
+                    "Failed to ensure linked tables exist due to integrity error"
+                )
 
     @classmethod
     async def get(cls, identifier: int) -> Optional["ChannelProxy"]:
@@ -64,7 +73,9 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
                 # Check if the guild exists in the database, if not create it
                 db_guild = await session.get(Guild, discord_channel.guild.id)
                 if not db_guild:
-                    db_guild = Guild(id=discord_channel.guild.id, name=discord_channel.guild.name)
+                    db_guild = Guild(
+                        id=discord_channel.guild.id, name=discord_channel.guild.name
+                    )
                     session.add(db_guild)
 
                 db_channel = Channel(id=identifier, guild_id=discord_channel.guild.id)
@@ -73,7 +84,9 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
                     await session.commit()
                 except sqlalchemy.exc.IntegrityError:
                     await session.rollback()
-                    logger.error(f"Failed to create channel {identifier} due to integrity error")
+                    logger.error(
+                        f"Failed to create channel {identifier} due to integrity error"
+                    )
                     return None
 
         return cls(discord_channel, db_channel)
@@ -131,9 +144,22 @@ class ChannelProxy(BaseProxy[discord.TextChannel, Channel]):
     async def webhooks(self) -> list[discord.Webhook]:
         return await self._discord_obj.webhooks()
 
-    async def history(self, **kwargs) -> List[MessageProxy]:
+    async def history(
+        self,
+        limit: int | None = 100,
+        before: Snowflake | datetime | None = None,
+        after: Snowflake | datetime | None = None,
+        around: Snowflake | datetime | None = None,
+        oldest_first: bool | None = None,
+    ) -> List[MessageProxy]:
         return [
             await MessageProxy.get_or_create(message)
-            async for message in self._discord_obj.history(**kwargs)
+            async for message in self._discord_obj.history(
+                limit=limit,
+                before=before,
+                after=after,
+                around=around,
+                oldest_first=oldest_first,
+            )
             if message.author.id != bot.user.id
         ]
