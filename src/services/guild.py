@@ -47,3 +47,29 @@ class GuildService:
     async def get_llms_by_guild(self, guild_id: int) -> List[LLM]:
         result = await self.session.execute(select(LLM).where(LLM.guild_id == guild_id))
         return result.scalars().all()
+
+    async def sync(self, discord_guild: discord.Guild) -> Guild:
+        """
+        Synchronize the database guild with the Discord guild.
+
+        Args:
+            discord_guild (discord.Guild): The Discord guild to sync with.
+
+        Returns:
+            Guild: The updated database Guild object.
+        """
+        db_guild = await self.get(discord_guild.id)
+        if db_guild is None:
+            db_guild = await self.create(discord_guild)
+        else:
+            # Update guild properties
+            db_guild.name = discord_guild.name
+            db_guild.icon = discord_guild.icon.url if discord_guild.icon else None
+            db_guild.owner_id = discord_guild.owner_id
+            db_guild.member_count = discord_guild.member_count
+            
+            # You might want to update more properties here depending on your Guild model
+            
+            await self.session.commit()
+
+        return db_guild
