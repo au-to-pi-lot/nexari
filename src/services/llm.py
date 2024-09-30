@@ -2,6 +2,8 @@ from typing import Optional, List, Any
 import logging
 import os
 import shutil
+
+import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
@@ -15,6 +17,8 @@ from src.db.models.webhook import Webhook
 from src.db.models.guild import Guild
 from src.const import AVATAR_DIR
 from src.services.discord_client import bot
+from src.services.guild import GuildService
+from src.services.webhook import WebhookService
 from src.types.litellm_message import LiteLLMMessage
 
 logger = logging.getLogger(__name__)
@@ -31,7 +35,7 @@ class LLMService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_all(self, guild_id: int) -> List[LLM]:
+    async def get_by_guild(self, guild_id: int) -> List[LLM]:
         stmt = select(LLM).where(LLM.guild_id == guild_id)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -92,6 +96,26 @@ class LLMService:
                 logger.error(f"Failed to update avatar for webhook {webhook.id}: {e}")
 
         logger.info(f"Avatar set for LLM {llm.name} and its webhooks: {filename}")
+
+    async def get_or_create_webhook(self, llm: LLM, channel: discord.TextChannel) -> Webhook:
+        webhook_service = WebhookService(session=self.session)
+        db_webhook = await webhook_service.get_by_llm_channel(channel.id, llm.id)
+        if db_webhook is None:
+            avatar_data = None
+            if llm.avatar is not None:
+                avatar_path = AVATAR_DIR / llm.avatar
+                if avatar_path.exists():
+                    with open(avatar_path, "rb") as avatar_file:
+                        avatar_data = avatar_file.read()
+
+            discord_webhook = await channel.create_webhook(
+                name=llm.name,
+                avatar=avatar_data,
+            )
+            db_webhook = await webhook_service.create(discord_webhook, llm)
+
+        return db_webhook
+
 
     async def get_webhooks(self, llm: LLM) -> List[Webhook]:
         stmt = select(LLM).options(selectinload(LLM.webhooks)).where(LLM.id == llm.id)
@@ -214,9 +238,8 @@ class LLMService:
         Returns:
             Optional[LLM]: The simulator LLM if found, None otherwise.
         """
-        stmt = select(Guild).where(Guild.id == guild_id)
-        result = await self.session.execute(stmt)
-        guild = result.scalar_one_or_none()
+        guild_service = GuildService(session=self.session)
+        guild = await guild_service.get(guild_id)
 
         if guild and guild.simulator_id:
             return await self.get(guild.simulator_id)
