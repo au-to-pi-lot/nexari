@@ -9,6 +9,7 @@ import aiohttp
 from litellm import acompletion
 from litellm.types.utils import ModelResponse
 
+from src import message_formatters
 from src.db.models.llm import LLM, LLMCreate, LLMUpdate
 from src.db.models.webhook import Webhook
 from src.const import AVATAR_DIR
@@ -21,32 +22,47 @@ class LLMService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_llm(self, llm_id: int) -> Optional[LLM]:
+    async def get(self, llm_id: int) -> Optional[LLM]:
         return await self.session.get(LLM, llm_id)
 
-    async def get_llm_by_name(self, name: str, guild_id: int) -> Optional[LLM]:
+    async def get_by_name(self, name: str, guild_id: int) -> Optional[LLM]:
         stmt = select(LLM).where(LLM.name == name, LLM.guild_id == guild_id)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_all_llms(self, guild_id: int) -> List[LLM]:
+    async def get_all(self, guild_id: int) -> List[LLM]:
         stmt = select(LLM).where(LLM.guild_id == guild_id)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def create_llm(self, llm_data: LLMCreate) -> LLM:
+    async def create(self, llm_data: LLMCreate) -> LLM:
         llm = LLM(**llm_data.model_dump())
         self.session.add(llm)
         await self.session.commit()
         return llm
 
-    async def update_llm(self, llm: LLM, update_data: LLMUpdate) -> LLM:
+    async def update(self, llm: LLM, update_data: LLMUpdate) -> LLM:
+        old_name = llm.name
         for key, value in update_data.items():
+            if key == "name" and value != old_name:
+                # If the name has changed, update all associated webhooks
+                webhooks = await self.get_webhooks(llm)
+                for webhook in webhooks:
+                    discord_webhook = await bot.fetch_webhook(webhook.id)
+                    try:
+                        await discord_webhook.edit(name=value)
+                    except Exception as e:
+                        logger.error(f"Failed to update webhook {webhook.id} name: {e}")
+                        raise
+            elif key == "message_formatter":
+                if value not in message_formatters.formatters:
+                    raise ValueError(f"Invalid message formatter: {value}")
+
             setattr(llm, key, value)
         await self.session.commit()
         return llm
 
-    async def delete_llm(self, llm: LLM) -> None:
+    async def delete(self, llm: LLM) -> None:
         await self.session.delete(llm)
         await self.session.commit()
 
@@ -184,5 +200,5 @@ class LLMService:
                     f"Avatar file {source_avatar_path} not found. New LLM will not have an avatar."
                 )
 
-        new_llm = await self.create_llm(LLMCreate(**new_llm_data))
+        new_llm = await self.create(LLMCreate(**new_llm_data))
         return new_llm
