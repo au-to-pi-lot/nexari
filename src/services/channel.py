@@ -15,7 +15,7 @@ class ChannelService:
     async def get(self, channel_id: int) -> Optional[Channel]:
         return await self.session.get(Channel, channel_id)
 
-    async def create(self, channel: discord.TextChannel) -> Channel:
+    async def create(self, channel: discord.abc.GuildChannel) -> Channel:
         guild_service = GuildService(session=self.session)
         await guild_service.get_or_create(channel.guild)
 
