@@ -92,12 +92,17 @@ class LLMCommands(commands.GroupCog, name="llm"):
             db_guild = await guild_service.get(interaction.guild_id)
             if not db_guild:
                 embed = Embed(title="Error", color=discord.Color.red())
-                embed.description = "Failed to get guild proxy."
+                embed.description = "Failed to get guild."
                 await interaction.followup.send(embed=embed)
                 return
 
             llm_service = LLMService(session)
             simulator = await llm_service.get_by_name(name, db_guild.id)
+            if not simulator:
+                embed = Embed(title="Error", color=discord.Color.red())
+                embed.description = f"LLM '{name}' not found."
+                await interaction.followup.send(embed=embed)
+                return
 
             try:
                 await guild_service.update(db_guild, GuildUpdate(simulator_id=simulator.id))
@@ -115,23 +120,24 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Set the channel for viewing raw simulator responses"""
         await interaction.response.defer(ephemeral=True)
 
+        async with Session() as session:
+            guild_service = GuildService(session)
+            db_guild = await guild_service.get(interaction.guild_id)
+            if not db_guild:
+                embed = Embed(title="Error", color=discord.Color.red())
+                embed.description = "Failed to get guild."
+                await interaction.followup.send(embed=embed)
+                return
 
-        guild = await GuildProxy.get(interaction.guild_id)
-        if not guild:
-            embed = Embed(title="Error", color=discord.Color.red())
-            embed.description = "Failed to get guild proxy."
-            await interaction.followup.send(embed=embed)
-            return
-
-        try:
-            await guild.edit(simulator_channel_id=channel.id)
-            embed = Embed(title="Simulator Channel Set", color=discord.Color.green())
-            embed.description = f"Raw simulator responses will now be sent to {channel.mention}."
-            await interaction.followup.send(embed=embed)
-        except Exception as e:
-            embed = Embed(title="Error Setting Simulator Channel", color=discord.Color.red())
-            embed.description = str(e)
-            await interaction.followup.send(embed=embed)
+            try:
+                await guild_service.update(db_guild, GuildUpdate(simulator_channel_id=channel.id))
+                embed = Embed(title="Simulator Channel Set", color=discord.Color.green())
+                embed.description = f"Raw simulator responses will now be sent to {channel.mention}."
+                await interaction.followup.send(embed=embed)
+            except Exception as e:
+                embed = Embed(title="Error Setting Simulator Channel", color=discord.Color.red())
+                embed.description = str(e)
+                await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Register a new LLM")
     @app_commands.checks.has_permissions(administrator=True)
@@ -215,12 +221,14 @@ class LLMCommands(commands.GroupCog, name="llm"):
         )
 
         try:
-            await LLMProxy.create(model_data)
+            async with Session() as session:
+                llm_service = LLMService(session)
+                new_llm = await llm_service.create(model_data)
             embed = Embed(title="LLM Created", color=discord.Color.green())
-            embed.add_field(name="Name", value=name, inline=False)
-            embed.add_field(name="Model", value=llm_name, inline=False)
-            embed.add_field(name="Max Tokens", value=str(max_tokens), inline=True)
-            embed.add_field(name="Temperature", value=str(temperature), inline=True)
+            embed.add_field(name="Name", value=new_llm.name, inline=False)
+            embed.add_field(name="Model", value=new_llm.llm_name, inline=False)
+            embed.add_field(name="Max Tokens", value=str(new_llm.max_tokens), inline=True)
+            embed.add_field(name="Temperature", value=str(new_llm.temperature), inline=True)
             await interaction.followup.send(embed=embed)
         except ValueError as e:
             embed = Embed(title="Error Creating LLM", color=discord.Color.red())
@@ -278,50 +286,52 @@ class LLMCommands(commands.GroupCog, name="llm"):
     ):
         await interaction.response.defer(ephemeral=True)
 
-        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
-        if not llm:
-            embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
-            embed.description = f"LLM '{name}' not found in this guild."
-            await interaction.followup.send(embed=embed)
-            return
+        async with Session() as session:
+            llm_service = LLMService(session)
+            llm = await llm_service.get_by_name(name, interaction.guild_id)
+            if not llm:
+                embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
+                embed.description = f"LLM '{name}' not found in this guild."
+                await interaction.followup.send(embed=embed)
+                return
 
-        update_data = LLMUpdate(
-            name=new_name,
-            api_base=api_base,
-            llm_name=llm_name,
-            api_key=api_key,
-            max_tokens=max_tokens,
-            system_prompt=system_prompt,
-            context_length=context_length,
-            message_limit=message_limit,
-            instruct_tuned=instruct_tuned,
-            message_formatter=message_formatter,
-            enabled=enabled,
-            temperature=temperature,
-            top_p=top_p,
-            top_k=top_k,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            repetition_penalty=repetition_penalty,
-            min_p=min_p,
-            top_a=top_a,
-        )
+            update_data = LLMUpdate(
+                name=new_name,
+                api_base=api_base,
+                llm_name=llm_name,
+                api_key=api_key,
+                max_tokens=max_tokens,
+                system_prompt=system_prompt,
+                context_length=context_length,
+                message_limit=message_limit,
+                instruct_tuned=instruct_tuned,
+                message_formatter=message_formatter,
+                enabled=enabled,
+                temperature=temperature,
+                top_p=top_p,
+                top_k=top_k,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                repetition_penalty=repetition_penalty,
+                min_p=min_p,
+                top_a=top_a,
+            )
 
-        try:
-            await llm.edit(**{key: value for key, value in update_data if value is not None})
-            embed = Embed(title="LLM Modified", color=discord.Color.green())
-            embed.add_field(name="Name", value=new_name or name, inline=False)
-            if llm_name:
-                embed.add_field(name="Model", value=llm_name, inline=False)
-            if max_tokens:
-                embed.add_field(name="Max Tokens", value=str(max_tokens), inline=True)
-            if temperature:
-                embed.add_field(name="Temperature", value=str(temperature), inline=True)
-            await interaction.followup.send(embed=embed)
-        except ValueError as e:
-            embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
-            embed.description = str(e)
-            await interaction.followup.send(embed=embed)
+            try:
+                updated_llm = await llm_service.update(llm, update_data)
+                embed = Embed(title="LLM Modified", color=discord.Color.green())
+                embed.add_field(name="Name", value=updated_llm.name, inline=False)
+                if llm_name:
+                    embed.add_field(name="Model", value=updated_llm.llm_name, inline=False)
+                if max_tokens:
+                    embed.add_field(name="Max Tokens", value=str(updated_llm.max_tokens), inline=True)
+                if temperature:
+                    embed.add_field(name="Temperature", value=str(updated_llm.temperature), inline=True)
+                await interaction.followup.send(embed=embed)
+            except ValueError as e:
+                embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
+                embed.description = str(e)
+                await interaction.followup.send(embed=embed)
 
     @app_commands.command()
     @app_commands.checks.has_permissions(administrator=True)
@@ -331,22 +341,26 @@ class LLMCommands(commands.GroupCog, name="llm"):
     )
     async def delete(self, interaction: discord.Interaction, name: str):
         """Delete an existing LLM"""
-        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
-        if not llm:
-            embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
-            embed.description = f"'{name}' not found."
-            await interaction.response.send_message(embed=embed)
-            return
+        await interaction.response.defer(ephemeral=True)
 
-        try:
-            await llm.delete()
-            embed = Embed(title="LLM Deleted", color=discord.Color.green())
-            embed.description = f"'{name}' deleted successfully!"
-            await interaction.response.send_message(embed=embed)
-        except ValueError as e:
-            embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
-            embed.description = str(e)
-            await interaction.response.send_message(embed=embed)
+        async with Session() as session:
+            llm_service = LLMService(session)
+            llm = await llm_service.get_by_name(name, interaction.guild_id)
+            if not llm:
+                embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
+                embed.description = f"'{name}' not found."
+                await interaction.followup.send(embed=embed)
+                return
+
+            try:
+                await llm_service.delete(llm)
+                embed = Embed(title="LLM Deleted", color=discord.Color.green())
+                embed.description = f"'{name}' deleted successfully!"
+                await interaction.followup.send(embed=embed)
+            except ValueError as e:
+                embed = Embed(title="Error Deleting LLM", color=discord.Color.red())
+                embed.description = str(e)
+                await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         description="Create a deep copy of an existing LLM with a new name"
@@ -362,25 +376,26 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Create a deep copy of an existing LLM with a new name"""
         await interaction.response.defer(ephemeral=True)
 
-        source_llm = await LLMProxy.get_by_name(source_name, interaction.guild_id)
-        if not source_llm:
-            embed = Embed(title="Error Copying LLM", color=discord.Color.red())
-            embed.description = f"'{source_name}' not found in this guild."
-            await interaction.followup.send(embed=embed)
-            return
+        async with Session() as session:
+            llm_service = LLMService(session)
+            source_llm = await llm_service.get_by_name(source_name, interaction.guild_id)
+            if not source_llm:
+                embed = Embed(title="Error Copying LLM", color=discord.Color.red())
+                embed.description = f"'{source_name}' not found in this guild."
+                await interaction.followup.send(embed=embed)
+                return
 
-        existing_llm = await LLMProxy.get_by_name(new_name, interaction.guild_id)
-        if existing_llm:
-            embed = Embed(title="Error Copying LLM", color=discord.Color.red())
-            embed.description = (
-                f"An LLM with the name '{new_name}' already exists in this guild."
-            )
-            await interaction.followup.send(embed=embed)
-            return
+            existing_llm = await llm_service.get_by_name(new_name, interaction.guild_id)
+            if existing_llm:
+                embed = Embed(title="Error Copying LLM", color=discord.Color.red())
+                embed.description = (
+                    f"An LLM with the name '{new_name}' already exists in this guild."
+                )
+                await interaction.followup.send(embed=embed)
+                return
 
-        try:
-            async with Session() as session:
-                new_llm = await source_llm.copy(new_name, session=session)
+            try:
+                new_llm = await llm_service.copy_llm(source_llm, new_name)
                 embed = Embed(title="LLM Copied", color=discord.Color.green())
                 embed.description = (
                     f"LLM '{source_name}' successfully copied to '{new_name}'!"
@@ -393,10 +408,10 @@ class LLMCommands(commands.GroupCog, name="llm"):
                     name="Temperature", value=str(new_llm.temperature), inline=True
                 )
                 await interaction.followup.send(embed=embed)
-        except ValueError as e:
-            embed = Embed(title="Error Copying LLM", color=discord.Color.red())
-            embed.description = str(e)
-            await interaction.followup.send(embed=embed)
+            except ValueError as e:
+                embed = Embed(title="Error Copying LLM", color=discord.Color.red())
+                embed.description = str(e)
+                await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Set an avatar for an LLM")
     @app_commands.checks.has_permissions(administrator=True)
@@ -469,71 +484,73 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Print the configuration of an LLM"""
         await interaction.response.defer(ephemeral=True)
 
-        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
-        if not llm:
-            embed = Embed(title="Error", color=discord.Color.red())
-            embed.description = f"LLM '{name}' not found in this guild."
-            await interaction.followup.send(embed=embed)
-            return
-        embed = Embed(title=f"Configuration for {llm.name}", color=discord.Color.blue())
-        embed.add_field(name="API Base", value=llm.api_base, inline=False)
-        embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
-        embed.add_field(name="Max Tokens", value=str(llm.max_tokens), inline=True)
-        embed.add_field(
-            name="Context Length", value=str(llm.context_length), inline=True
-        )
-        embed.add_field(name="Message Limit", value=str(llm.message_limit), inline=True)
-        embed.add_field(name="Temperature", value=str(llm.temperature), inline=True)
-        embed.add_field(
-            name="Top P",
-            value=str(llm.top_p) if llm.top_p is not None else "N/A",
-            inline=True,
-        )
-        embed.add_field(
-            name="Top K",
-            value=str(llm.top_k) if llm.top_k is not None else "N/A",
-            inline=True,
-        )
-        embed.add_field(
-            name="Frequency Penalty",
-            value=(
-                str(llm.frequency_penalty)
-                if llm.frequency_penalty is not None
-                else "N/A"
-            ),
-            inline=True,
-        )
-        embed.add_field(
-            name="Presence Penalty",
-            value=(
-                str(llm.presence_penalty) if llm.presence_penalty is not None else "N/A"
-            ),
-            inline=True,
-        )
-        embed.add_field(
-            name="Repetition Penalty",
-            value=(
-                str(llm.repetition_penalty)
-                if llm.repetition_penalty is not None
-                else "N/A"
-            ),
-            inline=True,
-        )
-        embed.add_field(
-            name="Min P",
-            value=str(llm.min_p) if llm.min_p is not None else "N/A",
-            inline=True,
-        )
-        embed.add_field(
-            name="Top A",
-            value=str(llm.top_a) if llm.top_a is not None else "N/A",
-            inline=True,
-        )
-        embed.add_field(
-            name="System Prompt", value=llm.system_prompt or "N/A", inline=False
-        )
+        async with Session() as session:
+            llm_service = LLMService(session)
+            llm = await llm_service.get_by_name(name, interaction.guild_id)
+            if not llm:
+                embed = Embed(title="Error", color=discord.Color.red())
+                embed.description = f"LLM '{name}' not found in this guild."
+                await interaction.followup.send(embed=embed)
+                return
+            embed = Embed(title=f"Configuration for {llm.name}", color=discord.Color.blue())
+            embed.add_field(name="API Base", value=llm.api_base, inline=False)
+            embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
+            embed.add_field(name="Max Tokens", value=str(llm.max_tokens), inline=True)
+            embed.add_field(
+                name="Context Length", value=str(llm.context_length), inline=True
+            )
+            embed.add_field(name="Message Limit", value=str(llm.message_limit), inline=True)
+            embed.add_field(name="Temperature", value=str(llm.temperature), inline=True)
+            embed.add_field(
+                name="Top P",
+                value=str(llm.top_p) if llm.top_p is not None else "N/A",
+                inline=True,
+            )
+            embed.add_field(
+                name="Top K",
+                value=str(llm.top_k) if llm.top_k is not None else "N/A",
+                inline=True,
+            )
+            embed.add_field(
+                name="Frequency Penalty",
+                value=(
+                    str(llm.frequency_penalty)
+                    if llm.frequency_penalty is not None
+                    else "N/A"
+                ),
+                inline=True,
+            )
+            embed.add_field(
+                name="Presence Penalty",
+                value=(
+                    str(llm.presence_penalty) if llm.presence_penalty is not None else "N/A"
+                ),
+                inline=True,
+            )
+            embed.add_field(
+                name="Repetition Penalty",
+                value=(
+                    str(llm.repetition_penalty)
+                    if llm.repetition_penalty is not None
+                    else "N/A"
+                ),
+                inline=True,
+            )
+            embed.add_field(
+                name="Min P",
+                value=str(llm.min_p) if llm.min_p is not None else "N/A",
+                inline=True,
+            )
+            embed.add_field(
+                name="Top A",
+                value=str(llm.top_a) if llm.top_a is not None else "N/A",
+                inline=True,
+            )
+            embed.add_field(
+                name="System Prompt", value=llm.system_prompt or "N/A", inline=False
+            )
 
-        await interaction.followup.send(embed=embed)
+            await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Get help on bot commands and LLM interaction")
     async def help(self, interaction: discord.Interaction):
