@@ -12,6 +12,7 @@ from litellm.types.utils import ModelResponse
 from src import message_formatters
 from src.db.models.llm import LLM, LLMCreate, LLMUpdate
 from src.db.models.webhook import Webhook
+from src.db.models.guild import Guild
 from src.const import AVATAR_DIR
 from src.services.discord_client import bot
 from src.types.litellm_message import LiteLLMMessage
@@ -202,3 +203,21 @@ class LLMService:
 
         new_llm = await self.create(LLMCreate(**new_llm_data))
         return new_llm
+
+    async def get_simulator(self, guild_id: int) -> Optional[LLM]:
+        """
+        Get the simulator LLM for a given guild.
+
+        Args:
+            guild_id (int): The ID of the guild.
+
+        Returns:
+            Optional[LLM]: The simulator LLM if found, None otherwise.
+        """
+        stmt = select(Guild).where(Guild.id == guild_id)
+        result = await self.session.execute(stmt)
+        guild = result.scalar_one_or_none()
+
+        if guild and guild.simulator_id:
+            return await self.get(guild.simulator_id)
+        return None
