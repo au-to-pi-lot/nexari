@@ -8,9 +8,11 @@ from discord import Embed, Interaction, app_commands
 from discord.ext import commands
 from discord.ext.commands import Bot
 
+from src.db.models.guild import GuildUpdate
 from src.db.models.llm import LLMCreate, LLMUpdate
-from src.proxies import LLMProxy, GuildProxy
 from src.services.db import Session
+from src.services.guild import GuildService
+from src.services.llm import LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         Returns:
             List[str]: A list of LLM names.
         """
-        llms = await LLMProxy.get_all(interaction.guild_id)
+        async with Session() as session:
+            llm_service = LLMService(session)
+            llms = await llm_service.get_by_guild(interaction.guild.id)
         return [llm.name for llm in llms]
 
     async def autocomplete_llm_name(
@@ -61,7 +65,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
     @app_commands.command()
     async def list(self, interaction: discord.Interaction):
         """List all available LLMs for the current guild"""
-        llms = await LLMProxy.get_all(interaction.guild_id)
+        async with Session() as session:
+            llm_service = LLMService(session)
+            llms = await llm_service.get_by_guild(interaction.guild.id)
         embed = Embed(title="Available LLMs", color=discord.Color.blue())
         if llms:
             for llm in llms:
@@ -81,30 +87,34 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Set the LLM for simulating responses"""
         await interaction.response.defer(ephemeral=True)
 
-        guild = await GuildProxy.get(interaction.guild_id)
-        if not guild:
-            embed = Embed(title="Error", color=discord.Color.red())
-            embed.description = "Failed to get guild proxy."
-            await interaction.followup.send(embed=embed)
-            return
+        async with Session() as session:
+            guild_service = GuildService(session)
+            db_guild = await guild_service.get(interaction.guild_id)
+            if not db_guild:
+                embed = Embed(title="Error", color=discord.Color.red())
+                embed.description = "Failed to get guild proxy."
+                await interaction.followup.send(embed=embed)
+                return
 
-        simulator = await LLMProxy.get_by_name(name, guild.id)
+            llm_service = LLMService(session)
+            simulator = await llm_service.get_by_name(name, db_guild.id)
 
-        try:
-            await guild.edit(simulator_id=simulator.id)
-            embed = Embed(title="Simulator Set", color=discord.Color.green())
-            embed.description = f"The server simulator is now {simulator.name}"
-            await interaction.followup.send(embed=embed)
-        except Exception as e:
-            embed = Embed(title="Error Setting Simulator", color=discord.Color.red())
-            embed.description = str(e)
-            await interaction.followup.send(embed=embed)
+            try:
+                await guild_service.update(db_guild, GuildUpdate(simulator_id=simulator.id))
+                embed = Embed(title="Simulator Set", color=discord.Color.green())
+                embed.description = f"The server simulator is now {simulator.name}"
+                await interaction.followup.send(embed=embed)
+            except Exception as e:
+                embed = Embed(title="Error Setting Simulator", color=discord.Color.red())
+                embed.description = str(e)
+                await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Set the channel for viewing raw simulator responses")
     @app_commands.checks.has_permissions(administrator=True)
     async def set_simulator_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
         """Set the channel for viewing raw simulator responses"""
         await interaction.response.defer(ephemeral=True)
+
 
         guild = await GuildProxy.get(interaction.guild_id)
         if not guild:
@@ -397,9 +407,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Set an avatar for an LLM"""
         await interaction.response.defer(ephemeral=True)
 
-        async with AsyncSession(engine) as session:
+        async with Session() as session:
             llm_service = LLMService(session)
-            llm = await llm_service.get_llm_by_name(name, interaction.guild_id)
+            llm = await llm_service.get_by_name(name, interaction.guild_id)
             if not llm:
                 embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
                 embed.description = f"'{name}' not found in this guild."
