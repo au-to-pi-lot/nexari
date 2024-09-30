@@ -34,6 +34,7 @@ async def main():
         logger.error(f"Uncaught exception: {context['message']}")
 
     loop = asyncio.get_running_loop()
+    loop.set_task_factory(asyncio.eager_task_factory)
     loop.set_exception_handler(handle_exception)
 
     register_event_handlers(bot)
