@@ -47,3 +47,33 @@ class ChannelService:
     async def get_by_guild(self, guild_id: int) -> List[Channel]:
         result = await self.session.execute(select(Channel).where(Channel.guild_id == guild_id))
         return list(result.scalars().all())
+
+    async def sync(self, discord_channel: discord.TextChannel) -> Channel:
+        """
+        Synchronize the database channel with the Discord channel.
+
+        Args:
+            discord_channel (discord.TextChannel): The Discord channel to sync with.
+
+        Returns:
+            Channel: The updated database Channel object.
+        """
+        db_channel = await self.get(discord_channel.id)
+        if db_channel is None:
+            db_channel = await self.create(discord_channel)
+        else:
+            # Update channel properties
+            db_channel.name = discord_channel.name
+            db_channel.position = discord_channel.position
+            db_channel.category_id = discord_channel.category_id
+            db_channel.is_nsfw = discord_channel.is_nsfw()
+            db_channel.slowmode_delay = discord_channel.slowmode_delay
+            db_channel.topic = discord_channel.topic
+            
+            # Update permissions if needed
+            # This is a simplified example, you might want to implement a more detailed permission sync
+            db_channel.default_auto_archive_duration = discord_channel.default_auto_archive_duration
+            
+            await self.session.commit()
+
+        return db_channel
