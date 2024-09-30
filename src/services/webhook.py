@@ -2,7 +2,8 @@ from typing import Optional, List
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import and_
+from sqlalchemy import and_, func
+import discord
 
 from src.db.models.webhook import Webhook, WebhookCreate
 from src.db.models.channel import Channel
@@ -67,7 +68,7 @@ class WebhookService:
 
     async def cleanup_duplicate_webhooks(self):
         # Find duplicates
-        stmt = select(Webhook.channel_id, Webhook.llm_id).group_by(Webhook.channel_id, Webhook.llm_id).having(sqlalchemy.func.count() > 1)
+        stmt = select(Webhook.channel_id, Webhook.llm_id).group_by(Webhook.channel_id, Webhook.llm_id).having(func.count() > 1)
         result = await self.session.execute(stmt)
         duplicates = result.fetchall()
 
@@ -86,7 +87,7 @@ class WebhookService:
                 try:
                     discord_webhook = await bot.fetch_webhook(webhook.id)
                     await discord_webhook.delete()
-                except discord.NotFound:
+                except discord.errors.NotFound:
                     pass
 
         await self.session.commit()
