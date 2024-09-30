@@ -244,3 +244,71 @@ class LLMService:
         if guild and guild.simulator_id:
             return await self.get(guild.simulator_id)
         return None
+
+    async def respond(self, llm: LLM, channel: discord.TextChannel, history: List[discord.Message]) -> None:
+        """
+        Generate a response and post it in the given channel.
+
+        Args:
+            llm (LLM): The LLM to use for generating the response.
+            channel (discord.TextChannel): The channel to post the response in.
+            history (List[discord.Message]): The message history to use for context.
+        """
+        webhook = await self.get_or_create_webhook(llm, channel)
+        guild_service = GuildService(session=self.session)
+        guild = await guild_service.get(channel.guild.id)
+
+        try:
+            message_formatter = message_formatters.get_message_formatter(llm.message_formatter)
+            if not message_formatter:
+                raise ValueError(f"Invalid message formatter: {llm.message_formatter}")
+
+            if llm.instruct_tuned:
+                messages = await message_formatter.format_instruct(history, llm.system_prompt, webhook)
+                response = await self.generate_instruct_response(llm, messages)
+                response_str = response.choices[0].message.content
+            else:
+                llms_in_guild = await self.get_by_guild(guild.id)
+                prompt = await message_formatter.format_simulator(history, llm.system_prompt, webhook, channel, [llm.name for llm in llms_in_guild], llm.name)
+                response = await self.generate_simulator_response(llm, prompt, ['\n\n\n'])
+                response_str = response["choices"][0]["text"]
+
+            logger.info(f"{llm.name} (#{channel.name}): {response_str}")
+
+            if response_str == "":
+                logger.info(f"{llm.name} declined to respond in channel {channel.id}")
+                return
+
+            parse_response = await message_formatter.parse_messages(response_str)
+            response_messages = parse_response.split_messages
+            response_username = parse_response.username
+
+            if response_username is None:
+                # If no usernames were found, assume it's from this LLM
+                response_username = llm.name
+
+            if response_username == llm.name:
+                # If the message is from this LLM, send it
+                discord_webhook = await bot.fetch_webhook(webhook.id)
+                for message in response_messages:
+                    await discord_webhook.send(message)
+                logger.info(f"Msg in channel {channel.id} from {response_username}: {parse_response.complete_message}")
+            else:
+                # Otherwise, pass control to other LLM, if it exists
+                other_llm = await self.get_by_name(response_username, guild.id)
+                if other_llm:
+                    logger.info(f"{llm.name} passed to {other_llm.name}")
+                    await self.respond(other_llm, channel, history)
+                elif member := channel.guild.get_member_named(response_username):
+                    # Or, if it's a human's username, mention them
+                    discord_webhook = await bot.fetch_webhook(webhook.id)
+                    await discord_webhook.send(f"<@{member.id}>")
+                else:
+                    # If no matching LLM or user found, send the message as is
+                    discord_webhook = await bot.fetch_webhook(webhook.id)
+                    for message in response_messages:
+                        await discord_webhook.send(message)
+                    logger.warning(f"{llm.name} sent a message with unknown username: {response_username}")
+
+        except Exception as e:
+            logger.exception(f"Error in respond method: {str(e)}")
