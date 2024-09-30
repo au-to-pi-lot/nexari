@@ -397,41 +397,43 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """Set an avatar for an LLM"""
         await interaction.response.defer(ephemeral=True)
 
-        llm = await LLMProxy.get_by_name(name, interaction.guild_id)
-        if not llm:
-            embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-            embed.description = f"'{name}' not found in this guild."
-            await interaction.followup.send(embed=embed)
-            return
+        async with AsyncSession(engine) as session:
+            llm_service = LLMService(session)
+            llm = await llm_service.get_llm_by_name(name, interaction.guild_id)
+            if not llm:
+                embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                embed.description = f"'{name}' not found in this guild."
+                await interaction.followup.send(embed=embed)
+                return
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(image_url) as resp:
-                    if resp.status != 200:
-                        raise ValueError(
-                            f"Failed to download image from URL: {image_url}"
-                        )
+            try:
+                async with aiohttp.ClientSession() as http_session:
+                    async with http_session.get(image_url) as resp:
+                        if resp.status != 200:
+                            raise ValueError(
+                                f"Failed to download image from URL: {image_url}"
+                            )
 
-                    content_type = resp.headers.get("Content-Type", "").lower()
-                    if content_type not in ["image/jpeg", "image/png", "image/gif"]:
-                        raise ValueError("The image must be a JPEG, PNG, or GIF file.")
+                        content_type = resp.headers.get("Content-Type", "").lower()
+                        if content_type not in ["image/jpeg", "image/png", "image/gif"]:
+                            raise ValueError("The image must be a JPEG, PNG, or GIF file.")
 
-                    file_extension = content_type.split("/")[-1]
-                    filename = f"{llm.name}.{file_extension}"
+                        file_extension = content_type.split("/")[-1]
+                        filename = f"{llm.name}.{file_extension}"
 
-                    image_data = await resp.read()
+                        image_data = await resp.read()
 
-            await llm.set_avatar(image_data, filename)
+                await llm_service.set_avatar(llm, image_data, filename)
 
-            embed = Embed(title="Avatar Set", color=discord.Color.green())
-            embed.description = (
-                f"Avatar for '{name}' has been set and applied to all webhooks."
-            )
-            await interaction.followup.send(embed=embed)
-        except ValueError as e:
-            embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-            embed.description = str(e)
-            await interaction.followup.send(embed=embed)
+                embed = Embed(title="Avatar Set", color=discord.Color.green())
+                embed.description = (
+                    f"Avatar for '{name}' has been set and applied to all webhooks."
+                )
+                await interaction.followup.send(embed=embed)
+            except ValueError as e:
+                embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
+                embed.description = str(e)
+                await interaction.followup.send(embed=embed)
 
     @app_commands.command(description="Sync the bot commands with the current guild")
     @app_commands.checks.has_permissions(administrator=True)
