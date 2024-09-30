@@ -419,7 +419,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
                             raise ValueError("The image must be a JPEG, PNG, or GIF file.")
 
                         file_extension = content_type.split("/")[-1]
-                        filename = f"{llm.name}.{file_extension}"
+                        filename = f"{llm.id}.{file_extension}"
 
                         image_data = await resp.read()
 
