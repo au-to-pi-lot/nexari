@@ -75,3 +75,24 @@ class MessageService:
         if not db_message:
             db_message = await self.create(message)
         return db_message
+
+    async def history(self, channel_id: int, limit: int = 100) -> List[Message]:
+        """
+        Retrieve the n most recent messages in a channel in chronological order.
+
+        Args:
+            channel_id (int): The ID of the channel to retrieve messages from.
+            limit (int): The maximum number of messages to retrieve. Defaults to 100.
+
+        Returns:
+            List[Message]: A list of Message objects, ordered from oldest to newest.
+        """
+        stmt = (
+            select(Message)
+            .where(Message.channel_id == channel_id)
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        messages = result.scalars().all()
+        return list(reversed(messages))  # Reverse to get chronological order
