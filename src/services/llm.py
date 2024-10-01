@@ -393,7 +393,7 @@ class LLMService:
             messages=messages,
             system_prompt=simulator.system_prompt,
             webhook=None,
-            users_in_channel=[llm.name for llm in llms_in_guild],
+            users_in_channel=[llm.name for llm in llms_in_guild if llm.enabled],
         )
 
         logger.info(f"Simulating conversation in #{channel.name}...")
