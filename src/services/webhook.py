@@ -35,6 +35,7 @@ class WebhookService:
 
         db_webhook = Webhook(
             id=webhook.id,
+            name=webhook.name,
             token=webhook.token,
             channel_id=webhook.channel_id,
             llm_id=llm.id,
