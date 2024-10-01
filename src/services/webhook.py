@@ -1,18 +1,17 @@
-from typing import Optional, List
 import logging
+from typing import Optional
+
+import discord
+from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import and_, func
-import discord
 
 from src.db.models import LLM
-from src.db.models.webhook import Webhook, WebhookCreate
-from src.db.models.channel import Channel
-from src.db.models.guild import Guild
+from src.db.models.webhook import Webhook
 from src.services.channel import ChannelService
-from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
+
 
 class WebhookService:
     def __init__(self, session: AsyncSession):
@@ -21,7 +20,9 @@ class WebhookService:
     async def get(self, webhook_id: int) -> Optional[Webhook]:
         return await self.session.get(Webhook, webhook_id)
 
-    async def get_by_llm_channel(self, channel_id: int, llm_id: int) -> Optional[Webhook]:
+    async def get_by_llm_channel(
+        self, channel_id: int, llm_id: int
+    ) -> Optional[Webhook]:
         stmt = select(Webhook).where(
             and_(Webhook.channel_id == channel_id, Webhook.llm_id == llm_id)
         )
