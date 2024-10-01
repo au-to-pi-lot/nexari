@@ -409,8 +409,11 @@ class LLMService:
         if db_guild.simulator_channel_id is not None:
             simulator_channel = guild.get_channel(db_guild.simulator_channel_id)
             if simulator_channel:
+                zero_width_space = "​"
+                escaped_response_str = response_str.replace("```", f"`{zero_width_space}`{zero_width_space}`")
                 await simulator_channel.send(
-                    f"{await message_service.jump_url(messages[-1])}:\n```\n{response_str}\n```"
+                    content=f"{await message_service.jump_url(messages[-1])}:\n```\n{escaped_response_str}\n```",
+                    suppress_embeds=True
                 )
 
         next_user = await message_formatter.parse_next_user(response_str, last_speaker)
