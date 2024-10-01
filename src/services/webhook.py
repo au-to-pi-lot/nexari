@@ -52,3 +52,33 @@ class WebhookService:
         if db_webhook is None:
             db_webhook = await self.create(webhook, llm)
         return db_webhook
+
+    async def sync(self, discord_webhook: discord.Webhook) -> Webhook:
+        """
+        Synchronize the database webhook with the Discord webhook.
+
+        Args:
+            discord_webhook (discord.Webhook): The Discord webhook to sync with.
+
+        Returns:
+            Webhook: The updated database Webhook object.
+        """
+        db_webhook = await self.get(discord_webhook.id)
+        if db_webhook is None:
+            logger.warning(f"Webhook {discord_webhook.id} not found in database. Creating new entry.")
+            # We need an LLM instance to create a new webhook, but we don't have it here.
+            # For now, we'll raise an exception. In a real-world scenario, you might want to
+            # fetch the associated LLM based on some criteria or handle this case differently.
+            raise ValueError("Cannot create new Webhook during sync operation. Webhook not found in database.")
+        else:
+            # Update webhook properties
+            db_webhook.token = discord_webhook.token
+            db_webhook.channel_id = discord_webhook.channel_id
+            
+            # Sync the associated channel
+            channel_service = ChannelService(self.session)
+            await channel_service.sync(discord_webhook.channel)
+
+            await self.session.commit()
+
+        return db_webhook
