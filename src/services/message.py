@@ -3,9 +3,9 @@ from typing import Optional, List
 import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from src.db.models.message import Message, MessageCreate, MessageUpdate
+
+from src.db.models.message import Message, MessageUpdate
 from src.services.channel import ChannelService
-from src.services.thread import ThreadService
 from src.services.user import UserService
 from src.services.webhook import WebhookService
 
@@ -30,21 +30,17 @@ class MessageService:
             user_service = UserService(self.session)
             await user_service.get_or_create(message.author)
 
-        is_thread = message.thread is not None
-        if is_thread:
-            thread_service = ThreadService(self.session)
-            await thread_service.get_or_create(message.thread)
-        else:
-            channel_service = ChannelService(self.session)
-            await channel_service.get_or_create(message.channel)
+        channel_service = ChannelService(self.session)
+        await channel_service.get_or_create(message.channel)
 
         db_message = Message(
             id=message.id,
             content=message.content,
             user_id=message.author.id if not is_webhook else None,
-            webhook_id=message.webhook_id if is_webhook and webhook is not None else None,
-            channel_id=message.channel.id if not is_thread else None,
-            thread_id=message.thread.id if is_thread else None,
+            webhook_id=(
+                message.webhook_id if is_webhook and webhook is not None else None
+            ),
+            channel_id=message.channel.id,
             created_at=message.created_at,
         )
         self.session.add(db_message)

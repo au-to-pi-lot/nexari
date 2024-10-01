@@ -7,6 +7,14 @@ from sqlalchemy.future import select
 from src.db.models.channel import Channel, ChannelUpdate
 from src.services.guild import GuildService
 
+AllowedChannelType = (
+    discord.TextChannel
+    | discord.ForumChannel
+    | discord.VoiceChannel
+    | discord.StageChannel
+    | discord.Thread
+)
+
 
 class ChannelService:
     def __init__(self, session: AsyncSession):
@@ -15,19 +23,22 @@ class ChannelService:
     async def get(self, channel_id: int) -> Optional[Channel]:
         return await self.session.get(Channel, channel_id)
 
-    async def create(self, channel: discord.abc.GuildChannel) -> Channel:
+    async def create(self, channel: AllowedChannelType) -> Channel:
         guild_service = GuildService(session=self.session)
         await guild_service.get_or_create(channel.guild)
+        is_thread = isinstance(channel, discord.Thread)
 
         db_channel = Channel(
             id=channel.id,
-            guild_id=channel.guild.id
+            guild_id=channel.guild.id,
+            name=channel.name,
+            parent_id=channel.parent.id if is_thread else None,
         )
         self.session.add(db_channel)
         await self.session.commit()
         return db_channel
 
-    async def get_or_create(self, channel: discord.TextChannel) -> Channel:
+    async def get_or_create(self, channel: AllowedChannelType) -> Channel:
         db_channel = await self.get(channel.id)
         if db_channel is None:
             db_channel = await self.create(channel)
@@ -45,15 +56,17 @@ class ChannelService:
         await self.session.commit()
 
     async def get_by_guild(self, guild_id: int) -> List[Channel]:
-        result = await self.session.execute(select(Channel).where(Channel.guild_id == guild_id))
+        result = await self.session.execute(
+            select(Channel).where(Channel.guild_id == guild_id)
+        )
         return list(result.scalars().all())
 
-    async def sync(self, discord_channel: discord.TextChannel) -> Channel:
+    async def sync(self, discord_channel: AllowedChannelType) -> Channel:
         """
         Synchronize the database channel with the Discord channel.
 
         Args:
-            discord_channel (discord.TextChannel): The Discord channel to sync with.
+            discord_channel (discord.abc.GuildChannel): The Discord channel to sync with.
 
         Returns:
             Channel: The updated database Channel object.
@@ -64,16 +77,21 @@ class ChannelService:
         else:
             # Update channel properties
             db_channel.name = discord_channel.name
-            db_channel.position = discord_channel.position
-            db_channel.category_id = discord_channel.category_id
-            db_channel.is_nsfw = discord_channel.is_nsfw()
-            db_channel.slowmode_delay = discord_channel.slowmode_delay
-            db_channel.topic = discord_channel.topic
-            
-            # Update permissions if needed
-            # This is a simplified example, you might want to implement a more detailed permission sync
-            db_channel.default_auto_archive_duration = discord_channel.default_auto_archive_duration
-            
+
             await self.session.commit()
 
         return db_channel
+
+    @staticmethod
+    def is_allowed_channel_type(
+        channel: discord.abc.GuildChannel | discord.Thread,
+    ) -> bool:
+        if isinstance(channel, discord.CategoryChannel):
+            return False
+        return True
+
+    @staticmethod
+    def has_threads(channel: discord.abc.GuildChannel | discord.Thread) -> bool:
+        return isinstance(channel, discord.TextChannel) or isinstance(
+            channel, discord.ForumChannel
+        )

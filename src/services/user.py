@@ -16,7 +16,6 @@ class UserService:
         user = User(
             id=user.id,
             name=user.name,
-            discriminator=user.discriminator
         )
         self.session.add(user)
         await self.session.commit()
