@@ -95,3 +95,24 @@ class ChannelService:
         return isinstance(channel, discord.TextChannel) or isinstance(
             channel, discord.ForumChannel
         )
+
+    async def sync(self, discord_channel: AllowedChannelType) -> Channel:
+        """
+        Synchronize the database channel with the Discord channel.
+
+        Args:
+            discord_channel (AllowedChannelType): The Discord channel to sync with.
+
+        Returns:
+            Channel: The updated database Channel object.
+        """
+        db_channel = await self.get(discord_channel.id)
+        if db_channel is None:
+            db_channel = await self.create(discord_channel)
+        else:
+            # Update channel properties
+            db_channel.name = discord_channel.name
+            db_channel.parent_id = discord_channel.parent.id if isinstance(discord_channel, discord.Thread) else None
+            await self.session.commit()
+
+        return db_channel

@@ -92,3 +92,24 @@ class MessageService:
         result = await self.session.execute(stmt)
         messages = result.scalars().all()
         return list(reversed(messages))  # Reverse to get chronological order
+
+    async def sync(self, discord_message: discord.Message) -> Message:
+        """
+        Synchronize the database message with the Discord message.
+
+        Args:
+            discord_message (discord.Message): The Discord message to sync with.
+
+        Returns:
+            Message: The updated database Message object.
+        """
+        db_message = await self.get(discord_message.id)
+        if db_message is None:
+            db_message = await self.create(discord_message)
+        else:
+            # Update message properties
+            db_message.content = discord_message.content
+            db_message.created_at = discord_message.created_at
+            await self.session.commit()
+
+        return db_message

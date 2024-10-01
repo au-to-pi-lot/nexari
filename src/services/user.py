@@ -40,3 +40,23 @@ class UserService:
         if not db_user:
             db_user = await self.create(user)
         return db_user
+
+    async def sync(self, discord_user: discord.User) -> User:
+        """
+        Synchronize the database user with the Discord user.
+
+        Args:
+            discord_user (discord.User): The Discord user to sync with.
+
+        Returns:
+            User: The updated database User object.
+        """
+        db_user = await self.get(discord_user.id)
+        if db_user is None:
+            db_user = await self.create(discord_user)
+        else:
+            # Update user properties
+            db_user.name = discord_user.name
+            await self.session.commit()
+
+        return db_user
