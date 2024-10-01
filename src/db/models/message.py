@@ -73,7 +73,7 @@ class Message(Base):
     webhook_id: Mapped[Optional[int]] = mapped_column(
         BigInteger, ForeignKey("webhook.id")
     )
-    channel_id: Mapped[Optional[int]] = mapped_column(
+    channel_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("channel.id")
     )
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
