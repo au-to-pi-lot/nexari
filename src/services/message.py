@@ -6,6 +6,7 @@ from sqlalchemy.future import select
 
 from src.db.models.message import Message, MessageUpdate
 from src.services.channel import ChannelService
+from src.services.discord_client import bot
 from src.services.user import UserService
 from src.services.webhook import WebhookService
 
@@ -113,3 +114,22 @@ class MessageService:
             await self.session.commit()
 
         return db_message
+
+    async def author_name(self, message: Message) -> str:
+        if message.from_user:
+            user_service = UserService(self.session)
+            user = await user_service.get(message.user_id)
+            return user.name
+        elif message.from_webhook:
+            webhook_service = WebhookService(self.session)
+            webhook = await webhook_service.get(message.webhook_id)
+            return webhook.name
+        else:
+            channel = await bot.get_channel(message.channel_id)
+            discord_message = await channel.fetch_message(message.id)
+            return discord_message.author.name
+
+    async def jump_url(self, message: Message) -> str:
+        channel_service = ChannelService(self.session)
+        channel = await channel_service.get(message.channel_id)
+        return f'https://discord.com/channels/{channel.guild_id}/{message.channel_id}/{message.id}'

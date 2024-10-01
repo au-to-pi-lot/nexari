@@ -1,5 +1,7 @@
 import discord
-from src.proxies.message import MessageProxy
+
+from src.services.db import Session
+from src.services.message import MessageService
 
 
 async def on_message_delete(message: discord.Message):
@@ -9,5 +11,8 @@ async def on_message_delete(message: discord.Message):
     Args:
         message (discord.Message): The deleted message.
     """
-    await MessageProxy.delete_by_id(message.id)
+    async with Session() as session:
+        message_service = MessageService(session)
+        db_message = await message_service.get(message.id)
+        await message_service.delete(db_message)
 

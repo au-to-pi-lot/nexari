@@ -3,8 +3,10 @@ from typing import Optional, List
 import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from src.db.models.guild import Guild, GuildCreate, GuildUpdate
+
+from src.db.models.guild import Guild, GuildUpdate
 from src.db.models.llm import LLM
+
 
 class GuildService:
     def __init__(self, session: AsyncSession):
@@ -16,6 +18,7 @@ class GuildService:
     async def create(self, guild: discord.Guild) -> Guild:
         db_guild = Guild(
             id=guild.id,
+            name=guild.name,
             simulator_id=None,
             simulator_channel_id=None
         )
@@ -42,11 +45,11 @@ class GuildService:
 
     async def get_all(self) -> List[Guild]:
         result = await self.session.execute(select(Guild))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def get_llms_by_guild(self, guild_id: int) -> List[LLM]:
         result = await self.session.execute(select(LLM).where(LLM.guild_id == guild_id))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def sync(self, discord_guild: discord.Guild) -> Guild:
         """
@@ -64,12 +67,7 @@ class GuildService:
         else:
             # Update guild properties
             db_guild.name = discord_guild.name
-            db_guild.icon = discord_guild.icon.url if discord_guild.icon else None
-            db_guild.owner_id = discord_guild.owner_id
-            db_guild.member_count = discord_guild.member_count
-            
-            # You might want to update more properties here depending on your Guild model
-            
+
             await self.session.commit()
 
         return db_guild

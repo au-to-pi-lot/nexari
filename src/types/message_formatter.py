@@ -6,24 +6,31 @@ from typing import List, Literal, Optional
 import discord
 from litellm import ModelResponse
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
-from src.proxies import WebhookProxy, MessageProxy, ChannelProxy
+from src.db.models import Message
 from src.types.litellm_message import LiteLLMMessage
 from src.util import drop_both_ends
+
 
 class ParseResponse(BaseModel):
     complete_message: str
     split_messages: list[str]
     username: Optional[str]
 
-class MessageFormatter(ABC):
-    def __init__(self):
-        pass
 
-    @staticmethod
+class MessageFormatter(ABC):
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
     @abstractmethod
-    async def format_instruct(messages: List[MessageProxy], system_prompt: str, webhook: Optional[WebhookProxy]) -> List[LiteLLMMessage]:
+    async def format_instruct(
+        self,
+        messages: list[Message],
+        system_prompt: Optional[str],
+        webhook: Optional[discord.Webhook],
+    ) -> List[LiteLLMMessage]:
         """
         Format a list of Discord messages into a list of LiteLLMMessages.
 
@@ -37,9 +44,15 @@ class MessageFormatter(ABC):
         """
         pass
 
-    @staticmethod
     @abstractmethod
-    async def format_simulator(messages: list[MessageProxy], system_prompt: Optional[str], webhook: Optional[WebhookProxy], channel: Optional[ChannelProxy] = None, users_in_channel: list[str] = None, force_response_from_user: Optional[str] = None) -> str:
+    async def format_simulator(
+        self,
+        messages: list[Message],
+        system_prompt: Optional[str],
+        webhook: Optional[discord.Webhook],
+        users_in_channel: list[str] = None,
+        force_response_from_user: Optional[str] = None,
+    ) -> str:
         """
         Format a list of Discord messages into a simulator prompt.
 
@@ -53,10 +66,8 @@ class MessageFormatter(ABC):
         """
         pass
 
-
-    @staticmethod
     @abstractmethod
-    async def parse_messages(response: str) -> ParseResponse:
+    async def parse_messages(self, response: str) -> ParseResponse:
         """
         Parse a ModelResponse into a list of messages to send to Discord.
 
@@ -68,9 +79,8 @@ class MessageFormatter(ABC):
         """
         pass
 
-    @staticmethod
     @abstractmethod
-    async def parse_next_user(response: str, last_speaker: str) -> str:
+    async def parse_next_user(self, response: str, last_speaker: str) -> str:
         pass
 
     @staticmethod
@@ -158,5 +168,3 @@ class MessageFormatter(ABC):
                     messages.append("```\n```")
 
         return messages
-
-

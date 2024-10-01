@@ -1,5 +1,8 @@
 import discord
-from src.proxies.message import MessageProxy
+
+from src.db.models.message import MessageUpdate
+from src.services.db import Session
+from src.services.message import MessageService
 
 
 async def on_message_edit(before: discord.Message, after: discord.Message):
@@ -13,8 +16,7 @@ async def on_message_edit(before: discord.Message, after: discord.Message):
     if after.flags.ephemeral:
         return
 
-    message_proxy = await MessageProxy.get(after.id)
-    if message_proxy:
-        await message_proxy.edit(content=after.content)
-    else:
-        await MessageProxy.create(after)
+    async with Session() as session:
+        message_service = MessageService(session)
+        await message_service.sync(after)
+
