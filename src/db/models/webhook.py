@@ -60,11 +60,10 @@ class Webhook(Base):
     __tablename__ = "webhook"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
-    token: Mapped[str] = mapped_column(Text, nullable=False)
-    channel_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("channel.id"), nullable=False
-    )
-    llm_id: Mapped[int] = mapped_column(ForeignKey("llm.id"), nullable=False)
+    name: Mapped[Optional[str]] = mapped_column(Text)
+    token: Mapped[str] = mapped_column(Text)
+    channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channel.id"))
+    llm_id: Mapped[int] = mapped_column(ForeignKey("llm.id"))
 
     channel: Mapped["Channel"] = relationship(back_populates="webhooks")
     llm: Mapped["LLM"] = relationship(back_populates="webhooks")

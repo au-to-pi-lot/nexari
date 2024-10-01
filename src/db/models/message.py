@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Optional
 from pydantic import BaseModel
 from sqlalchemy import BigInteger, ForeignKey, Text, CheckConstraint, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.schema import Index
 
 from src.db.models import Base
 
@@ -25,6 +26,7 @@ class MessageCreate(BaseModel):
         channel_id (int): The ID of the channel the message belongs to.
         created_at (datetime): The timestamp when the message was created.
     """
+
     id: int
     content: str
     user_id: Optional[int]
@@ -40,6 +42,7 @@ class MessageUpdate(BaseModel):
     Attributes:
         content (Optional[str]): The new content for the message.
     """
+
     content: Optional[str] = None
 
 
@@ -61,20 +64,36 @@ class Message(Base):
     Note:
         Both user_id and webhook_id can be null if the message is from an uncontrolled webhook.
     """
+
     __tablename__ = "message"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    user_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("user.id"), nullable=True)
-    webhook_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("webhook.id"), nullable=True)
-    channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channel.id"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    content: Mapped[str] = mapped_column(Text)
+    user_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("user.id"))
+    webhook_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("webhook.id")
+    )
+    channel_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("channel.id")
+    )
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
 
     user: Mapped[Optional["User"]] = relationship(back_populates="messages")
     webhook: Mapped[Optional["Webhook"]] = relationship(back_populates="messages")
     channel: Mapped["Channel"] = relationship(back_populates="messages")
 
     __table_args__ = (
-        CheckConstraint('(user_id IS NULL AND webhook_id IS NULL) OR (user_id IS NOT NULL) != (webhook_id IS NOT NULL)',
-                        name='user_xor_webhook_or_both_null'),
+        CheckConstraint(
+            "(user_id IS NULL AND webhook_id IS NULL) OR (user_id IS NOT NULL) != (webhook_id IS NOT NULL)",
+            name="user_xor_webhook_or_both_null",
+        ),
+        Index("channel_message_idx", "channel_id", "created_at"),
     )
+
+    @property
+    def from_webhook(self) -> bool:
+        return self.webhook_id is not None
+
+    @property
+    def from_user(self) -> bool:
+        return self.webhook_id is None

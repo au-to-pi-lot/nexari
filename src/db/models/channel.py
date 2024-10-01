@@ -21,18 +21,12 @@ class ChannelCreate(BaseModel):
 
     id: int
     guild_id: int
+    name: str
 
 
 class ChannelUpdate(BaseModel):
-    """Pydantic model for updating an existing Channel.
-
-    Attributes:
-        guild_id (Optional[int]): The new guild ID for the channel, if changing.
-        last_responder_id (Optional[int]): The ID of the last LLM that responded in this channel.
-    """
-
-    guild_id: Optional[int] = None
-    last_responder_id: Optional[int] = None
+    """Pydantic model for updating an existing Channel."""
+    name: Optional[str]
 
 
 class Channel(Base):
@@ -50,12 +44,11 @@ class Channel(Base):
     __tablename__ = "channel"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
-    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"), nullable=False)
-    last_responder_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("llm.id"), nullable=True
-    )
+    guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"))
+    name: Mapped[Optional[str]] = mapped_column()
+    parent_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("channel.id"))
 
     guild: Mapped["Guild"] = relationship(back_populates="channels", foreign_keys=[guild_id])
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel")
-    messages: Mapped[Message] = relationship(back_populates="channel")
-    last_responder: Mapped[Optional["LLM"]] = relationship()
+    messages: Mapped[List[Message]] = relationship(back_populates="channel")
+    parent: Mapped[Optional["Channel"]] = relationship()
