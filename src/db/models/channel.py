@@ -45,7 +45,7 @@ class Channel(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"))
-    name: Mapped[Optional[str]] = mapped_column()
+    name: Mapped[str] = mapped_column()
     parent_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("channel.id"))
 
     guild: Mapped["Guild"] = relationship(back_populates="channels", foreign_keys=[guild_id])

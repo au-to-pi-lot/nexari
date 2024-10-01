@@ -47,7 +47,7 @@ class Guild(Base):
     __tablename__ = "guild"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
-    name: Mapped[Optional[str]] = mapped_column()
+    name: Mapped[str] = mapped_column()
     simulator_id: Mapped[Optional[int]] = mapped_column(
         BigInteger, ForeignKey("llm.id", use_alter=True)
     )
