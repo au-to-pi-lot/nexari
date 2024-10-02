@@ -98,7 +98,7 @@ class IRCMessageFormatter(MessageFormatter):
             )
             + "\n\n\n"
             + (
-                f"<{force_response_from_user}> "
+                f"<{force_response_from_user}>"
                 if force_response_from_user is not None
                 else ""
             )
