@@ -296,25 +296,31 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 return
 
             update_data = LLMUpdate(
-                name=new_name,
-                api_base=api_base,
-                llm_name=llm_name,
-                api_key=api_key,
-                max_tokens=max_tokens,
-                system_prompt=system_prompt,
-                context_length=context_length,
-                message_limit=message_limit,
-                instruct_tuned=instruct_tuned,
-                message_formatter=message_formatter,
-                enabled=enabled,
-                temperature=temperature,
-                top_p=top_p,
-                top_k=top_k,
-                frequency_penalty=frequency_penalty,
-                presence_penalty=presence_penalty,
-                repetition_penalty=repetition_penalty,
-                min_p=min_p,
-                top_a=top_a,
+                **{
+                    key: value
+                    for key, value in dict(
+                        name=new_name,
+                        api_base=api_base,
+                        llm_name=llm_name,
+                        api_key=api_key,
+                        max_tokens=max_tokens,
+                        system_prompt=system_prompt,
+                        context_length=context_length,
+                        message_limit=message_limit,
+                        instruct_tuned=instruct_tuned,
+                        message_formatter=message_formatter,
+                        enabled=enabled,
+                        temperature=temperature,
+                        top_p=top_p,
+                        top_k=top_k,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty,
+                        repetition_penalty=repetition_penalty,
+                        min_p=min_p,
+                        top_a=top_a,
+                    ).items()
+                    if value is not None
+                }
             )
 
             try:

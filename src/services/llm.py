@@ -52,7 +52,7 @@ class LLMService:
 
     async def update(self, llm: LLM, update_data: LLMUpdate) -> LLM:
         old_name = llm.name
-        for key, value in update_data.items():
+        for key, value in update_data.model_dump(exclude_unset=True).items():
             if key == "name" and value != old_name:
                 # If the name has changed, update all associated webhooks
                 webhooks = await self.get_webhooks(llm)
