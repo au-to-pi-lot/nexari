@@ -323,7 +323,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
                         api_key=api_key,
                         max_tokens=max_tokens,
                         system_prompt=system_prompt,
-                        context_length=context_length,
                         message_limit=message_limit,
                         instruct_tuned=instruct_tuned,
                         message_formatter=message_formatter,
