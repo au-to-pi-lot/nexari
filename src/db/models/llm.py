@@ -45,7 +45,6 @@ class LLMCreate(BaseModel):
     api_key: str
     max_tokens: int
     system_prompt: Optional[str]
-    context_length: int
     message_limit: int
     instruct_tuned: bool
     message_formatter: Optional[str]
@@ -150,7 +149,6 @@ class LLM(Base):
     api_key: Mapped[str] = mapped_column(Text)
     max_tokens: Mapped[int]
     system_prompt: Mapped[Optional[str]] = mapped_column(Text)
-    context_length: Mapped[int]
     message_limit: Mapped[int]
     instruct_tuned: Mapped[bool] = mapped_column(server_default=sqlalchemy.sql.true())
     message_formatter: Mapped[str] = mapped_column(server_default="irc")

@@ -221,7 +221,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
             api_key=api_key,
             max_tokens=max_tokens,
             system_prompt=system_prompt,
-            context_length=context_length,
             message_limit=message_limit,
             temperature=temperature,
             top_p=top_p,
@@ -290,7 +289,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
         api_key: Optional[str] = None,
         max_tokens: Optional[int] = None,
         system_prompt: Optional[str] = None,
-        context_length: Optional[int] = None,
         message_limit: Optional[int] = None,
         instruct_tuned: Optional[bool] = None,
         message_formatter: Optional[str] = None,
@@ -538,9 +536,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed.add_field(name="API Base", value=llm.api_base, inline=False)
             embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
             embed.add_field(name="Max Tokens", value=str(llm.max_tokens), inline=True)
-            embed.add_field(
-                name="Context Length", value=str(llm.context_length), inline=True
-            )
             embed.add_field(
                 name="Message Limit", value=str(llm.message_limit), inline=True
             )

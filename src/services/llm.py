@@ -219,7 +219,6 @@ class LLMService:
             "api_key": llm.api_key,
             "max_tokens": llm.max_tokens,
             "system_prompt": llm.system_prompt,
-            "context_length": llm.context_length,
             "message_limit": llm.message_limit,
             "instruct_tuned": llm.instruct_tuned,
             "enabled": llm.enabled,
