@@ -92,10 +92,101 @@ just post; the LLMs will reply naturally.
 
 ### Configuration
 
-The bot is configured via Discord slash commands.
+The bot is configured via Discord slash commands. Here's an in-depth guide to each slash command:
 
-TODO: Write an in-depth guide to each slash command, describing what it does and explaining each of its arguments.
+#### /llm list
+**Description:** Lists all available LLMs for the current guild.
+**Arguments:** None
+**Usage:** This command displays a list of all configured LLMs in the current Discord server, showing their names, whether they're enabled or disabled, and the model they're using.
 
+#### /llm create
+**Description:** Registers a new LLM for use in the current guild.
+**Arguments:**
+- `name`: Name of the new LLM (required)
+- `api_base`: API base URL path (required)
+- `llm_name`: Name of the model (required)
+- `api_key`: API secret key (required, don't share this!)
+- `max_tokens`: Maximum number of tokens per response (required)
+- `context_length`: Context length in tokens (required)
+- `message_limit`: Number of messages to put in LLM's context (required)
+- `system_prompt`: System prompt to be displayed at start of context (optional)
+- `temperature`: Sampling temperature, default is 1.0 (optional)
+- `top_p`: Sampling top_p value (optional)
+- `top_k`: Sampling top_k value, not supported by all APIs (optional)
+- `frequency_penalty`: Sampling frequency penalty (optional)
+- `presence_penalty`: Sampling presence penalty (optional)
+- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs (optional)
+- `min_p`: Sampling min_p value, not supported by all APIs (optional)
+- `top_a`: Sampling top_a value, not supported by all APIs (optional)
+- `instruct_tuned`: Whether or not the LLM has been instruct tuned, default is true (optional)
+- `message_formatter`: Formatter to use for this LLM (optional)
+- `enabled`: Whether or not the llm should respond to messages, default is true (optional)
+
+**Usage:** Use this command to add a new LLM to your Discord server. You'll need to provide the necessary API details and configuration parameters.
+
+#### /llm modify
+**Description:** Modifies an existing LLM in the current guild.
+**Arguments:** Same as `/llm create`, but with:
+- `name`: Name of the LLM to modify (required)
+- `new_name`: New name for the LLM (optional)
+
+**Usage:** Use this command to update the configuration of an existing LLM. You only need to provide the parameters you want to change.
+
+#### /llm delete
+**Description:** Deletes an existing LLM from the current guild.
+**Arguments:**
+- `name`: Name of the LLM to delete (required)
+
+**Usage:** Use this command to remove an LLM from your Discord server.
+
+#### /llm copy
+**Description:** Creates a deep copy of an existing LLM with a new name.
+**Arguments:**
+- `source_name`: Name of the existing LLM (required)
+- `new_name`: Name for the new copy (required)
+
+**Usage:** Use this command to duplicate an existing LLM configuration under a new name.
+
+#### /llm set_avatar
+**Description:** Sets an avatar for an LLM.
+**Arguments:**
+- `name`: Name of the LLM (required)
+- `image_url`: URL of the image to use as avatar (required)
+
+**Usage:** Use this command to set or update the avatar image for an LLM.
+
+#### /llm print
+**Description:** Prints the configuration of an LLM.
+**Arguments:**
+- `name`: Name of the LLM (required)
+
+**Usage:** Use this command to view the detailed configuration of a specific LLM.
+
+#### /llm sync
+**Description:** Syncs the bot commands with the current guild.
+**Arguments:** None
+
+**Usage:** Use this command to update the available slash commands in your Discord server after making changes to the bot.
+
+#### /llm help
+**Description:** Provides help information about bot commands and LLM interaction.
+**Arguments:** None
+
+**Usage:** Use this command to get an overview of available commands and how to interact with LLMs.
+
+#### /llm set_simulator
+**Description:** Sets the LLM for simulating responses.
+**Arguments:**
+- `name`: Name of the LLM to use as simulator (required)
+
+**Usage:** Use this command to designate an LLM as the simulator for natural conversation flow.
+
+#### /llm set_simulator_channel
+**Description:** Sets the channel for viewing raw simulator responses.
+**Arguments:**
+- `channel`: The text channel to use for simulator responses (required)
+
+**Usage:** Use this command to specify a channel where the raw simulator responses will be sent.
 
 #### Simulator
 
