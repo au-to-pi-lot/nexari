@@ -1,5 +1,5 @@
 import logging
-from textwrap import dedent
+from textwrap import dedent, shorten
 from typing import List, Optional
 
 import aiohttp
@@ -105,18 +105,26 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 return
 
             try:
-                await guild_service.update(db_guild, GuildUpdate(simulator_id=simulator.id))
+                await guild_service.update(
+                    db_guild, GuildUpdate(simulator_id=simulator.id)
+                )
                 embed = Embed(title="Simulator Set", color=discord.Color.green())
                 embed.description = f"The server simulator is now {simulator.name}"
                 await interaction.followup.send(embed=embed)
             except Exception as e:
-                embed = Embed(title="Error Setting Simulator", color=discord.Color.red())
+                embed = Embed(
+                    title="Error Setting Simulator", color=discord.Color.red()
+                )
                 embed.description = str(e)
                 await interaction.followup.send(embed=embed)
 
-    @app_commands.command(description="Set the channel for viewing raw simulator responses")
+    @app_commands.command(
+        description="Set the channel for viewing raw simulator responses"
+    )
     @app_commands.checks.has_permissions(administrator=True)
-    async def set_simulator_channel(self, interaction: discord.Interaction, channel: discord.TextChannel):
+    async def set_simulator_channel(
+        self, interaction: discord.Interaction, channel: discord.TextChannel
+    ):
         """Set the channel for viewing raw simulator responses"""
         await interaction.response.defer(ephemeral=True)
 
@@ -130,12 +138,20 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 return
 
             try:
-                await guild_service.update(db_guild, GuildUpdate(simulator_channel_id=channel.id))
-                embed = Embed(title="Simulator Channel Set", color=discord.Color.green())
-                embed.description = f"Raw simulator responses will now be sent to {channel.mention}."
+                await guild_service.update(
+                    db_guild, GuildUpdate(simulator_channel_id=channel.id)
+                )
+                embed = Embed(
+                    title="Simulator Channel Set", color=discord.Color.green()
+                )
+                embed.description = (
+                    f"Raw simulator responses will now be sent to {channel.mention}."
+                )
                 await interaction.followup.send(embed=embed)
             except Exception as e:
-                embed = Embed(title="Error Setting Simulator Channel", color=discord.Color.red())
+                embed = Embed(
+                    title="Error Setting Simulator Channel", color=discord.Color.red()
+                )
                 embed.description = str(e)
                 await interaction.followup.send(embed=embed)
 
@@ -227,8 +243,12 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed = Embed(title="LLM Created", color=discord.Color.green())
             embed.add_field(name="Name", value=new_llm.name, inline=False)
             embed.add_field(name="Model", value=new_llm.llm_name, inline=False)
-            embed.add_field(name="Max Tokens", value=str(new_llm.max_tokens), inline=True)
-            embed.add_field(name="Temperature", value=str(new_llm.temperature), inline=True)
+            embed.add_field(
+                name="Max Tokens", value=str(new_llm.max_tokens), inline=True
+            )
+            embed.add_field(
+                name="Temperature", value=str(new_llm.temperature), inline=True
+            )
             await interaction.followup.send(embed=embed)
         except ValueError as e:
             embed = Embed(title="Error Creating LLM", color=discord.Color.red())
@@ -328,11 +348,21 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 embed = Embed(title="LLM Modified", color=discord.Color.green())
                 embed.add_field(name="Name", value=updated_llm.name, inline=False)
                 if llm_name:
-                    embed.add_field(name="Model", value=updated_llm.llm_name, inline=False)
+                    embed.add_field(
+                        name="Model", value=updated_llm.llm_name, inline=False
+                    )
                 if max_tokens:
-                    embed.add_field(name="Max Tokens", value=str(updated_llm.max_tokens), inline=True)
+                    embed.add_field(
+                        name="Max Tokens",
+                        value=str(updated_llm.max_tokens),
+                        inline=True,
+                    )
                 if temperature:
-                    embed.add_field(name="Temperature", value=str(updated_llm.temperature), inline=True)
+                    embed.add_field(
+                        name="Temperature",
+                        value=str(updated_llm.temperature),
+                        inline=True,
+                    )
                 await interaction.followup.send(embed=embed)
             except ValueError as e:
                 embed = Embed(title="Error Modifying LLM", color=discord.Color.red())
@@ -384,7 +414,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
         async with Session() as session:
             llm_service = LLMService(session)
-            source_llm = await llm_service.get_by_name(source_name, interaction.guild_id)
+            source_llm = await llm_service.get_by_name(
+                source_name, interaction.guild_id
+            )
             if not source_llm:
                 embed = Embed(title="Error Copying LLM", color=discord.Color.red())
                 embed.description = f"'{source_name}' not found in this guild."
@@ -447,7 +479,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
                         content_type = resp.headers.get("Content-Type", "").lower()
                         if content_type not in ["image/jpeg", "image/png", "image/gif"]:
-                            raise ValueError("The image must be a JPEG, PNG, or GIF file.")
+                            raise ValueError(
+                                "The image must be a JPEG, PNG, or GIF file."
+                            )
 
                         file_extension = content_type.split("/")[-1]
                         filename = f"{llm.id}.{file_extension}"
@@ -498,14 +532,18 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 embed.description = f"LLM '{name}' not found in this guild."
                 await interaction.followup.send(embed=embed)
                 return
-            embed = Embed(title=f"Configuration for {llm.name}", color=discord.Color.blue())
+            embed = Embed(
+                title=f"Configuration for {llm.name}", color=discord.Color.blue()
+            )
             embed.add_field(name="API Base", value=llm.api_base, inline=False)
             embed.add_field(name="LLM Name", value=llm.llm_name, inline=False)
             embed.add_field(name="Max Tokens", value=str(llm.max_tokens), inline=True)
             embed.add_field(
                 name="Context Length", value=str(llm.context_length), inline=True
             )
-            embed.add_field(name="Message Limit", value=str(llm.message_limit), inline=True)
+            embed.add_field(
+                name="Message Limit", value=str(llm.message_limit), inline=True
+            )
             embed.add_field(name="Temperature", value=str(llm.temperature), inline=True)
             embed.add_field(
                 name="Top P",
@@ -529,7 +567,9 @@ class LLMCommands(commands.GroupCog, name="llm"):
             embed.add_field(
                 name="Presence Penalty",
                 value=(
-                    str(llm.presence_penalty) if llm.presence_penalty is not None else "N/A"
+                    str(llm.presence_penalty)
+                    if llm.presence_penalty is not None
+                    else "N/A"
                 ),
                 inline=True,
             )
