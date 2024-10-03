@@ -553,7 +553,13 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 inline=True,
             )
             embed.add_field(
-                name="System Prompt", value=llm.system_prompt or "N/A", inline=False
+                name="System Prompt",
+                value=(
+                    shorten(llm.system_prompt, 1024)
+                    if llm.system_prompt is not None
+                    else "N/A"
+                ),
+                inline=False,
             )
 
             await interaction.followup.send(embed=embed)
