@@ -29,6 +29,11 @@ class WebhookService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_llm(self, llm_id: int) -> list[Webhook]:
+        stmt = select(Webhook).where(Webhook.llm_id == llm_id)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def create(self, webhook: discord.Webhook, llm: LLM) -> Webhook:
         channel_service = ChannelService(self.session)
         await channel_service.get_or_create(webhook.channel)
@@ -44,8 +49,9 @@ class WebhookService:
         await self.session.commit()
         return db_webhook
 
-    async def delete(self, webhook: Webhook) -> None:
-        await self.session.delete(webhook)
+    async def delete(self, *webhooks: Webhook) -> None:
+        for webhook in webhooks:
+            await self.session.delete(webhook)
         await self.session.commit()
 
     async def get_or_create(self, webhook: discord.Webhook, llm: LLM) -> Webhook:
