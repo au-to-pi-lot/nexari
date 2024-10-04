@@ -4,6 +4,8 @@ A multi-head Discord chatbot using discord.py and LiteLLM. Multiple LLM agents a
 via webhooks, and agents will respond to conversation naturally without the need to explicitly
 mention or reply to them.
 
+
+
 ## Prerequisites
 
 - Python 3.12 or higher
@@ -94,101 +96,200 @@ just post; the LLMs will reply naturally.
 
 The bot is configured via Discord slash commands. Here's an in-depth guide to each slash command:
 
-#### /llm list
+#### `/llm list`
 **Description:** Lists all available LLMs for the current guild.
+
 **Arguments:** None
+
 **Usage:** This command displays a list of all configured LLMs in the current Discord server, showing their names, whether they're enabled or disabled, and the model they're using.
 
-#### /llm create
+---
+
+#### `/llm create`
 **Description:** Registers a new LLM for use in the current guild.
+
 **Arguments:**
-- `name`: Name of the new LLM (required)
-- `api_base`: API base URL path (required)
-- `llm_name`: Name of the model (required)
-- `api_key`: API secret key (required, don't share this!)
-- `max_tokens`: Maximum number of tokens per response (required)
-- `context_length`: Context length in tokens (required)
-- `message_limit`: Number of messages to put in LLM's context (required)
-- `system_prompt`: System prompt to be displayed at start of context (optional)
-- `temperature`: Sampling temperature, default is 1.0 (optional)
-- `top_p`: Sampling top_p value (optional)
-- `top_k`: Sampling top_k value, not supported by all APIs (optional)
-- `frequency_penalty`: Sampling frequency penalty (optional)
-- `presence_penalty`: Sampling presence penalty (optional)
-- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs (optional)
-- `min_p`: Sampling min_p value, not supported by all APIs (optional)
-- `top_a`: Sampling top_a value, not supported by all APIs (optional)
-- `instruct_tuned`: Whether or not the LLM has been instruct tuned, default is true (optional)
-- `message_formatter`: Formatter to use for this LLM (optional)
-- `enabled`: Whether or not the llm should respond to messages, default is true (optional)
+- `name`: Name of the new LLM. This name will be used to refer to the LLM both in the simulator and in the
+  Discord chat. (required)
+- `api_base`: API base URL path. This will vary by your inference provider. You will probably need to read their
+  documentation. Check LiteLLM documentation for a 
+  [list of supported providers](https://litellm.vercel.app/docs/providers). For example, Openrouter's API base is
+  `https://openrouter.ai/api/v1`. (required)
+- `llm_name`: Name of the model. Check your provider in the [LiteLLM docs](https://litellm.vercel.app/docs/providers)
+  to determine which options are available. (required)
+- `api_key`: API secret key. Your inference provider will give you a secret key to identify your payment account
+  when making API requests. Nexari stores this in a database; only give out your secret key if you trust the person
+  hosting this software. (required, don't share this!)
+- `max_tokens`: Maximum number of tokens per response. If the LLM attempts to write a response longer than this, it will
+  be cut off at this limit. This is useful to make sure that the LLM stops at some point if it gets caught
+  in a loop. (required)
+- `message_limit`: Number of messages to put in LLM's context. Whenever the LLM is prompted, it will see this number
+  of the most recent messages. If you experience issues hitting the max context length, try reducing this value.
+  (required)
+- `system_prompt`: System prompt to be displayed at start of context. A system prompt can be used to push the LLM
+  into a particular attractor basin or elicit a particular behavior. (optional)
+- `temperature`: Sampling temperature, default is 1.0. Higher temperatures result in more randomly distributed text,
+  while lower temperatures are more predictable. A temperature of 0.0 is entirely deterministic. (optional)
+- `top_p`: Sampling top_p value. Top P is also called nucleus sampling; it is a probability threshold. The most likely
+  options which sum to less than this value will be considered. All other tokens will not be selected. This eliminates
+  the long tail of very unlikely tokens. Ranges from 0.0 to 1.0. 1.0 disables top P sampling. (optional)
+- `top_k`: Sampling top_k value, not supported by all APIs. Top K is like top P, except it selects from the K most
+  likely tokens. Integer, 0 or more. 0 disables top K sampling. (optional)
+- `frequency_penalty`: Sampling frequency penalty. Apply a penalty to the probability of a token proportional to how
+  many times the token has already appeared in the text. Ranges from -2.0 to 2.0. 0.0 disables the penalty. Negative
+  values encourage token reuse. (optional)
+- `presence_penalty`: Sampling presence penalty. Apply a penalty to the probability of a token if it appears earlier in
+  the text. Unlike `frequency_penalty`, it does not matter how many times it appears. Ranges from -2.0 to 2.0. 0.0
+  disables the penalty. Negative values encourage token reuse. (optional)
+- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs. Works like `frequency_penalty`, except 
+  also biased to penalize recent reuse more strongly than long-distance reuse. Ranges from 0.0 to 2.0. (optional)
+- `min_p`: Sampling min_p value, not supported by all APIs. The minimum probability a token must meet to be selected.
+  For example, if set to 0.1, any tokens less likely than 1/10 the probability of the most likely token will not
+  be selected. Ranges from 0.0 to 1.0. (optional)
+- `top_a`: Sampling top_a value, not supported by all APIs. Works like a dynamic top P. Ranges from 0.0 to 1.0.
+  (optional)
+- `instruct_tuned`: Whether the LLM has been instruct tuned, default is True. False indicates that the LLM is a base
+  model. (optional)
+- `message_formatter`: Formatter to use for this LLM. Defaults to 'irc' (currently the only option available).
+  (optional)
+- `enabled`: Whether the llm should respond to messages, default is True. Set to false if you don't want to receive
+  messages from this LLM. (optional)
 
 **Usage:** Use this command to add a new LLM to your Discord server. You'll need to provide the necessary API details and configuration parameters.
 
-#### /llm modify
+---
+
+#### `/llm modify`
 **Description:** Modifies an existing LLM in the current guild.
+
 **Arguments:** Same as `/llm create`, but with:
 - `name`: Name of the LLM to modify (required)
 - `new_name`: New name for the LLM (optional)
+- `name`: Name of the new LLM. This name will be used to refer to the LLM both in the simulator and in the
+  Discord chat. (optional)
+- `api_base`: API base URL path. This will vary by your inference provider. You will probably need to read their
+  documentation. Check LiteLLM documentation for a 
+  [list of supported providers](https://litellm.vercel.app/docs/providers). For example, Openrouter's API base is
+  `https://openrouter.ai/api/v1`. (optional)
+- `llm_name`: Name of the model. Check your provider in the [LiteLLM docs](https://litellm.vercel.app/docs/providers)
+  to determine which options are available. (optional)
+- `api_key`: API secret key. Your inference provider will give you a secret key to identify your payment account
+  when making API requests. Nexari stores this in a database; only give out your secret key if you trust the person
+  hosting this software. (required, don't share this!)
+- `max_tokens`: Maximum number of tokens per response. If the LLM attempts to write a response longer than this, it will
+  be cut off at this limit. This is useful to make sure that the LLM stops at some point if it gets caught
+  in a loop. (optional)
+- `message_limit`: Number of messages to put in LLM's context. Whenever the LLM is prompted, it will see this number
+  of the most recent messages. If you experience issues hitting the max context length, try reducing this value.
+  (optional)
+- `system_prompt`: System prompt to be displayed at start of context. A system prompt can be used to push the LLM
+  into a particular attractor basin or elicit a particular behavior. (optional)
+- `temperature`: Sampling temperature, default is 1.0. Higher temperatures result in more randomly distributed text,
+  while lower temperatures are more predictable. A temperature of 0.0 is entirely deterministic. (optional)
+- `top_p`: Sampling top_p value. Top P is also called nucleus sampling; it is a probability threshold. The most likely
+  options which sum to less than this value will be considered. All other tokens will not be selected. This eliminates
+  the long tail of very unlikely tokens. Ranges from 0.0 to 1.0. 1.0 disables top P sampling. (optional)
+- `top_k`: Sampling top_k value, not supported by all APIs. Top K is like top P, except it selects from the K most
+  likely tokens. Integer, 0 or more. 0 disables top K sampling. (optional)
+- `frequency_penalty`: Sampling frequency penalty. Apply a penalty to the probability of a token proportional to how
+  many times the token has already appeared in the text. Ranges from -2.0 to 2.0. 0.0 disables the penalty. Negative
+  values encourage token reuse. (optional)
+- `presence_penalty`: Sampling presence penalty. Apply a penalty to the probability of a token if it appears earlier in
+  the text. Unlike `frequency_penalty`, it does not matter how many times it appears. Ranges from -2.0 to 2.0. 0.0
+  disables the penalty. Negative values encourage token reuse. (optional)
+- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs. Works like `frequency_penalty`, except 
+  also biased to penalize recent reuse more strongly than long-distance reuse. Ranges from 0.0 to 2.0. (optional)
+- `min_p`: Sampling min_p value, not supported by all APIs. The minimum probability a token must meet to be selected.
+  For example, if set to 0.1, any tokens less likely than 1/10 the probability of the most likely token will not
+  be selected. Ranges from 0.0 to 1.0. (optional)
+- `top_a`: Sampling top_a value, not supported by all APIs. Works like a dynamic top P. Ranges from 0.0 to 1.0.
+  (optional)
+- `instruct_tuned`: Whether the LLM has been instruct tuned, default is True. False indicates that the LLM is a base
+  model. (optional)
+- `message_formatter`: Formatter to use for this LLM. Defaults to 'irc' (currently the only option). (optional)
+- `enabled`: Whether the llm should respond to messages, default is True. Set to false if you don't want to receive
+  messages from this LLM. (optional)
 
-**Usage:** Use this command to update the configuration of an existing LLM. You only need to provide the parameters you want to change.
+**Usage:** Use this command to update the configuration of an existing LLM. You only need to provide the parameters you
+want to change.
 
-#### /llm delete
+---
+
+#### `/llm delete`
 **Description:** Deletes an existing LLM from the current guild.
+
 **Arguments:**
 - `name`: Name of the LLM to delete (required)
 
-**Usage:** Use this command to remove an LLM from your Discord server.
+**Usage:** Use this command to permanently remove an LLM from your Discord server. You cannot recover the settings
+used after doing this. If you only want to temporarily disable an LLM, consider setting its `enabled` parameter to
+False instead.
 
-#### /llm copy
-**Description:** Creates a deep copy of an existing LLM with a new name.
+---
+
+#### `/llm copy`
+**Description:** Creates a copy of an existing LLM with a new name.
+
 **Arguments:**
 - `source_name`: Name of the existing LLM (required)
 - `new_name`: Name for the new copy (required)
 
-**Usage:** Use this command to duplicate an existing LLM configuration under a new name.
+**Usage:** Use this command to duplicate an existing LLM configuration under a new name. All configuration values except
+for `name` will be identical.
 
-#### /llm set_avatar
+---
+
+#### `/llm set_avatar`
 **Description:** Sets an avatar for an LLM.
+
 **Arguments:**
 - `name`: Name of the LLM (required)
 - `image_url`: URL of the image to use as avatar (required)
 
-**Usage:** Use this command to set or update the avatar image for an LLM.
+**Usage:** Use this command to set or update the avatar image for an LLM. 
 
-#### /llm print
+---
+
+#### `/llm print`
 **Description:** Prints the configuration of an LLM.
+
 **Arguments:**
 - `name`: Name of the LLM (required)
 
 **Usage:** Use this command to view the detailed configuration of a specific LLM.
 
-#### /llm sync
-**Description:** Syncs the bot commands with the current guild.
-**Arguments:** None
+---
 
-**Usage:** Use this command to update the available slash commands in your Discord server after making changes to the bot.
-
-#### /llm help
+#### `/llm help`
 **Description:** Provides help information about bot commands and LLM interaction.
+
 **Arguments:** None
 
 **Usage:** Use this command to get an overview of available commands and how to interact with LLMs.
 
-#### /llm set_simulator
+---
+
+#### `/llm set_simulator`
 **Description:** Sets the LLM for simulating responses.
+
 **Arguments:**
 - `name`: Name of the LLM to use as simulator (required)
 
-**Usage:** Use this command to designate an LLM as the simulator for natural conversation flow.
+**Usage:** Use this command to designate an LLM as the simulator for natural conversation flow. See the 
+[simulator section](#simulator) for more info.
 
-#### /llm set_simulator_channel
+---
+
+#### `/llm set_simulator_channel`
 **Description:** Sets the channel for viewing raw simulator responses.
+
 **Arguments:**
 - `channel`: The text channel to use for simulator responses (required)
 
-**Usage:** Use this command to specify a channel where the raw simulator responses will be sent.
+**Usage:** Use this command to specify a channel where the raw simulator responses will be sent. See the 
+[simulator section](#simulator) for more info.
 
-#### Simulator
+### Simulator
 
 To enable natural replies, you must configure a base model simulator. At present the best choice for this task is
 Llama 3.1 405b. Here's an example of how you can do that with 405b on Openrouter:
@@ -196,7 +297,7 @@ Llama 3.1 405b. Here's an example of how you can do that with 405b on Openrouter
 First, create the base model LLM. It is named `simulator` here by convention.
 
 ```
-/llm create name:simulator api_base:https://openrouter.ai/api/v1 llm_name:meta-llama/llama-3.1-405b api_key:YOUR_API_KEY_HERE max_tokens:256 context_length:131072 message_limit:100 enabled:False instruct_tuned:False
+/llm create name:simulator api_base:https://openrouter.ai/api/v1 llm_name:meta-llama/llama-3.1-405b api_key:YOUR_API_KEY_HERE max_tokens:256 message_limit:100 enabled:False instruct_tuned:False
 ```
 
 Next, set the Discord server's simulator model:
@@ -221,5 +322,5 @@ Please note that other providers may not work or may result in bugs. Please repo
 
 ## Note
 
-Ensure that your Discord bot has the necessary permissions in your server, including the ability to read messages and
-send responses.
+Ensure that your Discord bot has the necessary permissions in your server, including the ability to read messages,
+send responses, and manage webhooks.
