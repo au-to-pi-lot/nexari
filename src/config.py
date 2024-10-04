@@ -6,7 +6,6 @@ class Config(BaseModel):
     bot_token: str
     client_id: str
     database_url: str
-    openrouter_api_key: str
 
     # noinspection PyNestedDecorators
     @field_validator("client_id", mode="before")
