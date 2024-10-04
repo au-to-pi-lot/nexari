@@ -44,9 +44,7 @@ async def on_ready():
                 await user_service.sync(user)
 
     try:
-        guild = await bot.fetch_guild(307011228293660683)
-        bot.tree.copy_global_to(guild=guild)
-        synced = await bot.tree.sync(guild=guild)
+        synced = await bot.tree.sync()
         logger.info(f"Synced {len(synced)} command(s)")
     except Exception as e:
         logger.exception(f"Error syncing command tree: {e}")
