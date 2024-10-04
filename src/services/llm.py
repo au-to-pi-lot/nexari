@@ -300,11 +300,11 @@ class LLMService:
             else:
                 llms_in_guild = await self.get_by_guild(guild.id)
                 prompt = await message_formatter.format_simulator(
-                    history,
-                    llm.system_prompt,
-                    webhook,
-                    [llm.name for llm in llms_in_guild],
-                    llm.name,
+                    messages=history,
+                    system_prompt=llm.system_prompt,
+                    webhook=webhook,
+                    users_in_channel=[llm.name for llm in llms_in_guild if llm.enabled],
+                    force_response_from_user=llm.name,
                 )
                 response = await self.generate_simulator_response(
                     llm, prompt, ["\n\n\n"]
@@ -339,6 +339,9 @@ class LLMService:
             else:
                 # Otherwise, pass control to other LLM, if it exists
                 other_llm = await self.get_by_name(response_username, guild.id)
+                if not other_llm.enabled:
+                    return
+
                 if other_llm:
                     logger.info(f"{llm.name} passed to {other_llm.name}")
                     await self.respond(other_llm, channel)
@@ -418,4 +421,9 @@ class LLMService:
             logger.info("No new speaker found in the response")
             return None
 
-        return await llm_service.get_by_name(next_user, channel.guild.id)
+        next_llm = await llm_service.get_by_name(next_user, channel.guild.id)
+
+        if next_llm is None or not next_llm.enabled:
+            return None
+
+        return next_llm
