@@ -55,8 +55,8 @@ class LLMService:
         for key, value in update_data.model_dump(exclude_unset=True).items():
             if key == "name" and value != old_name:
                 # If the name has changed, update all associated webhooks
-                webhooks = await self.get_webhooks(llm)
                 webhook_service = WebhookService(self.session)
+                webhooks = await webhook_service.get_by_llm(llm.id)
                 for webhook in webhooks:
                     discord_webhook = await bot.fetch_webhook(webhook.id)
                     try:
@@ -74,6 +74,9 @@ class LLMService:
         return llm
 
     async def delete(self, llm: LLM) -> None:
+        webhook_service = WebhookService(self.session)
+        webhooks = await webhook_service.get_by_llm(llm.id)
+        await webhook_service.delete(*webhooks)
         await self.session.delete(llm)
         await self.session.commit()
 
@@ -129,12 +132,6 @@ class LLMService:
             db_webhook = await webhook_service.create(discord_webhook, llm)
 
         return db_webhook
-
-    async def get_webhooks(self, llm: LLM) -> List[Webhook]:
-        stmt = select(LLM).options(selectinload(LLM.webhooks)).where(LLM.id == llm.id)
-        result = await self.session.execute(stmt)
-        llm_with_webhooks = result.scalar_one_or_none()
-        return llm_with_webhooks.webhooks if llm_with_webhooks else []
 
     async def generate_instruct_response(
         self, llm: LLM, messages: List[LiteLLMMessage]
