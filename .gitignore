@@ -6,3 +6,4 @@ avatars/
 # Configuration
 config.yml
 data.db
+__pycache__/

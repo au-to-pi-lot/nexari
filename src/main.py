@@ -4,7 +4,7 @@ import logging.handlers
 import os
 import sys
 
-from config import config
+from src.config import config
 from src.commands import LLMCommands
 from src.event_handlers import register_event_handlers
 from src.services.discord_client import bot
