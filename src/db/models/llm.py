@@ -23,7 +23,6 @@ class LLMCreate(BaseModel):
         api_key (str): The API key for accessing the LLM.
         max_tokens (int): The maximum number of tokens for LLM responses.
         system_prompt (Optional[str]): The system prompt for the LLM.
-        context_length (int): The context length for the LLM.
         message_limit (int): The message limit for the LLM.
         instruct_tuned (bool): Whether the LLM is an instruct model.
         message_formatter (str): The message formatter for the LLM.
@@ -70,7 +69,6 @@ class LLMUpdate(BaseModel):
         api_key (Optional[str]): The new API key for accessing the LLM.
         max_tokens (Optional[int]): The new maximum number of tokens for LLM responses.
         system_prompt (Optional[str]): The new system prompt for the LLM.
-        context_length (Optional[int]): The new context length for the LLM.
         message_limit (Optional[int]): The new message limit for the LLM.
         instruct_tuned (Optional[bool]): The new instruction setting for the LLM.
         message_formatter (Optional[str]): The new message formatter for the LLM.
@@ -92,7 +90,6 @@ class LLMUpdate(BaseModel):
     api_key: Optional[str] = None
     max_tokens: Optional[int] = None
     system_prompt: Optional[str] = None
-    context_length: Optional[int] = None
     message_limit: Optional[int] = None
     instruct_tuned: Optional[bool] = None
     message_formatter: Optional[str] = None
@@ -121,7 +118,6 @@ class LLM(Base):
         api_key (str): The API key for accessing the LLM.
         max_tokens (int): The maximum number of tokens for LLM responses.
         system_prompt (Optional[str]): The system prompt for the LLM.
-        context_length (int): The context length for the LLM.
         message_limit (int): The message limit for the LLM.
         instruct_tuned (bool): The instruction setting for the LLM.
         message_formatter (str): The message formatter for the LLM.
