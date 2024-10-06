@@ -91,9 +91,13 @@ class Message(Base):
     )
 
     @property
-    def from_webhook(self) -> bool:
+    def from_local_webhook(self) -> bool:
         return self.webhook_id is not None
 
     @property
+    def from_foreign_webhook(self) -> bool:
+        return self.webhook_id is None and self.user_id is None
+
+    @property
     def from_user(self) -> bool:
-        return self.webhook_id is None
+        return self.user_id is not None
