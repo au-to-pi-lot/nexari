@@ -120,12 +120,12 @@ class MessageService:
             user_service = UserService(self.session)
             user = await user_service.get(message.user_id)
             return user.name
-        elif message.from_webhook:
+        elif message.from_local_webhook:
             webhook_service = WebhookService(self.session)
             webhook = await webhook_service.get(message.webhook_id)
             return webhook.name
-        else:
-            channel = await bot.get_channel(message.channel_id)
+        else:  # from foreign webhook
+            channel = bot.get_channel(message.channel_id)
             discord_message = await channel.fetch_message(message.id)
             return discord_message.author.name
 
