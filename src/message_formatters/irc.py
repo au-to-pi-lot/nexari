@@ -11,10 +11,10 @@ from src.services.channel import ChannelService
 from src.services.discord_client import bot
 from src.services.message import MessageService
 from src.types.litellm_message import LiteLLMMessage
-from src.types.message_formatter import MessageFormatter, ParseResponse
+from src.types.message_formatter import ComboMessageFormatter, ParseResponse
 
 
-class IRCMessageFormatter(MessageFormatter):
+class IRCMessageFormatter(ComboMessageFormatter):
     async def format_instruct(
             self,
             messages: list[Message],
@@ -44,19 +44,19 @@ class IRCMessageFormatter(MessageFormatter):
                 except NotFound:
                     continue
 
+            username = await message_service.author_name(message)
+
             if message.webhook_id:
                 try:
                     msg_webhook = await bot.fetch_webhook(message.webhook_id)
                 except NotFound as e:
                     continue
-                username = msg_webhook.name
                 role = (
                     "assistant"
                     if webhook is not None and msg_webhook.id == webhook.id
                     else "user"
                 )
             else:
-                username = await message_service.author_name(message)
                 role = "user"
 
             content = f"<{username}> {message.content}"
@@ -87,6 +87,7 @@ class IRCMessageFormatter(MessageFormatter):
             messages, None, webhook
         )
 
+        # separate messages by 3 line breaks; messages should only contain 2 line breaks in a row
         prompt = (
             "\n\n\n".join(
                 chain(

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -8,3 +10,5 @@ class LiteLLMMessage(BaseModel):
 
     role: str
     content: str
+    name: Optional[str]
+    """Name identifying the message. Only supported by OpenAI APIs."""
