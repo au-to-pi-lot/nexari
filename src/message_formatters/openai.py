@@ -4,6 +4,7 @@ import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Message
+from src.services.discord_client import bot
 from src.services.message import MessageService
 from src.types.litellm_message import LiteLLMMessage
 from src.types.message_formatter import InstructMessageFormatter, ParseResponse
@@ -14,10 +15,10 @@ class OpenAIMessageFormatter(InstructMessageFormatter):
         super().__init__(session)
 
     async def format_instruct(
-            self,
-            messages: List[Message],
-            system_prompt: Optional[str],
-            webhook: Optional[discord.Webhook],
+        self,
+        messages: List[Message],
+        system_prompt: Optional[str],
+        webhook: Optional[discord.Webhook],
     ) -> List[LiteLLMMessage]:
         message_service = MessageService(self.session)
 
@@ -31,18 +32,24 @@ class OpenAIMessageFormatter(InstructMessageFormatter):
             if not message.content:
                 continue
 
+            name = await message_service.author_name(message)
+
             if message.webhook_id:
                 try:
                     msg_webhook = await bot.fetch_webhook(message.webhook_id)
                 except discord.NotFound:
                     continue
-                name = msg_webhook.name
-                role = "assistant" if webhook is not None and msg_webhook.id == webhook.id else "user"
+                role = (
+                    "assistant"
+                    if webhook is not None and msg_webhook.id == webhook.id
+                    else "user"
+                )
             else:
-                name = await message_service.author_name(message)
                 role = "user"
 
-            formatted_messages.append(LiteLLMMessage(role=role, content=message.content, name=name))
+            formatted_messages.append(
+                LiteLLMMessage(role=role, content=message.content, name=name)
+            )
 
         return formatted_messages
 

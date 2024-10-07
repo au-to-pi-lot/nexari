@@ -44,19 +44,19 @@ class IRCMessageFormatter(ComboMessageFormatter):
                 except NotFound:
                     continue
 
+            username = await message_service.author_name(message)
+
             if message.webhook_id:
                 try:
                     msg_webhook = await bot.fetch_webhook(message.webhook_id)
                 except NotFound as e:
                     continue
-                username = msg_webhook.name
                 role = (
                     "assistant"
                     if webhook is not None and msg_webhook.id == webhook.id
                     else "user"
                 )
             else:
-                username = await message_service.author_name(message)
                 role = "user"
 
             content = f"<{username}> {message.content}"
