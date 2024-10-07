@@ -13,6 +13,7 @@ from src.db.models.llm import LLMCreate, LLMUpdate
 from src.services.db import Session
 from src.services.guild import GuildService
 from src.services.llm import LLMService
+from src.message_formatters import formatters
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,25 @@ class LLMCommands(commands.GroupCog, name="llm"):
         return [
             app_commands.Choice(name=name, value=name)
             for name in llm_names
+            if current.lower() in name.lower()
+        ]
+
+    async def autocomplete_message_formatter(
+        self, interaction: Interaction, current: str
+    ) -> List[app_commands.Choice[str]]:
+        """Autocomplete message formatter names based on the current input.
+
+        Args:
+            interaction: The Discord interaction.
+            current: The current input string.
+
+        Returns:
+            List[app_commands.Choice[str]]: A list of autocomplete choices.
+        """
+        formatter_names = list(formatters.keys())
+        return [
+            app_commands.Choice(name=name, value=name)
+            for name in formatter_names
             if current.lower() in name.lower()
         ]
 
@@ -177,6 +197,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         min_p="Sampling min_p value (not supported by all APIs)",
         top_a="Sampling top_a value (not supported by all APIs)",
     )
+    @app_commands.autocomplete(message_formatter=autocomplete_message_formatter)
     async def create(
         self,
         interaction: discord.Interaction,
@@ -254,7 +275,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
 
     @app_commands.command(description="Modify an existing LLM")
     @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.autocomplete(name=autocomplete_llm_name)
+    @app_commands.autocomplete(name=autocomplete_llm_name, message_formatter=autocomplete_message_formatter)
     @app_commands.describe(
         name="Name of the LLM to modify",
         new_name="New name for the LLM",
