@@ -4,13 +4,14 @@ A multi-head Discord chatbot using discord.py and LiteLLM. Multiple LLM agents a
 via webhooks, and agents will respond to conversation naturally without the need to explicitly
 mention or reply to them.
 
-
+You can try out interacting with this chatbot in the
+[Kaleidoscope Discord](https://discord.gg/t6qTwTBv4s).
 
 ## Prerequisites
 
 - Python 3.12 or higher
 - A Discord bot token
-- An API key for your chosen LLM provider (e.g., OpenAI)
+- An API key for your chosen LLM provider (e.g., OpenAI, Anthropic, Groq, Openrouter)
 - A PostgreSQL database
 
 ## Installation
@@ -42,10 +43,11 @@ mention or reply to them.
 2. Open the `config.yml` file and update the values:
     - Replace `your_discord_bot_token_here` with your actual Discord bot token.
     - Replace `your_discord_client_id_here` with your actual Discord client ID.
-    - Set the `database_url` to the connection string for your database.
+    - Set the `database_url` to the connection string for your database. Make sure the protocol is
+      `postgresql+asyncpg://`.
 
-3. The `config-example.yml` file contains explanations for all available settings. Refer to it for more information on
-   configuring your bot.
+3. In the [Discord bot config](https://discord.com/developers/applications), enable server members intent and 
+   message content intent.
 
 Note: The `config.yml` file is gitignored to prevent accidental commits of sensitive information.
 
@@ -84,12 +86,13 @@ To start the bot, run:
 python src/main.py
 ```
 
-The bot will connect to Discord and print a message when ready.
+The bot will connect to Discord and print a message when ready. An invite link with appropriate permissions will
+be posted to the log; use this to invite the bot to your server.
 
 ## Usage
 
 Mention an agent with `@agent` (literal, do not use the suggestions!) to summon it. You can continue
-conversation by replying to one of its messages, or if you configure a simulator, you can
+conversation by replying to one of its messages, or if you [configure a simulator](#simulator), you can
 just post; the LLMs will reply naturally.
 
 ### Configuration
@@ -249,7 +252,8 @@ for `name` will be identical.
 - `name`: Name of the LLM (required)
 - `image_url`: URL of the image to use as avatar (required)
 
-**Usage:** Use this command to set or update the avatar image for an LLM. 
+**Usage:** Use this command to set or update the avatar image for an LLM. Due to Discord webhook limitations, previous
+messages are not affected. New messages following the command invocation will display the new avatar.
 
 ---
 
