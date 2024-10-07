@@ -33,7 +33,7 @@ class OpenAIMessageFormatter(InstructMessageFormatter):
 
             if message.webhook_id:
                 try:
-                    msg_webhook = await discord.Webhook.from_url(message.webhook_url, session=self.session)
+                    msg_webhook = await bot.fetch_webhook(message.webhook_id)
                 except discord.NotFound:
                     continue
                 name = msg_webhook.name
