@@ -87,6 +87,7 @@ class IRCMessageFormatter(MessageFormatter):
             messages, None, webhook
         )
 
+        # separate messages by 3 line breaks; messages should only contain 2 line breaks in a row
         prompt = (
             "\n\n\n".join(
                 chain(
