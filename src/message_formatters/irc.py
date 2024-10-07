@@ -11,10 +11,10 @@ from src.services.channel import ChannelService
 from src.services.discord_client import bot
 from src.services.message import MessageService
 from src.types.litellm_message import LiteLLMMessage
-from src.types.message_formatter import MessageFormatter, ParseResponse
+from src.types.message_formatter import ComboMessageFormatter, ParseResponse
 
 
-class IRCMessageFormatter(MessageFormatter):
+class IRCMessageFormatter(ComboMessageFormatter):
     async def format_instruct(
             self,
             messages: list[Message],

@@ -1,5 +1,5 @@
 import textwrap
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from itertools import cycle
 from typing import List, Literal, Optional
 
@@ -20,51 +20,9 @@ class ParseResponse(BaseModel):
     username: Optional[str]
 
 
-class MessageFormatter(ABC):
+class BaseMessageFormatter(ABC):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-
-    @abstractmethod
-    async def format_instruct(
-        self,
-        messages: list[Message],
-        system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
-    ) -> List[LiteLLMMessage]:
-        """
-        Format a list of Discord messages into a list of LiteLLMMessages.
-
-        Args:
-            webhook (WebhookProxy): The webhook who will reply.
-            system_prompt (str): A system message to place at the start of the context.
-            messages (List[discord.Message]): The list of Discord messages to format.
-
-        Returns:
-            List[LiteLLMMessage]: The formatted list of LiteLLMMessages.
-        """
-        pass
-
-    @abstractmethod
-    async def format_simulator(
-        self,
-        messages: list[Message],
-        system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
-        users_in_channel: list[str] = None,
-        force_response_from_user: Optional[str] = None,
-    ) -> str:
-        """
-        Format a list of Discord messages into a simulator prompt.
-
-        Args:
-            webhook (WebhookProxy): The webhook who will reply.
-            system_prompt (str): A system message to place at the start of the context.
-            messages (List[discord.Message]): The list of Discord messages to format.
-
-        Returns:
-            List[LiteLLMMessage]: The formatted list of LiteLLMMessages.
-        """
-        pass
 
     @abstractmethod
     async def parse_messages(self, response: str) -> ParseResponse:
@@ -72,19 +30,24 @@ class MessageFormatter(ABC):
         Parse a ModelResponse into a list of messages to send to Discord.
 
         Args:
-            response (ModelResponse): The ModelResponse to parse.
+            response (str): The model's response to parse.
 
         Returns:
-            List[str]: The parsed list of strings.
+            ParseResponse: The parsed response.
         """
-        pass
-
-    @abstractmethod
-    async def parse_next_user(self, response: str, last_speaker: str) -> str:
         pass
 
     @staticmethod
     def break_messages(content: str) -> List[str]:
+        """
+        Break a long message into smaller chunks that fit within Discord's message limit.
+
+        Args:
+            content (str): The content to break into messages.
+
+        Returns:
+            List[str]: A list of message chunks.
+        """
         """
         Break a long message into smaller chunks that fit within Discord's message limit.
 
@@ -168,3 +131,65 @@ class MessageFormatter(ABC):
                     messages.append("```\n```")
 
         return messages
+class InstructMessageFormatter(BaseMessageFormatter):
+    @abstractmethod
+    async def format_instruct(
+        self,
+        messages: list[Message],
+        system_prompt: Optional[str],
+        webhook: Optional[discord.Webhook],
+    ) -> List[LiteLLMMessage]:
+        """
+        Format a list of Discord messages into a list of LiteLLMMessages.
+
+        Args:
+            messages (List[Message]): The list of Discord messages to format.
+            system_prompt (Optional[str]): A system message to place at the start of the context.
+            webhook (Optional[discord.Webhook]): The webhook who will reply.
+
+        Returns:
+            List[LiteLLMMessage]: The formatted list of LiteLLMMessages.
+        """
+        pass
+
+class SimulatorMessageFormatter(BaseMessageFormatter):
+    @abstractmethod
+    async def format_simulator(
+        self,
+        messages: list[Message],
+        system_prompt: Optional[str],
+        webhook: Optional[discord.Webhook],
+        users_in_channel: list[str] = None,
+        force_response_from_user: Optional[str] = None,
+    ) -> str:
+        """
+        Format a list of Discord messages into a simulator prompt.
+
+        Args:
+            messages (List[Message]): The list of Discord messages to format.
+            system_prompt (Optional[str]): A system message to place at the start of the context.
+            webhook (Optional[discord.Webhook]): The webhook who will reply.
+            users_in_channel (Optional[list[str]]): List of users in the channel.
+            force_response_from_user (Optional[str]): Force a response from a specific user.
+
+        Returns:
+            str: The formatted simulator prompt.
+        """
+        pass
+
+    @abstractmethod
+    async def parse_next_user(self, response: str, last_speaker: str) -> str:
+        """
+        Parse the next user from the model's response.
+
+        Args:
+            response (str): The model's response.
+            last_speaker (str): The last speaker in the conversation.
+
+        Returns:
+            str: The next user to speak.
+        """
+        pass
+
+class ComboMessageFormatter(InstructMessageFormatter, SimulatorMessageFormatter):
+    pass

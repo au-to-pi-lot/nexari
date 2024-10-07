@@ -22,7 +22,7 @@ from src.services.guild import GuildService
 from src.services.message import MessageService
 from src.services.webhook import WebhookService
 from src.types.litellm_message import LiteLLMMessage
-from src.types.message_formatter import MessageFormatter
+from src.types.message_formatter import BaseMessageFormatter, InstructMessageFormatter, SimulatorMessageFormatter
 
 logger = logging.getLogger(__name__)
 
@@ -292,12 +292,16 @@ class LLMService:
                 raise ValueError(f"Invalid message formatter: {llm.message_formatter}")
 
             if llm.instruct_tuned:
+                if not isinstance(message_formatter, InstructMessageFormatter):
+                    raise ValueError(f"Message formatter {llm.message_formatter} does not support instruct-tuned models")
                 messages = await message_formatter.format_instruct(
                     history, llm.system_prompt, webhook
                 )
                 response = await self.generate_instruct_response(llm, messages)
                 response_str = response.choices[0].message.content
             else:
+                if not isinstance(message_formatter, SimulatorMessageFormatter):
+                    raise ValueError(f"Message formatter {llm.message_formatter} does not support simulator models")
                 llms_in_guild = await self.get_by_guild(guild.id)
                 prompt = await message_formatter.format_simulator(
                     messages=history,
@@ -384,7 +388,7 @@ class LLMService:
         llms_in_guild = await llm_service.get_by_guild(guild.id)
 
         last_speaker = await message_service.author_name(messages[-1])
-        message_formatter: MessageFormatter = get_message_formatter(
+        message_formatter: BaseMessageFormatter = get_message_formatter(
             simulator.message_formatter, session=self.session
         )
 
@@ -415,7 +419,11 @@ class LLMService:
                     suppress_embeds=True
                 )
 
-        next_user = await message_formatter.parse_next_user(response_str, last_speaker)
+        if isinstance(message_formatter, SimulatorMessageFormatter):
+            next_user = await message_formatter.parse_next_user(response_str, last_speaker)
+        else:
+            logger.warning(f"Message formatter {simulator.message_formatter} does not support parsing next user")
+            return None
 
         if next_user is None:
             logger.info("No new speaker found in the response")
