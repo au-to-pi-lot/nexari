@@ -21,6 +21,11 @@ class ParseResponse(BaseModel):
 
 
 class BaseMessageFormatter(ABC):
+    """
+    Base class for all message formatters.
+    Provides common functionality and defines the interface for message formatting.
+    """
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
@@ -125,6 +130,10 @@ class BaseMessageFormatter(ABC):
 
 
 class InstructMessageFormatter(BaseMessageFormatter, ABC):
+    """
+    Abstract base class for formatters designed to work with instruct-tuned models.
+    Implements methods specific to formatting messages for instruction-following LLMs.
+    """
     @abstractmethod
     async def format_instruct(
         self,
@@ -147,6 +156,10 @@ class InstructMessageFormatter(BaseMessageFormatter, ABC):
 
 
 class SimulatorMessageFormatter(BaseMessageFormatter, ABC):
+    """
+    Abstract base class for formatters designed to work with simulator models.
+    Implements methods specific to formatting messages for base models and text completion tasks.
+    """
     @abstractmethod
     async def format_simulator(
         self,
@@ -187,4 +200,8 @@ class SimulatorMessageFormatter(BaseMessageFormatter, ABC):
 
 
 class ComboMessageFormatter(InstructMessageFormatter, SimulatorMessageFormatter, ABC):
+    """
+    Abstract base class that combines functionality of both InstructMessageFormatter and SimulatorMessageFormatter.
+    Suitable for formatters that need to support both instruct-tuned and simulator models.
+    """
     pass
