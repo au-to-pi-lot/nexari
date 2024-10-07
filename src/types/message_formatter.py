@@ -48,15 +48,6 @@ class BaseMessageFormatter(ABC):
         Returns:
             List[str]: A list of message chunks.
         """
-        """
-        Break a long message into smaller chunks that fit within Discord's message limit.
-
-        Args:
-            content (str): The content to break into messages.
-
-        Returns:
-            List[str]: A list of message chunks.
-        """
 
         class CharBlock(BaseModel):
             content: str
@@ -131,7 +122,9 @@ class BaseMessageFormatter(ABC):
                     messages.append("```\n```")
 
         return messages
-class InstructMessageFormatter(BaseMessageFormatter):
+
+
+class InstructMessageFormatter(BaseMessageFormatter, ABC):
     @abstractmethod
     async def format_instruct(
         self,
@@ -152,7 +145,8 @@ class InstructMessageFormatter(BaseMessageFormatter):
         """
         pass
 
-class SimulatorMessageFormatter(BaseMessageFormatter):
+
+class SimulatorMessageFormatter(BaseMessageFormatter, ABC):
     @abstractmethod
     async def format_simulator(
         self,
@@ -191,5 +185,6 @@ class SimulatorMessageFormatter(BaseMessageFormatter):
         """
         pass
 
-class ComboMessageFormatter(InstructMessageFormatter, SimulatorMessageFormatter):
+
+class ComboMessageFormatter(InstructMessageFormatter, SimulatorMessageFormatter, ABC):
     pass
