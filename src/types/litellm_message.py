@@ -10,5 +10,5 @@ class LiteLLMMessage(BaseModel):
 
     role: str
     content: str
-    name: Optional[str]
+    name: Optional[str] = None
     """Name identifying the message. Only supported by OpenAI APIs."""
