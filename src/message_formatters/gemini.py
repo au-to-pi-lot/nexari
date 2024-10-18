@@ -31,71 +31,57 @@ class GeminiMessageFormatter(InstructMessageFormatter):
         current_role = "user"
         current_content = []
 
+        messages = [message for message in messages if message.content]
+
         for message in messages:
-            if not message.content:
-                continue
-
             username = await message_service.author_name(message)
-            content = f"<msg username='{username}'>\n\t{message.content}\n</msg>"
 
-            if message.webhook_id and webhook and message.webhook_id == webhook.id:
-                if current_role != "assistant":
+            if (
+                message.webhook_id and webhook and message.webhook_id == webhook.id
+            ):  # If the message is from Gemini
+                if current_role == "user":
                     if current_content:
                         formatted_messages.append(
-                            LiteLLMMessage(role=current_role, content="<chat_log>\n" + "\n".join(current_content) + "\n</chat_log>")
+                            LiteLLMMessage(
+                                role="assistant",
+                                content="<chat_log>\n"
+                                + "\n".join(current_content)
+                                + "\n</chat_log>",
+                            )
                         )
                         current_content = []
                     current_role = "assistant"
+                formatted_messages.append(
+                    LiteLLMMessage(role="assistant", content=message.content)
+                )
             else:
-                if current_role != "user":
-                    if current_content:
-                        formatted_messages.append(
-                            LiteLLMMessage(role=current_role, content="<chat_log>\n" + "\n".join(current_content) + "\n</chat_log>")
-                        )
-                        current_content = []
+                if current_role == "assistant":
                     current_role = "user"
-
-            current_content.append(content)
+                content = (
+                    f"<msg username='{username}'>\n\t{message.content}\n</msg>"
+                )
+                current_content.append(content)
 
         if current_content:
             formatted_messages.append(
-                LiteLLMMessage(role=current_role, content="<chat_log>\n" + "\n".join(current_content) + "\n</chat_log>")
+                LiteLLMMessage(
+                    role=current_role,
+                    content="<chat_log>\n"
+                    + "\n".join(current_content)
+                    + "\n</chat_log>",
+                )
             )
+
+        formatted_messages.append(LiteLLMMessage(role="user", content=f"<msg username=\"{webhook.name}\">"))
 
         return formatted_messages
 
     async def parse_messages(self, response: str) -> ParseResponse:
-        # Remove the opening <chat_log> tag if present
-        response = re.sub(r'^\s*<chat_log>\s*', '', response)
-        
-        # Find all message blocks
-        message_blocks = re.findall(r'<msg username=[\'"]?(\w+)[\'"]?>\s*(.*?)\s*</msg>', response, re.DOTALL)
-        
-        if not message_blocks:
-            # If no message blocks found, treat the entire response as a single message
-            return ParseResponse(
-                complete_message=response,
-                split_messages=self.break_messages(response),
-                username=None
-            )
-        
-        # Process message blocks
-        complete_message = ""
-        split_messages = []
-        username = None
-        
-        for block_username, block_content in message_blocks:
-            if username is None:
-                username = block_username
-            elif username != block_username:
-                # Stop processing if a different username is encountered
-                break
-            
-            complete_message += block_content + "\n"
-            split_messages.extend(self.break_messages(block_content))
-        
+        # Remove the closing </msg> tag if present
+        response = re.sub(r"</msg>", "", response)
+
         return ParseResponse(
-            complete_message=complete_message.strip(),
-            split_messages=split_messages,
-            username=username
+            complete_message=response,
+            split_messages=self.break_messages(response),
+            username=None,
         )
