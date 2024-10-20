@@ -35,6 +35,7 @@ class LLMCreate(BaseModel):
         repetition_penalty (Optional[float]): The repetition penalty parameter for the LLM.
         min_p (Optional[float]): The min_p parameter for the LLM.
         top_a (Optional[float]): The top_a parameter for the LLM.
+        avatar_url (str): The URL of the avatar image for the LLM.
     """
 
     name: str
@@ -56,6 +57,7 @@ class LLMCreate(BaseModel):
     repetition_penalty: Optional[float] = None
     min_p: Optional[float] = None
     top_a: Optional[float] = None
+    avatar_url: Optional[str] = None
 
 
 class LLMUpdate(BaseModel):
@@ -81,7 +83,7 @@ class LLMUpdate(BaseModel):
         repetition_penalty (Optional[float]): The new repetition penalty parameter for the LLM.
         min_p (Optional[float]): The new min_p parameter for the LLM.
         top_a (Optional[float]): The new top_a parameter for the LLM.
-        avatar (Optional[str]): The new avatar for the LLM.
+        avatar_url (Optional[str]): The new avatar URL for the LLM.
     """
 
     name: Optional[str] = None
@@ -102,7 +104,7 @@ class LLMUpdate(BaseModel):
     repetition_penalty: Optional[float] = None
     min_p: Optional[float] = None
     top_a: Optional[float] = None
-    avatar: Optional[bytes] = None
+    avatar_url: Optional[str] = None
 
 
 class LLM(Base):
@@ -130,9 +132,8 @@ class LLM(Base):
         repetition_penalty (Optional[float]): The repetition penalty parameter for the LLM.
         min_p (Optional[float]): The min_p parameter for the LLM.
         top_a (Optional[float]): The top_a parameter for the LLM.
-        avatar (Optional[str]): The avatar for the LLM.
         guild (Guild): The Guild object this LLM belongs to.
-        webhooks (List[Webhook]): List of Webhook objects associated with this LLM.
+        avatar_url (str): The avatar URL for the LLM.
     """
 
     __tablename__ = "llm"
@@ -159,10 +160,9 @@ class LLM(Base):
     min_p: Mapped[Optional[float]]
     top_a: Mapped[Optional[float]]
 
-    avatar: Mapped[Optional[str]]
+    avatar_url: Mapped[Optional[str]] = mapped_column(Text)
 
     guild: Mapped["Guild"] = relationship(back_populates="llms", foreign_keys=guild_id)
-    webhooks: Mapped[List["Webhook"]] = relationship(back_populates="llm")
 
     __table_args__ = (UniqueConstraint("name", "guild_id", name="uq_name_guild_id"),)
 

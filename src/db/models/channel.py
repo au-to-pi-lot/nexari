@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import List, Optional, TYPE_CHECKING
 from pydantic import BaseModel
-from sqlalchemy import ForeignKey, BigInteger
+from sqlalchemy import ForeignKey, BigInteger, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.models import Base
 from src.db.models.message import Message
@@ -27,6 +28,7 @@ class ChannelCreate(BaseModel):
 class ChannelUpdate(BaseModel):
     """Pydantic model for updating an existing Channel."""
     name: Optional[str]
+    scanned_up_to: Optional[datetime]
 
 
 class Channel(Base):
@@ -47,6 +49,7 @@ class Channel(Base):
     guild_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("guild.id"))
     name: Mapped[str] = mapped_column()
     parent_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("channel.id"))
+    scanned_up_to: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
     guild: Mapped["Guild"] = relationship(back_populates="channels", foreign_keys=[guild_id])
     webhooks: Mapped[List["Webhook"]] = relationship(back_populates="channel")

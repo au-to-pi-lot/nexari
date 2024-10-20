@@ -30,7 +30,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         self.bot = bot
         super().__init__()
 
-    async def get_llm_names(self, interaction: Interaction) -> List[str]:
+    async def get_llm_names(self, interaction: Interaction, enabled: Optional[bool] = None) -> List[str]:
         """Get a list of LLM names for the current guild.
 
         Args:
@@ -41,7 +41,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         """
         async with Session() as session:
             llm_service = LLMService(session)
-            llms = await llm_service.get_by_guild(interaction.guild.id)
+            llms = await llm_service.get_by_guild(interaction.guild.id, enabled=enabled)
         return [llm.name for llm in llms]
 
     async def autocomplete_llm_name(
@@ -187,6 +187,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         message_limit="Number of messages to put in LLM's context",
         instruct_tuned="Whether or not the LLM has been instruct tuned (default is true)",
         message_formatter="Formatter to use for this LLM.",
+        avatar_url="Link to an image to use as this LLM's avatar.",
         enabled="Whether or not the llm should respond to message.",
         temperature="Sampling temperature (default is 1.0)",
         top_p="Sampling top_p value",
@@ -209,6 +210,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         message_limit: int,
         system_prompt: Optional[str] = "",
         temperature: float = 1.0,
+        avatar_url: Optional[str] = None,
         top_p: Optional[float] = None,
         top_k: Optional[int] = None,
         frequency_penalty: Optional[float] = None,
@@ -241,6 +243,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
             max_tokens=max_tokens,
             system_prompt=system_prompt,
             message_limit=message_limit,
+            avatar_url=avatar_url,
             temperature=temperature,
             top_p=top_p,
             top_k=top_k,
@@ -287,6 +290,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         message_limit="Number of messages to put in LLM's context",
         instruct_tuned="Whether or not the LLM has been instruct tuned (default is true)",
         message_formatter="Formatter to use for this LLM.",
+        avatar_url="Link to an image to use as this LLM's avatar.",
         enabled="Whether or not the LLM will respond to messages",
         temperature="Sampling temperature (default is 1.0)",
         top_p="Sampling top_p value",
@@ -310,6 +314,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
         message_limit: Optional[int] = None,
         instruct_tuned: Optional[bool] = None,
         message_formatter: Optional[str] = None,
+        avatar_url: Optional[str] = None,
         enabled: Optional[bool] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
@@ -344,6 +349,7 @@ class LLMCommands(commands.GroupCog, name="llm"):
                         message_limit=message_limit,
                         instruct_tuned=instruct_tuned,
                         message_formatter=message_formatter,
+                        avatar_url=avatar_url,
                         enabled=enabled,
                         temperature=temperature,
                         top_p=top_p,
@@ -463,55 +469,6 @@ class LLMCommands(commands.GroupCog, name="llm"):
                 await interaction.followup.send(embed=embed)
             except ValueError as e:
                 embed = Embed(title="Error Copying LLM", color=discord.Color.red())
-                embed.description = str(e)
-                await interaction.followup.send(embed=embed)
-
-    @app_commands.command(description="Set an avatar for an LLM")
-    @app_commands.checks.has_permissions(administrator=True)
-    @app_commands.autocomplete(name=autocomplete_llm_name)
-    async def set_avatar(
-        self, interaction: discord.Interaction, name: str, image_url: str
-    ):
-        """Set an avatar for an LLM"""
-        await interaction.response.defer(ephemeral=True)
-
-        async with Session() as session:
-            llm_service = LLMService(session)
-            llm = await llm_service.get_by_name(name, interaction.guild_id)
-            if not llm:
-                embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
-                embed.description = f"'{name}' not found in this guild."
-                await interaction.followup.send(embed=embed)
-                return
-
-            try:
-                async with aiohttp.ClientSession() as http_session:
-                    async with http_session.get(image_url) as resp:
-                        if resp.status != 200:
-                            raise ValueError(
-                                f"Failed to download image from URL: {image_url}"
-                            )
-
-                        content_type = resp.headers.get("Content-Type", "").lower()
-                        if content_type not in ["image/jpeg", "image/png", "image/gif"]:
-                            raise ValueError(
-                                "The image must be a JPEG, PNG, or GIF file."
-                            )
-
-                        file_extension = content_type.split("/")[-1]
-                        filename = f"{llm.id}.{file_extension}"
-
-                        image_data = await resp.read()
-
-                await llm_service.set_avatar(llm, image_data, filename)
-
-                embed = Embed(title="Avatar Set", color=discord.Color.green())
-                embed.description = (
-                    f"Avatar for '{name}' has been set and applied to all webhooks."
-                )
-                await interaction.followup.send(embed=embed)
-            except ValueError as e:
-                embed = Embed(title="Error Setting Avatar", color=discord.Color.red())
                 embed.description = str(e)
                 await interaction.followup.send(embed=embed)
 

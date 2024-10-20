@@ -1,10 +1,8 @@
 from typing import Optional, List
 
-import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import Message
-from src.services.discord_client import bot
+from src.db.models import Message, LLM
 from src.services.message import MessageService
 from src.types.litellm_message import LiteLLMMessage
 from src.types.message_formatter import InstructMessageFormatter, ParseResponse
@@ -16,9 +14,9 @@ class OpenAIMessageFormatter(InstructMessageFormatter):
 
     async def format_instruct(
         self,
+        llm: LLM,
         messages: List[Message],
         system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
     ) -> List[LiteLLMMessage]:
         message_service = MessageService(self.session)
 
@@ -34,14 +32,10 @@ class OpenAIMessageFormatter(InstructMessageFormatter):
 
             name = await message_service.author_name(message)
 
-            if message.webhook_id:
-                try:
-                    msg_webhook = await bot.fetch_webhook(message.webhook_id)
-                except discord.NotFound:
-                    continue
+            if message.llm_id:
                 role = (
                     "assistant"
-                    if webhook is not None and msg_webhook.id == webhook.id
+                    if message.llm_id == llm.id
                     else "user"
                 )
             else:

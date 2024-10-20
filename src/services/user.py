@@ -51,12 +51,10 @@ class UserService:
         Returns:
             User: The updated database User object.
         """
-        db_user = await self.get(discord_user.id)
-        if db_user is None:
-            db_user = await self.create(discord_user)
-        else:
-            # Update user properties
-            db_user.name = discord_user.name
-            await self.session.commit()
+        db_user = await self.get_or_create(discord_user)
+
+        # Update user properties
+        db_user.name = discord_user.name
+        await self.session.commit()
 
         return db_user
