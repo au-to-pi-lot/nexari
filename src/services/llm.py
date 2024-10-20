@@ -371,8 +371,13 @@ class LLMService:
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
 
-    @staticmethod
-    def mentioned_in_message(llm: LLM, message: discord.Message) -> bool:
+    async def mentioned_in_message(self, llm: LLM, message: discord.Message) -> bool:
+        # Self-mentions don't count
+        webhook_service = WebhookService(session=self.session)
+        webhook = await webhook_service.get(message.webhook_id)
+        if webhook and webhook.llm_id == llm.id:
+            return False
+
         mentioned = f"@{llm.name.lower()}" in message.content.lower()
         return mentioned
 
