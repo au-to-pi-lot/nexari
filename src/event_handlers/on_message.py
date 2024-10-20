@@ -85,7 +85,7 @@ async def on_message(message: discord.Message):
             webhook = await llm_service.get_or_create_webhook(llm, channel)
             if replied_to_webhook_id and replied_to_webhook_id == webhook.id:
                 pinged_llms.add(llm)
-            if llm_service.mentioned_in_message(llm, message):
+            if await llm_service.mentioned_in_message(llm, message):
                 pinged_llms.add(llm)
                 logger.info(f"Pinged {llm.name}")
 
