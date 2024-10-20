@@ -156,6 +156,7 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 - `message_formatter`: Formatter to use for this LLM. Defaults to 'irc'. (optional) Possible values:
   - `irc`: Default formatter, tends to work well for most LLMs. Supports both base- and instruct-tuned-models.
   - `openai`: For OpenAI instruct tuned LLMs, e.g., o1, GPT-4o.
+  - `gemini`: For Google's Gemini Pro.
 - `enabled`: Whether the llm should respond to messages, default is True. Set to false if you don't want to receive
   messages from this LLM. (optional)
 
@@ -213,6 +214,7 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 - `message_formatter`: Formatter to use for this LLM. Defaults to 'irc'. (optional) Possible values:
   - `irc`: Default formatter, tends to work well for most LLMs. Supports both base- and instruct-tuned-models.
   - `openai`: For OpenAI instruct tuned LLMs, e.g., o1, GPT-4o.
+  - `gemini`: For Google's Gemini Pro.
 - `enabled`: Whether the llm should respond to messages, default is True. Set to False if you don't want to receive
   messages from this LLM. (optional)
 

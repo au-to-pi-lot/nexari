@@ -9,7 +9,6 @@ from litellm import acompletion
 from litellm.types.utils import ModelResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
 
 from src import message_formatters
 from src.const import AVATAR_DIR
@@ -341,26 +340,33 @@ class LLMService:
                     f"Msg in channel {channel.id} from {response_username}: {parse_response.complete_message}"
                 )
             else:
-                # Otherwise, pass control to other LLM, if it exists
+                # Pass control to other LLM, if it exists
                 other_llm = await self.get_by_name(response_username, guild.id)
-                if not other_llm.enabled:
-                    return
+                if other_llm is not None:
+                    # Skip disabled LLMs
+                    if not other_llm.enabled:
+                        return
 
-                if other_llm:
+                    # If it's a different LLM, pass the control to it instead
                     logger.info(f"{llm.name} passed to {other_llm.name}")
                     await self.respond(other_llm, channel)
-                elif member := channel.guild.get_member_named(response_username):
-                    # Or, if it's a human's username, mention them
+                    return
+
+                # Or, if it's a human's username, mention them
+                member = channel.guild.get_member_named(response_username)
+                if member is not None:
+
                     discord_webhook = await bot.fetch_webhook(webhook.id)
                     await discord_webhook.send(f"<@{member.id}>")
-                else:
-                    # If no matching LLM or user found, send the message as is
-                    discord_webhook = await bot.fetch_webhook(webhook.id)
-                    for message in response_messages:
-                        await discord_webhook.send(message)
-                    logger.warning(
-                        f"{llm.name} sent a message with unknown username: {response_username}"
-                    )
+                    return
+
+                # Otherwise, if no matching LLM or user found, send the message as is
+                discord_webhook = await bot.fetch_webhook(webhook.id)
+                for message in response_messages:
+                    await discord_webhook.send(message)
+                logger.warning(
+                    f"{llm.name} sent a message with unknown username: {response_username}"
+                )
 
         except Exception as e:
             logger.exception(f"Error in respond method: {str(e)}")
