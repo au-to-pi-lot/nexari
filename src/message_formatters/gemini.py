@@ -1,10 +1,9 @@
-from typing import Optional, List
 import re
+from typing import Optional, List
 
-import discord
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import Message
+from src.db.models import Message, LLM
 from src.services.message import MessageService
 from src.types.litellm_message import LiteLLMMessage
 from src.types.message_formatter import InstructMessageFormatter, ParseResponse
@@ -16,9 +15,9 @@ class GeminiMessageFormatter(InstructMessageFormatter):
 
     async def format_instruct(
         self,
+        llm: LLM,
         messages: List[Message],
         system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
     ) -> List[LiteLLMMessage]:
         message_service = MessageService(self.session)
 
@@ -37,7 +36,7 @@ class GeminiMessageFormatter(InstructMessageFormatter):
             username = await message_service.author_name(message)
 
             if (
-                message.webhook_id and webhook and message.webhook_id == webhook.id
+                message.llm_id and message.llm_id == llm.id
             ):  # If the message is from Gemini
                 if current_role == "user":
                     if current_content:
@@ -57,9 +56,7 @@ class GeminiMessageFormatter(InstructMessageFormatter):
             else:
                 if current_role == "assistant":
                     current_role = "user"
-                content = (
-                    f"<msg username='{username}'>\n\t{message.content}\n</msg>"
-                )
+                content = f"<msg username='{username}'>\n\t{message.content}\n</msg>"
                 current_content.append(content)
 
         if current_content:
@@ -72,7 +69,9 @@ class GeminiMessageFormatter(InstructMessageFormatter):
                 )
             )
 
-        formatted_messages.append(LiteLLMMessage(role="user", content=f"<msg username=\"{webhook.name}\">"))
+        formatted_messages.append(
+            LiteLLMMessage(role="user", content=f'<msg username="{llm.name}">')
+        )
 
         return formatted_messages
 

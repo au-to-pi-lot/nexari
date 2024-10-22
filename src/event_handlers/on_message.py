@@ -1,10 +1,8 @@
-import logging
 import asyncio
+import logging
 from collections import defaultdict
-from typing import Optional
 
 import discord
-from discord import TextChannel, ForumChannel
 
 from src.db.models import LLM
 from src.services.channel import ChannelService
@@ -57,34 +55,33 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+    channel_queue = channel_queues[channel.id]
+
     async with Session() as session:
         guild_service = GuildService(session)
+        message_service = MessageService(session)
+        llm_service = LLMService(session)
         db_guild = await guild_service.get_or_create(guild)
 
         # Ignore messages from the simulator dump channel
         if db_guild.simulator_channel_id == channel.id:
             return
 
-        message_service = MessageService(session)
-        await message_service.create(message)
+        # Store new message in DB
+        await message_service.sync(message)
 
-        llm_service = LLMService(session)
-        llms = await llm_service.get_by_guild(guild.id)
+        llms = await llm_service.get_by_guild(guild.id, enabled=True)
+        pinged_llms: set[LLM] = set()
 
-        channel_queue = channel_queues[channel.id]
-
-        replied_to_webhook_id: Optional[int] = None
+        # Check if the message replies to another message
         if message.reference is not None and message.reference.message_id is not None:
             other_msg_id: int = message.reference.message_id
-            other_msg = await channel.fetch_message(other_msg_id)
-            if other_msg.webhook_id:
-                replied_to_webhook_id = other_msg.webhook_id
+            replied_to_message = await channel.fetch_message(other_msg_id)
+            replied_to_llm = await llm_service.get_by_message(replied_to_message)
+            if replied_to_llm is not None:
+                pinged_llms.add(replied_to_llm)
 
-        pinged_llms: set[LLM] = set()
         for llm in llms:
-            webhook = await llm_service.get_or_create_webhook(llm, channel)
-            if replied_to_webhook_id and replied_to_webhook_id == webhook.id:
-                pinged_llms.add(llm)
             if await llm_service.mentioned_in_message(llm, message):
                 pinged_llms.add(llm)
                 logger.info(f"Pinged {llm.name}")

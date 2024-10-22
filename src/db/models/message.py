@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
+import sqlalchemy
 from pydantic import BaseModel
 from sqlalchemy import BigInteger, ForeignKey, Text, CheckConstraint, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -11,7 +12,6 @@ from src.db.models import Base
 if TYPE_CHECKING:
     from src.db.models.user import User
     from src.db.models.channel import Channel
-    from src.db.models.webhook import Webhook
 
 
 class MessageCreate(BaseModel):
@@ -22,7 +22,7 @@ class MessageCreate(BaseModel):
         id (int): The unique identifier for the message.
         content (str): The content of the message.
         user_id (Optional[int]): The ID of the user who authored the message.
-        webhook_id (Optional[int]): The ID of the webhook that sent the message.
+        llm_id (Optional[int]): The ID of the LLM that sent the message.
         channel_id (int): The ID of the channel the message belongs to.
         created_at (datetime): The timestamp when the message was created.
     """
@@ -30,9 +30,10 @@ class MessageCreate(BaseModel):
     id: int
     content: str
     user_id: Optional[int]
-    webhook_id: Optional[int]
+    llm_id: Optional[int]
     channel_id: int
     created_at: datetime
+    from_webhook: bool
 
 
 class MessageUpdate(BaseModel):
@@ -54,11 +55,10 @@ class Message(Base):
         id (int): The unique identifier for the message.
         content (str): The content of the message.
         user_id (Optional[int]): The ID of the user who authored the message, or None if not applicable.
-        webhook_id (Optional[int]): The ID of the webhook that sent the message, or None if not applicable.
+        llm_id (Optional[int]): The ID of the LLM that sent the message, or None if not applicable.
         channel_id (int): The ID of the channel the message belongs to.
         created_at (datetime): The timestamp when the message was created.
         user (Optional[User]): The User object who authored this message, or None if not applicable.
-        webhook (Optional[Webhook]): The Webhook object that sent this message, or None if not applicable.
         channel (Channel): The Channel object this message belongs to.
 
     Note:
@@ -70,16 +70,14 @@ class Message(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     content: Mapped[str] = mapped_column(Text)
     user_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("user.id"))
-    webhook_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger, ForeignKey("webhook.id")
-    )
+    llm_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("llm.id"))
     channel_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("channel.id")
     )
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True))
+    from_webhook: Mapped[bool] = mapped_column(server_default=sqlalchemy.sql.false())
 
     user: Mapped[Optional["User"]] = relationship(back_populates="messages")
-    webhook: Mapped[Optional["Webhook"]] = relationship(back_populates="messages")
     channel: Mapped["Channel"] = relationship(back_populates="messages")
 
     __table_args__ = (
@@ -91,13 +89,13 @@ class Message(Base):
     )
 
     @property
-    def from_local_webhook(self) -> bool:
-        return self.webhook_id is not None
+    def is_from_nexari_llm(self) -> bool:
+        return self.llm_id is not None
 
     @property
-    def from_foreign_webhook(self) -> bool:
-        return self.webhook_id is None and self.user_id is None
+    def is_from_user(self) -> bool:
+        return not self.from_webhook
 
     @property
-    def from_user(self) -> bool:
-        return self.user_id is not None
+    def is_from_foreign_webhook(self) -> bool:
+        return self.from_webhook and self.llm_id is None

@@ -3,13 +3,11 @@ from abc import ABC, abstractmethod
 from itertools import cycle
 from typing import List, Literal, Optional
 
-import discord
-from litellm import ModelResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
-from src.db.models import Message
+from src.db.models import Message, LLM
 from src.types.litellm_message import LiteLLMMessage
 from src.util import drop_both_ends
 
@@ -134,20 +132,21 @@ class InstructMessageFormatter(BaseMessageFormatter, ABC):
     Abstract base class for formatters designed to work with instruct-tuned models.
     Implements methods specific to formatting messages for instruction-following LLMs.
     """
+
     @abstractmethod
     async def format_instruct(
         self,
+        llm: LLM,
         messages: list[Message],
         system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
     ) -> List[LiteLLMMessage]:
         """
         Format a list of Discord messages into a list of LiteLLMMessages.
 
         Args:
+            llm (LLM): The sending LLM.
             messages (List[Message]): The list of Discord messages to format.
             system_prompt (Optional[str]): A system message to place at the start of the context.
-            webhook (Optional[discord.Webhook]): The webhook who will reply.
 
         Returns:
             List[LiteLLMMessage]: The formatted list of LiteLLMMessages.
@@ -160,12 +159,13 @@ class SimulatorMessageFormatter(BaseMessageFormatter, ABC):
     Abstract base class for formatters designed to work with simulator models.
     Implements methods specific to formatting messages for base models and text completion tasks.
     """
+
     @abstractmethod
     async def format_simulator(
         self,
+        llm: LLM,
         messages: list[Message],
         system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
         users_in_channel: list[str] = None,
         force_response_from_user: Optional[str] = None,
     ) -> str:
@@ -173,9 +173,9 @@ class SimulatorMessageFormatter(BaseMessageFormatter, ABC):
         Format a list of Discord messages into a simulator prompt.
 
         Args:
+            llm (LLM): The sending LLM.
             messages (List[Message]): The list of Discord messages to format.
             system_prompt (Optional[str]): A system message to place at the start of the context.
-            webhook (Optional[discord.Webhook]): The webhook who will reply.
             users_in_channel (Optional[list[str]]): List of users in the channel.
             force_response_from_user (Optional[str]): Force a response from a specific user.
 
@@ -204,4 +204,5 @@ class ComboMessageFormatter(InstructMessageFormatter, SimulatorMessageFormatter,
     Abstract base class that combines functionality of both InstructMessageFormatter and SimulatorMessageFormatter.
     Suitable for formatters that need to support both instruct-tuned and simulator models.
     """
+
     pass

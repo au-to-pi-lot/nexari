@@ -1,6 +1,4 @@
 import logging
-import os
-import shutil
 from typing import Optional, List, Any
 
 import aiohttp
@@ -11,17 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from src import message_formatters
-from src.const import AVATAR_DIR
 from src.db.models.llm import LLM, LLMCreate, LLMUpdate
-from src.db.models.webhook import Webhook
 from src.message_formatters import get_message_formatter
-from src.services.channel import ChannelService, AllowedChannelType
+from src.services.channel import AllowedChannelType
 from src.services.discord_client import bot
 from src.services.guild import GuildService
 from src.services.message import MessageService
 from src.services.webhook import WebhookService
 from src.types.litellm_message import LiteLLMMessage
-from src.types.message_formatter import BaseMessageFormatter, InstructMessageFormatter, SimulatorMessageFormatter
+from src.types.message_formatter import (
+    BaseMessageFormatter,
+    InstructMessageFormatter,
+    SimulatorMessageFormatter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,31 @@ class LLMService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_guild(self, guild_id: int) -> List[LLM]:
+    async def get_by_guild(
+        self, guild_id: int, enabled: Optional[bool] = None
+    ) -> List[LLM]:
         stmt = select(LLM).where(LLM.guild_id == guild_id)
+
+        if enabled is not None:
+            stmt = stmt.where(LLM.enabled == enabled)
+
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_by_message(self, message: discord.Message) -> Optional[LLM]:
+        webhook_service = WebhookService(session=self.session)
+
+        if message.webhook_id is None:
+            return None
+
+        webhook = await webhook_service.get(message.webhook_id)
+
+        if webhook is None:
+            return None
+
+        name = message.author.name
+        guild_id = message.guild.id
+        return await self.get_by_name(name, guild_id)
 
     async def create(self, llm_data: LLMCreate) -> LLM:
         llm = LLM(**llm_data.model_dump())
@@ -50,21 +71,8 @@ class LLMService:
         return llm
 
     async def update(self, llm: LLM, update_data: LLMUpdate) -> LLM:
-        old_name = llm.name
         for key, value in update_data.model_dump(exclude_unset=True).items():
-            if key == "name" and value != old_name:
-                # If the name has changed, update all associated webhooks
-                webhook_service = WebhookService(self.session)
-                webhooks = await webhook_service.get_by_llm(llm.id)
-                for webhook in webhooks:
-                    discord_webhook = await bot.fetch_webhook(webhook.id)
-                    try:
-                        discord_webhook = await discord_webhook.edit(name=value)
-                        await webhook_service.sync(discord_webhook)
-                    except Exception as e:
-                        logger.error(f"Failed to update webhook {webhook.id} name: {e}")
-                        raise
-            elif key == "message_formatter":
+            if key == "message_formatter":
                 if value not in message_formatters.formatters:
                     raise ValueError(f"Invalid message formatter: {value}")
 
@@ -73,64 +81,8 @@ class LLMService:
         return llm
 
     async def delete(self, llm: LLM) -> None:
-        webhook_service = WebhookService(self.session)
-        webhooks = await webhook_service.get_by_llm(llm.id)
-        await webhook_service.delete(*webhooks)
         await self.session.delete(llm)
         await self.session.commit()
-
-    async def set_avatar(self, llm: LLM, avatar: bytes, filename: str) -> None:
-        avatar_path = AVATAR_DIR / filename
-
-        # Save the avatar file
-        with open(avatar_path, "wb") as f:
-            f.write(avatar)
-
-        # Update the LLM's avatar in the database
-        llm.avatar = filename
-        await self.session.commit()
-
-        # Update the avatar for all associated webhooks
-        stmt = select(Webhook).where(Webhook.llm_id == llm.id)
-        result = await self.session.execute(stmt)
-        webhooks = result.scalars().all()
-
-        for webhook in webhooks:
-            try:
-                # Assuming you have a Discord client instance available
-                discord_webhook = await bot.fetch_webhook(webhook.id)
-                await discord_webhook.edit(avatar=avatar)
-            except Exception as e:
-                logger.error(f"Failed to update avatar for webhook {webhook.id}: {e}")
-
-        logger.info(f"Avatar set for LLM {llm.name} and its webhooks: {filename}")
-
-    async def get_or_create_webhook(
-        self, llm: LLM, channel: AllowedChannelType
-    ) -> Webhook:
-        is_thread = isinstance(channel, discord.Thread)
-
-        webhook_channel = channel.parent if is_thread else channel
-
-        webhook_service = WebhookService(session=self.session)
-        db_webhook = await webhook_service.get_by_llm_channel(
-            webhook_channel.id, llm.id
-        )
-        if db_webhook is None:
-            avatar_data = None
-            if llm.avatar is not None:
-                avatar_path = AVATAR_DIR / llm.avatar
-                if avatar_path.exists():
-                    with open(avatar_path, "rb") as avatar_file:
-                        avatar_data = avatar_file.read()
-
-            discord_webhook = await webhook_channel.create_webhook(
-                name=llm.name,
-                avatar=avatar_data,
-            )
-            db_webhook = await webhook_service.create(discord_webhook, llm)
-
-        return db_webhook
 
     async def generate_instruct_response(
         self, llm: LLM, messages: List[LiteLLMMessage]
@@ -227,21 +179,8 @@ class LLMService:
             "repetition_penalty": llm.repetition_penalty,
             "min_p": llm.min_p,
             "top_a": llm.top_a,
+            "avatar_url": llm.avatar_url,
         }
-
-        # Copy the avatar file if it exists
-        if llm.avatar:
-            source_avatar_path = AVATAR_DIR / llm.avatar
-            if os.path.exists(source_avatar_path):
-                file_extension = os.path.splitext(llm.avatar)[1]
-                new_avatar_filename = f"{new_name}{file_extension}"
-                new_avatar_path = AVATAR_DIR / new_avatar_filename
-                shutil.copy2(source_avatar_path, new_avatar_path)
-                new_llm_data["avatar"] = new_avatar_filename
-            else:
-                logger.warning(
-                    f"Avatar file {source_avatar_path} not found. New LLM will not have an avatar."
-                )
 
         new_llm = await self.create(LLMCreate(**new_llm_data))
         return new_llm
@@ -273,12 +212,10 @@ class LLMService:
         Args:
             llm (LLM): The LLM to use for generating the response.
             channel (discord.TextChannel): The channel to post the response in.
-            history (List[discord.Message]): The message history to use for context.
         """
         message_service = MessageService(session=self.session)
         guild_service = GuildService(session=self.session)
         history = await message_service.history(channel.id, limit=llm.message_limit)
-        webhook = await self.get_or_create_webhook(llm, channel)
         guild = await guild_service.get(channel.guild.id)
 
         is_thread = isinstance(channel, discord.Thread)
@@ -292,21 +229,25 @@ class LLMService:
 
             if llm.instruct_tuned:
                 if not isinstance(message_formatter, InstructMessageFormatter):
-                    raise ValueError(f"Message formatter {llm.message_formatter} does not support instruct-tuned models")
+                    raise ValueError(
+                        f"Message formatter {llm.message_formatter} does not support instruct-tuned models"
+                    )
                 messages = await message_formatter.format_instruct(
-                    history, llm.system_prompt, webhook
+                    llm=llm, messages=history, system_prompt=llm.system_prompt
                 )
                 response = await self.generate_instruct_response(llm, messages)
                 response_str = response.choices[0].message.content
             else:
                 if not isinstance(message_formatter, SimulatorMessageFormatter):
-                    raise ValueError(f"Message formatter {llm.message_formatter} does not support simulator models")
-                llms_in_guild = await self.get_by_guild(guild.id)
+                    raise ValueError(
+                        f"Message formatter {llm.message_formatter} does not support simulator models"
+                    )
+                llms_in_guild = await self.get_by_guild(guild.id, enabled=True)
                 prompt = await message_formatter.format_simulator(
+                    llm=llm,
                     messages=history,
                     system_prompt=llm.system_prompt,
-                    webhook=webhook,
-                    users_in_channel=[llm.name for llm in llms_in_guild if llm.enabled],
+                    users_in_channel=[llm.name for llm in llms_in_guild],
                     force_response_from_user=llm.name,
                 )
                 response = await self.generate_simulator_response(
@@ -328,14 +269,24 @@ class LLMService:
                 # If no usernames were found, assume it's from this LLM
                 response_username = llm.name
 
+            webhook_service = WebhookService(self.session)
+            webhook = await webhook_service.get_or_create_by_channel(channel)
+
             if response_username == llm.name:
                 # If the message is from this LLM, send it
                 discord_webhook = await bot.fetch_webhook(webhook.id)
                 for message in response_messages:
                     if is_thread:
-                        await discord_webhook.send(message, thread=channel)
+                        await discord_webhook.send(
+                            message,
+                            thread=channel,
+                            username=llm.name,
+                            avatar_url=llm.avatar_url,
+                        )
                     else:
-                        await discord_webhook.send(message)
+                        await discord_webhook.send(
+                            message, username=llm.name, avatar_url=llm.avatar_url
+                        )
                 logger.info(
                     f"Msg in channel {channel.id} from {response_username}: {parse_response.complete_message}"
                 )
@@ -355,15 +306,18 @@ class LLMService:
                 # Or, if it's a human's username, mention them
                 member = channel.guild.get_member_named(response_username)
                 if member is not None:
-
                     discord_webhook = await bot.fetch_webhook(webhook.id)
-                    await discord_webhook.send(f"<@{member.id}>")
+                    await discord_webhook.send(
+                        f"<@{member.id}>", username=llm.name, avatar_url=llm.avatar_url
+                    )
                     return
 
                 # Otherwise, if no matching LLM or user found, send the message as is
                 discord_webhook = await bot.fetch_webhook(webhook.id)
                 for message in response_messages:
-                    await discord_webhook.send(message)
+                    await discord_webhook.send(
+                        message, username=llm.name, avatar_url=llm.avatar_url
+                    )
                 logger.warning(
                     f"{llm.name} sent a message with unknown username: {response_username}"
                 )
@@ -373,9 +327,8 @@ class LLMService:
 
     async def mentioned_in_message(self, llm: LLM, message: discord.Message) -> bool:
         # Self-mentions don't count
-        webhook_service = WebhookService(session=self.session)
-        webhook = await webhook_service.get(message.webhook_id)
-        if webhook and webhook.llm_id == llm.id:
+        sender = await self.get_by_message(message)
+        if sender is not None and sender.id == llm.id:
             return False
 
         mentioned = f"@{llm.name.lower()}" in message.content.lower()
@@ -386,28 +339,34 @@ class LLMService:
 
         llm_service = LLMService(self.session)
         message_service = MessageService(self.session)
-        channel_service = ChannelService(self.session)
         guild_service = GuildService(self.session)
         simulator = await llm_service.get_simulator(guild.id)
 
         if not simulator:
             return None
 
-        messages = await message_service.history(
-            channel.id, limit=simulator.message_limit
-        )
-        llms_in_guild = await llm_service.get_by_guild(guild.id)
-
-        last_speaker = await message_service.author_name(messages[-1])
         message_formatter: BaseMessageFormatter = get_message_formatter(
             simulator.message_formatter, session=self.session
         )
 
+        if not isinstance(message_formatter, SimulatorMessageFormatter):
+            logger.warning(
+                f"Message formatter {simulator.message_formatter} does not support simulator models"
+            )
+            return None
+
+        messages = await message_service.history(
+            channel.id, limit=simulator.message_limit
+        )
+        llms_in_guild = await llm_service.get_by_guild(guild.id, enabled=True)
+        last_speaker = await message_service.author_name(messages[-1])
+        simulator = await llm_service.get_simulator(guild.id)
+
         prompt = await message_formatter.format_simulator(
+            llm=simulator,
             messages=messages,
             system_prompt=simulator.system_prompt,
-            webhook=None,
-            users_in_channel=[llm.name for llm in llms_in_guild if llm.enabled],
+            users_in_channel=[llm.name for llm in llms_in_guild],
         )
 
         logger.info(f"Simulating conversation in #{channel.name}...")
@@ -424,24 +383,20 @@ class LLMService:
             simulator_channel = guild.get_channel(db_guild.simulator_channel_id)
             if simulator_channel:
                 zero_width_space = "​"
-                escaped_response_str = response_str.replace("```", f"`{zero_width_space}`{zero_width_space}`")
+                escaped_response_str = response_str.replace(
+                    "```", f"`{zero_width_space}`{zero_width_space}`"
+                )
                 await simulator_channel.send(
                     content=f"{await message_service.jump_url(messages[-1])}:\n```\n{escaped_response_str}\n```",
-                    suppress_embeds=True
+                    suppress_embeds=True,
                 )
 
-        if isinstance(message_formatter, SimulatorMessageFormatter):
-            next_user = await message_formatter.parse_next_user(response_str, last_speaker)
-        else:
-            logger.warning(f"Message formatter {simulator.message_formatter} does not support parsing next user")
-            return None
-
+        next_user = await message_formatter.parse_next_user(response_str, last_speaker)
         if next_user is None:
             logger.info("No new speaker found in the response")
             return None
 
         next_llm = await llm_service.get_by_name(next_user, channel.guild.id)
-
         if next_llm is None or not next_llm.enabled:
             return None
 

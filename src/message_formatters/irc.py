@@ -2,11 +2,10 @@ import re
 from itertools import chain
 from typing import Optional
 
-import discord
 from discord import NotFound
 from regex import regex
 
-from src.db.models import Message
+from src.db.models import Message, LLM
 from src.services.channel import ChannelService
 from src.services.discord_client import bot
 from src.services.message import MessageService
@@ -16,10 +15,10 @@ from src.types.message_formatter import ComboMessageFormatter, ParseResponse
 
 class IRCMessageFormatter(ComboMessageFormatter):
     async def format_instruct(
-            self,
-            messages: list[Message],
-            system_prompt: Optional[str],
-            webhook: Optional[discord.Webhook],
+        self,
+        llm: LLM,
+        messages: list[Message],
+        system_prompt: Optional[str],
     ) -> list[LiteLLMMessage]:
         message_service = MessageService(self.session)
 
@@ -46,14 +45,10 @@ class IRCMessageFormatter(ComboMessageFormatter):
 
             username = await message_service.author_name(message)
 
-            if message.webhook_id:
-                try:
-                    msg_webhook = await bot.fetch_webhook(message.webhook_id)
-                except NotFound as e:
-                    continue
+            if message.llm_id:
                 role = (
                     "assistant"
-                    if webhook is not None and msg_webhook.id == webhook.id
+                    if llm is not None and message.llm_id == llm.id
                     else "user"
                 )
             else:
@@ -66,9 +61,9 @@ class IRCMessageFormatter(ComboMessageFormatter):
 
     async def format_simulator(
         self,
+        llm: LLM,
         messages: list[Message],
         system_prompt: Optional[str],
-        webhook: Optional[discord.Webhook],
         users_in_channel: list[str] = None,
         force_response_from_user: Optional[str] = None,
     ) -> str:
@@ -84,7 +79,7 @@ class IRCMessageFormatter(ComboMessageFormatter):
         )
         user_join_messages = (f"* {user} joined" for user in users_in_channel)
         formatted_messages = await self.format_instruct(
-            messages, None, webhook
+            llm=llm, messages=messages, system_prompt=None
         )
 
         # separate messages by 3 line breaks; messages should only contain 2 line breaks in a row
@@ -105,7 +100,6 @@ class IRCMessageFormatter(ComboMessageFormatter):
             )
         )
         return prompt
-
 
     async def parse_messages(self, response: str) -> ParseResponse:
         # Process the response line by line

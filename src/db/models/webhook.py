@@ -52,9 +52,7 @@ class Webhook(Base):
         id (int): The unique identifier for the webhook.
         token (str): The token for the webhook.
         channel_id (int): The ID of the channel the webhook belongs to.
-        llm_id (int): The ID of the language model associated with the webhook.
         channel (Channel): The Channel object this webhook belongs to.
-        llm (LLM): The LLM object associated with this webhook.
     """
 
     __tablename__ = "webhook"
@@ -63,10 +61,10 @@ class Webhook(Base):
     name: Mapped[str] = mapped_column(Text)
     token: Mapped[str] = mapped_column(Text)
     channel_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("channel.id"))
-    llm_id: Mapped[int] = mapped_column(ForeignKey("llm.id"))
 
     channel: Mapped["Channel"] = relationship(back_populates="webhooks")
-    llm: Mapped["LLM"] = relationship(back_populates="webhooks")
-    messages: Mapped["Message"] = relationship(back_populates="webhook")
 
-    unique_channel_model = UniqueConstraint("channel_id", "llm_id")
+    __table_args__ = (
+        UniqueConstraint("channel_id", name="unique_channel"),
+    )
+

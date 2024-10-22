@@ -6,6 +6,8 @@ from sqlalchemy.future import select
 
 from src.db.models.guild import Guild, GuildUpdate
 from src.db.models.llm import LLM
+from src.services.channel import ChannelService
+from src.services.user import UserService
 
 
 class GuildService:
@@ -61,13 +63,21 @@ class GuildService:
         Returns:
             Guild: The updated database Guild object.
         """
-        db_guild = await self.get(discord_guild.id)
-        if db_guild is None:
-            db_guild = await self.create(discord_guild)
-        else:
-            # Update guild properties
-            db_guild.name = discord_guild.name
+        db_guild = await self.get_or_create(discord_guild)
 
-            await self.session.commit()
+        # Update guild properties
+        db_guild.name = discord_guild.name
+
+        # Update users
+        user_service = UserService(self.session)
+        for user in discord_guild.members:
+            await user_service.sync(user)
+
+        # Update channels
+        channel_service = ChannelService(self.session)
+        for channel in discord_guild.channels:
+            await channel_service.sync(channel)
+
+        await self.session.commit()
 
         return db_guild
