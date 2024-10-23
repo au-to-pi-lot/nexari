@@ -151,6 +151,8 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
   be selected. Ranges from 0.0 to 1.0. (optional)
 - `top_a`: Sampling top_a value, not supported by all APIs. Works like a dynamic top P. Ranges from 0.0 to 1.0.
   (optional)
+- `avatar_url`: Link to an image to use as this LLM's avatar. Due to Discord webhook limitations, previous messages
+  are not affected. (optional)
 - `instruct_tuned`: Whether the LLM has been instruct tuned, default is True. False indicates that the LLM is a base
   model. (optional)
 - `message_formatter`: Formatter to use for this LLM. Defaults to 'irc'. (optional) Possible values:
@@ -167,7 +169,7 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 #### `/llm modify`
 **Description:** Modifies an existing LLM in the current guild.
 
-**Arguments:** Same as `/llm create`, but with:
+**Arguments:**
 - `name`: Name of the LLM to modify (required)
 - `new_name`: New name for the LLM (optional)
 - `name`: Name of the new LLM. This name will be used to refer to the LLM both in the simulator and in the
@@ -209,6 +211,8 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
   be selected. Ranges from 0.0 to 1.0. (optional)
 - `top_a`: Sampling top_a value, not supported by all APIs. Works like a dynamic top P. Ranges from 0.0 to 1.0.
   (optional)
+- `avatar_url`: Link to an image to use as this LLM's avatar. Due to Discord webhook limitations, previous messages
+  are not affected. (optional)
 - `instruct_tuned`: Whether the LLM has been instruct tuned, default is True. False indicates that the LLM is a base
   model. (optional)
 - `message_formatter`: Formatter to use for this LLM. Defaults to 'irc'. (optional) Possible values:
@@ -247,17 +251,6 @@ for `name` will be identical.
 
 ---
 
-#### `/llm set_avatar`
-**Description:** Sets an avatar for an LLM.
-
-**Arguments:**
-- `name`: Name of the LLM (required)
-- `image_url`: URL of the image to use as avatar (required)
-
-**Usage:** Use this command to set or update the avatar image for an LLM. Due to Discord webhook limitations, previous
-messages are not affected. New messages following the command invocation will display the new avatar.
-
----
 
 #### `/llm print`
 **Description:** Prints the configuration of an LLM.
