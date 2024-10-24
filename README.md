@@ -319,7 +319,30 @@ Please note that other providers may not work or may result in bugs. Please repo
 
 ## Development
 
-- To run tests: `pytest tests/`
+### Running Tests
+
+You can run tests either directly with pytest or using Docker:
+
+#### Using Docker (recommended)
+This ensures a consistent testing environment and includes a test database:
+
+```bash
+# Run tests in Docker (builds if needed)
+docker compose up --build --exit-code-from tests tests
+
+# Run tests without rebuilding (after code changes)
+docker compose up --exit-code-from tests tests
+
+# Run tests with live container logs for debugging
+docker compose up tests
+```
+
+#### Using pytest directly
+For quick local testing without Docker:
+
+```bash
+pytest tests/
+```
 
 ## Note
 
