@@ -1,19 +1,16 @@
-FROM python:3.12-slim
+FROM python:3.11.9-slim
 
 WORKDIR /app
 
 # Install Poetry
 RUN pip install poetry
 
-# Copy Poetry files
-COPY pyproject.toml poetry.lock ./
+# Copy source code
+COPY . .
 
 # Install dependencies
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-root
-
-# Copy source code
-COPY . .
+    && poetry install
 
 # Install project
 RUN poetry install
