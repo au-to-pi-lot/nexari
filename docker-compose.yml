@@ -16,7 +16,7 @@ services:
 
   tests:
     build: .
-    command: poetry run pytest tests/ -v
+    command: poetry run pytest tests/ -v --cov=src --cov-report=html --cov-report=term
     depends_on:
       test-db:
         condition: service_healthy
