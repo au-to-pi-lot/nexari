@@ -12,13 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install Dagger
-        run: pip install dagger-io
-
-      - name: Run Tests
-        run: python .github/workflows/ci.py
+      - name: Run tests
+        run: docker compose up --build --exit-code-from tests tests
