@@ -2,7 +2,7 @@
 name = "nexari"
 version = "0.1.0"
 description = "LLM-backed Discord chatbot"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Ink Brownell <ink@kaleidoscope.glass>"]
 
 [tool.poetry.dependencies]
 python = "3.11.9"
