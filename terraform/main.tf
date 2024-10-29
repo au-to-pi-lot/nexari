@@ -7,8 +7,8 @@ resource "google_project_service" "required_apis" {
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com"
   ])
-  
-  service = each.key
+
+  service            = each.key
   disable_on_destroy = false
 }
 
@@ -20,7 +20,7 @@ resource "google_sql_database_instance" "instance" {
 
   settings {
     tier = var.database_instance_tier
-    
+
     backup_configuration {
       enabled = true
     }
@@ -96,7 +96,7 @@ resource "google_cloud_run_v2_service" "default" {
   template {
     containers {
       image = "gcr.io/${var.project_id}/${var.service_name}:latest"
-      
+
       env {
         name  = "DATABASE_URL"
         value = "postgresql://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.connection_name}/${google_sql_database.database.name}"
