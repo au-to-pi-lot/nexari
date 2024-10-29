@@ -13,6 +13,39 @@ You can try out interacting with this chatbot in the
 - A Discord bot token
 - An API key for your chosen LLM provider (e.g., OpenAI, Anthropic, Groq, Openrouter)
 - A PostgreSQL database
+- A Google Cloud Platform project
+
+## GitHub Secrets Configuration
+
+The following secrets need to be configured in your GitHub repository settings for the CI/CD workflows to function:
+
+### Required for Terraform and Deployment
+- `GCP_SA_KEY`: The JSON key for a Google Cloud service account with permissions to:
+  - Create and manage Cloud Run services
+  - Create and manage Cloud SQL instances
+  - Create and manage Secret Manager secrets
+  - Access Google Container Registry
+  - Manage IAM permissions
+
+- `GCP_PROJECT_ID`: Your Google Cloud project ID
+
+### Required for Application Configuration
+- `DISCORD_TOKEN`: Your Discord bot token
+- `DISCORD_CLIENT_ID`: Your Discord application client ID
+
+To set these secrets:
+1. Go to your GitHub repository
+2. Click on "Settings"
+3. Navigate to "Secrets and variables" → "Actions"
+4. Click "New repository secret"
+5. Add each secret with its corresponding value
+
+Note: Make sure your GCP service account has sufficient permissions. At minimum, it needs:
+- `roles/run.admin`
+- `roles/cloudsql.admin`
+- `roles/secretmanager.admin`
+- `roles/storage.admin`
+- `roles/iam.serviceAccountUser`
 
 ## Installation
 
