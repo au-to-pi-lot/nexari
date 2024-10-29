@@ -1,5 +1,7 @@
 name: 'Terraform'
 
+concurrency: terraform
+
 on:
   push:
     branches: [ main ]
