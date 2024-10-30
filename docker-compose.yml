@@ -13,10 +13,14 @@ services:
       retries: 5
 
   tests:
-    build: .
-    command: poetry run pytest tests/ -v --cov=src --cov-report=html --cov-report=term
+    image: ${TEST_IMAGE:-nexari-test}
+    build: 
+      context: .
+      target: development
+    command: poetry run pytest
+    environment:
+      - DATABASE_URL: postgresql+asyncpg://postgres:postgres@test-db:9876/test_db
+      - PYTEST_ADDOPTS: ${PYTEST_ADDOPTS:-"--cov=src --cov-report=term-missing --cov-report=html"}
     depends_on:
       test-db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@test-db:9876/test_db
