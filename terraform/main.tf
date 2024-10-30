@@ -7,7 +7,7 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
 
 # Configure Container Registry storage bucket
 resource "google_storage_bucket" "registry_bucket" {
-  name     = "${var.project_id}_container_registry"
+  name     = "artifacts.${var.project_id}.appspot.com"
   location = "US"
   project  = var.project_id
 
@@ -160,6 +160,15 @@ resource "google_cloud_run_v2_service" "default" {
     containers {
       # Use a minimal placeholder image for initial deployment
       image = "gcr.io/cloudrun/hello"
+      
+      startup_probe {
+        failure_threshold = 1
+        period_seconds   = 240
+        timeout_seconds  = 240
+        tcp_socket {
+          port = 8080
+        }
+      }
 
       env {
         name = "DATABASE_URL"
