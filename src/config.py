@@ -1,8 +1,9 @@
-import yaml
+import os
 from pydantic import BaseModel, field_validator
+from pydantic_settings import BaseSettings
 
 
-class Config(BaseModel):
+class Config(BaseSettings):
     bot_token: str
     client_id: str
     database_url: str
@@ -13,7 +14,9 @@ class Config(BaseModel):
     def transform_client_id_to_str(cls, value) -> str:
         return str(value)
 
+    class Config:
+        env_prefix = ""
+        case_sensitive = False
 
-with open("config.yml", "r") as config_file:
-    config_dict = yaml.safe_load(config_file)
-    config = Config(**config_dict)
+
+config = Config()
