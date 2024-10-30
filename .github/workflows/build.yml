@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  workflow_run:
+    workflows: ['Test']
+    types:
+      - completed
+    branches: [main]
+
+jobs:
+  build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Extract Project ID
+        id: project
+        run: |
+          echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
+      - name: Build and Push Docker image
+        run: |
+          docker build -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
+          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}

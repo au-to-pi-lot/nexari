@@ -2,7 +2,7 @@ name: 'Build and Deploy'
 
 on:
   workflow_run:
-    workflows: ['Terraform', 'Test']
+    workflows: ['Terraform', 'Test', 'Build']
     types:
       - completed
     branches: [main]
