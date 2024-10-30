@@ -1,18 +1,29 @@
 from unittest.mock import AsyncMock
+from typing import Optional
 
 from src.const import DISCORD_MESSAGE_MAX_CHARS
-from src.types.message_formatter import BaseMessageFormatter
+from src.types.message_formatter import BaseMessageFormatter, ParseResponse
+
+
+class TestMessageFormatter(BaseMessageFormatter):
+    """A concrete implementation of BaseMessageFormatter for testing"""
+    async def parse_messages(self, response: str) -> ParseResponse:
+        return ParseResponse(
+            complete_message=response,
+            split_messages=[response],
+            username=None
+        )
 
 
 def test_break_messages_strips_regular_whitespace():
-    formatter = BaseMessageFormatter(AsyncMock())
+    formatter = TestMessageFormatter(AsyncMock())
     original_text = "    hello world!\n   "
     expected_result = [original_text.strip()]
     assert formatter.break_messages(original_text) == expected_result
 
 
 def test_break_messages_preserves_single_newlines():
-    formatter = BaseMessageFormatter(AsyncMock())
+    formatter = TestMessageFormatter(AsyncMock())
     original_text = "hello world\nhello universe\nhello multiverse"
     expected_result = [original_text]
     assert formatter.break_messages(original_text) == expected_result
