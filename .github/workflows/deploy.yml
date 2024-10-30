@@ -41,9 +41,25 @@ jobs:
         docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
         docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
 
-    # Stop the service before migrations
+    # Check for pending migrations
+    - name: Check for pending migrations
+      id: check-migrations
+      run: |
+        # Build a temporary container to check migrations
+        docker build -t migration-runner .
+        
+        # Check if there are any pending migrations
+        HAS_MIGRATIONS=$(docker run \
+          -e DATABASE_URL="$(gcloud secrets versions access latest --secret='database-url')" \
+          migration-runner \
+          poetry run alembic current 2>/dev/null | poetry run alembic heads 2>/dev/null | diff - - >/dev/null 2>&1; echo $?)
+        
+        echo "has_migrations=$HAS_MIGRATIONS" >> $GITHUB_OUTPUT
+
+    # Only run migration steps if there are pending migrations
     - name: Stop Cloud Run service
       id: stop-service
+      if: steps.check-migrations.outputs.has_migrations != '0'
       run: |
         # Store current revision name for rollback
         CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision)')
@@ -56,12 +72,9 @@ jobs:
     # Run database migrations with error handling
     - name: Run database migrations
       id: migrations
+      if: steps.check-migrations.outputs.has_migrations != '0'
       continue-on-error: true
       run: |
-        # Build a temporary container to run migrations
-        docker build -t migration-runner .
-        
-        # Run migrations using the same environment as Cloud Run
         docker run \
           -e DATABASE_URL="$(gcloud secrets versions access latest --secret='database-url')" \
           migration-runner \
@@ -69,7 +82,7 @@ jobs:
 
     # Restore service if migrations failed
     - name: Restore service on migration failure
-      if: steps.migrations.outcome == 'failure'
+      if: steps.check-migrations.outputs.has_migrations != '0' && steps.migrations.outcome == 'failure'
       run: |
         echo "Database migrations failed. Restoring previous service version..."
         gcloud run services update-traffic nexari \
