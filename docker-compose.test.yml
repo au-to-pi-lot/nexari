@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  tests:
+    image: ${TEST_IMAGE:-gcr.io/${PROJECT_ID}/nexari:${GITHUB_SHA}}
+    environment:
+      - PYTEST_ADDOPTS=${PYTEST_ADDOPTS:-"--cov=src --cov-report=term-missing --cov-report=html"}
+    command: poetry run pytest

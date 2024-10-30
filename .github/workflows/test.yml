@@ -1,21 +1,40 @@
 name: Test
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
+  workflow_run:
+    workflows: ['Build']
+    types:
+      - completed
 
 jobs:
   test:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Extract Project ID
+        id: project
+        run: |
+          echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
+      - name: Pull Docker image
+        run: docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
 
       - name: Run tests with coverage
-        run: docker compose up --build --exit-code-from tests tests
+        run: |
+          docker compose -f docker-compose.test.yml up --exit-code-from tests tests
         env:
           PYTEST_ADDOPTS: "--cov=src --cov-report=term-missing --cov-report=html"
 
