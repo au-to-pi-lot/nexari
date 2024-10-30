@@ -3,7 +3,7 @@ import logging
 import logging.handlers
 import os
 import sys
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from aiohttp import web
 
 from config import config
 from src.commands import LLMCommands
@@ -12,18 +12,20 @@ from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
 
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(b"OK")
+async def health_check(request):
+    return web.Response(text="OK")
 
-def start_health_check_server():
+async def start_health_check_server():
+    app = web.Application()
+    app.router.add_get("/", health_check)
+    
     port = int(os.getenv("PORT", "8080"))
-    server = HTTPServer(('', port), HealthCheckHandler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    
     logger.info(f"Starting health check server on port {port}")
-    server.serve_forever()
+    await site.start()
 
 
 async def main():
@@ -50,10 +52,8 @@ async def main():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(handle_exception)
 
-    # Start health check server in a separate thread
-    import threading
-    health_check_thread = threading.Thread(target=start_health_check_server, daemon=True)
-    health_check_thread.start()
+    # Start health check server
+    asyncio.create_task(start_health_check_server())
 
     register_event_handlers(bot)
     await bot.add_cog(LLMCommands(bot))
