@@ -20,18 +20,21 @@ You can try out interacting with this chatbot in the
 The following secrets need to be configured in your GitHub repository settings for the CI/CD workflows to function:
 
 ### Required for Terraform and Deployment
+
 - `GCP_SA_KEY`: The JSON key for a Google Cloud service account with permissions to:
-  - Create and manage Cloud Run services
-  - Create and manage Cloud SQL instances
-  - Create and manage Secret Manager secrets
-  - Access Google Container Registry
-  - Manage IAM permissions
+    - Create and manage Cloud Run services
+    - Create and manage Cloud SQL instances
+    - Create and manage Secret Manager secrets
+    - Access Google Container Registry
+    - Manage IAM permissions
 
 ### Required for Application Configuration
+
 - `DISCORD_TOKEN`: Your Discord bot token
 - `DISCORD_CLIENT_ID`: Your Discord application client ID
 
 To set these secrets:
+
 1. Go to your GitHub repository
 2. Click on "Settings"
 3. Navigate to "Secrets and variables" → "Actions"
@@ -39,6 +42,7 @@ To set these secrets:
 5. Add each secret with its corresponding value
 
 Note: Make sure your GCP service account has sufficient permissions. At minimum, it needs:
+
 - `roles/run.admin`
 - `roles/cloudsql.admin`
 - `roles/secretmanager.admin`
@@ -65,21 +69,24 @@ Note: Make sure your GCP service account has sufficient permissions. At minimum,
 
 ## Configuration
 
-1. Copy the `config-example.yml` file to a new file named `config.yml`:
+The application is configured using environment variables. You can set these directly in your environment or use a
+`.env` file:
+
+1. Copy the example environment file:
    ```bash
-   cp config-example.yml config.yml
+   cp example.env .env
    ```
 
-2. Open the `config.yml` file and update the values:
-    - Replace `your_discord_bot_token_here` with your actual Discord bot token.
-    - Replace `your_discord_client_id_here` with your actual Discord client ID.
-    - Set the `database_url` to the connection string for your database. Make sure the protocol is
-      `postgresql+asyncpg://`.
+2. Edit `.env` and set your values:
+    - `BOT_TOKEN`: Your Discord bot token
+    - `CLIENT_ID`: Your Discord application client ID
+    - `DATABASE_URL`: PostgreSQL connection string (must use `postgresql+asyncpg://` protocol)
 
-3. In the [Discord bot config](https://discord.com/developers/applications), enable server members intent and 
+3. In the [Discord bot config](https://discord.com/developers/applications), enable server members intent and
    message content intent.
 
-Note: The `config.yml` file is gitignored to prevent accidental commits of sensitive information.
+Note: The `.env` file is gitignored to prevent accidental commits of sensitive information, but `example.env` is tracked
+to provide a template for new installations.
 
 ## Database Migrations
 
@@ -130,22 +137,26 @@ just post; the LLMs will reply naturally.
 The bot is configured via Discord slash commands. Here's an in-depth guide to each slash command:
 
 #### `/llm list`
+
 **Description:** Lists all available LLMs for the current guild.
 
 **Arguments:** None
 
-**Usage:** This command displays a list of all configured LLMs in the current Discord server, showing their names, whether they're enabled or disabled, and the model they're using.
+**Usage:** This command displays a list of all configured LLMs in the current Discord server, showing their names,
+whether they're enabled or disabled, and the model they're using.
 
 ---
 
 #### `/llm create`
+
 **Description:** Registers a new LLM for use in the current guild.
 
 **Arguments:**
+
 - `name`: Name of the new LLM. This name will be used to refer to the LLM both in the simulator and in the
   Discord chat. (required)
 - `api_base`: API base URL path. This will vary by your inference provider. You will probably need to read their
-  documentation. Check LiteLLM documentation for a 
+  documentation. Check LiteLLM documentation for a
   [list of supported providers](https://litellm.vercel.app/docs/providers). For example, Openrouter's API base is
   `https://openrouter.ai/api/v1`. (required)
 - `llm_name`: Name of the model. Check your provider in the [LiteLLM docs](https://litellm.vercel.app/docs/providers)
@@ -174,7 +185,7 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 - `presence_penalty`: Sampling presence penalty. Apply a penalty to the probability of a token if it appears earlier in
   the text. Unlike `frequency_penalty`, it does not matter how many times it appears. Ranges from -2.0 to 2.0. 0.0
   disables the penalty. Negative values encourage token reuse. (optional)
-- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs. Works like `frequency_penalty`, except 
+- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs. Works like `frequency_penalty`, except
   also biased to penalize recent reuse more strongly than long-distance reuse. Ranges from 0.0 to 2.0. (optional)
 - `min_p`: Sampling min_p value, not supported by all APIs. The minimum probability a token must meet to be selected.
   For example, if set to 0.1, any tokens less likely than 1/10 the probability of the most likely token will not
@@ -186,26 +197,29 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 - `instruct_tuned`: Whether the LLM has been instruct tuned, default is True. False indicates that the LLM is a base
   model. (optional)
 - `message_formatter`: Formatter to use for this LLM. Defaults to 'irc'. (optional) Possible values:
-  - `irc`: Default formatter, tends to work well for most LLMs. Supports both base- and instruct-tuned-models.
-  - `openai`: For OpenAI instruct tuned LLMs, e.g., o1, GPT-4o.
-  - `gemini`: For Google's Gemini Pro.
+    - `irc`: Default formatter, tends to work well for most LLMs. Supports both base- and instruct-tuned-models.
+    - `openai`: For OpenAI instruct tuned LLMs, e.g., o1, GPT-4o.
+    - `gemini`: For Google's Gemini Pro.
 - `enabled`: Whether the llm should respond to messages, default is True. Set to false if you don't want to receive
   messages from this LLM. (optional)
 
-**Usage:** Use this command to add a new LLM to your Discord server. You'll need to provide the necessary API details and configuration parameters.
+**Usage:** Use this command to add a new LLM to your Discord server. You'll need to provide the necessary API details
+and configuration parameters.
 
 ---
 
 #### `/llm modify`
+
 **Description:** Modifies an existing LLM in the current guild.
 
 **Arguments:**
+
 - `name`: Name of the LLM to modify (required)
 - `new_name`: New name for the LLM (optional)
 - `name`: Name of the new LLM. This name will be used to refer to the LLM both in the simulator and in the
   Discord chat. (optional)
 - `api_base`: API base URL path. This will vary by your inference provider. You will probably need to read their
-  documentation. Check LiteLLM documentation for a 
+  documentation. Check LiteLLM documentation for a
   [list of supported providers](https://litellm.vercel.app/docs/providers). For example, Openrouter's API base is
   `https://openrouter.ai/api/v1`. (optional)
 - `llm_name`: Name of the model. Check your provider in the [LiteLLM docs](https://litellm.vercel.app/docs/providers)
@@ -234,7 +248,7 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 - `presence_penalty`: Sampling presence penalty. Apply a penalty to the probability of a token if it appears earlier in
   the text. Unlike `frequency_penalty`, it does not matter how many times it appears. Ranges from -2.0 to 2.0. 0.0
   disables the penalty. Negative values encourage token reuse. (optional)
-- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs. Works like `frequency_penalty`, except 
+- `repetition_penalty`: Sampling repetition penalty, not supported by all APIs. Works like `frequency_penalty`, except
   also biased to penalize recent reuse more strongly than long-distance reuse. Ranges from 0.0 to 2.0. (optional)
 - `min_p`: Sampling min_p value, not supported by all APIs. The minimum probability a token must meet to be selected.
   For example, if set to 0.1, any tokens less likely than 1/10 the probability of the most likely token will not
@@ -246,9 +260,9 @@ The bot is configured via Discord slash commands. Here's an in-depth guide to ea
 - `instruct_tuned`: Whether the LLM has been instruct tuned, default is True. False indicates that the LLM is a base
   model. (optional)
 - `message_formatter`: Formatter to use for this LLM. Defaults to 'irc'. (optional) Possible values:
-  - `irc`: Default formatter, tends to work well for most LLMs. Supports both base- and instruct-tuned-models.
-  - `openai`: For OpenAI instruct tuned LLMs, e.g., o1, GPT-4o.
-  - `gemini`: For Google's Gemini Pro.
+    - `irc`: Default formatter, tends to work well for most LLMs. Supports both base- and instruct-tuned-models.
+    - `openai`: For OpenAI instruct tuned LLMs, e.g., o1, GPT-4o.
+    - `gemini`: For Google's Gemini Pro.
 - `enabled`: Whether the llm should respond to messages, default is True. Set to False if you don't want to receive
   messages from this LLM. (optional)
 
@@ -258,9 +272,11 @@ want to change.
 ---
 
 #### `/llm delete`
+
 **Description:** Deletes an existing LLM from the current guild.
 
 **Arguments:**
+
 - `name`: Name of the LLM to delete (required)
 
 **Usage:** Use this command to permanently remove an LLM from your Discord server. You cannot recover the settings
@@ -270,9 +286,11 @@ False instead.
 ---
 
 #### `/llm copy`
+
 **Description:** Creates a copy of an existing LLM with a new name.
 
 **Arguments:**
+
 - `source_name`: Name of the existing LLM (required)
 - `new_name`: Name for the new copy (required)
 
@@ -281,11 +299,12 @@ for `name` will be identical.
 
 ---
 
-
 #### `/llm print`
+
 **Description:** Prints the configuration of an LLM.
 
 **Arguments:**
+
 - `name`: Name of the LLM (required)
 
 **Usage:** Use this command to view the detailed configuration of a specific LLM.
@@ -293,6 +312,7 @@ for `name` will be identical.
 ---
 
 #### `/llm help`
+
 **Description:** Provides help information about bot commands and LLM interaction.
 
 **Arguments:** None
@@ -302,23 +322,27 @@ for `name` will be identical.
 ---
 
 #### `/llm set_simulator`
+
 **Description:** Sets the LLM for simulating responses.
 
 **Arguments:**
+
 - `name`: Name of the LLM to use as simulator (required)
 
-**Usage:** Use this command to designate an LLM as the simulator for natural conversation flow. See the 
+**Usage:** Use this command to designate an LLM as the simulator for natural conversation flow. See the
 [simulator section](#simulator) for more info.
 
 ---
 
 #### `/llm set_simulator_channel`
+
 **Description:** Sets the channel for viewing raw simulator responses.
 
 **Arguments:**
+
 - `channel`: The text channel to use for simulator responses (required)
 
-**Usage:** Use this command to specify a channel where the raw simulator responses will be sent. See the 
+**Usage:** Use this command to specify a channel where the raw simulator responses will be sent. See the
 [simulator section](#simulator) for more info.
 
 ### Simulator
@@ -355,6 +379,7 @@ Please note that other providers may not work or may result in bugs. Please repo
 You can run tests either directly with pytest or using Docker:
 
 #### Using Docker (recommended)
+
 This ensures a consistent testing environment and includes a test database:
 
 ```bash
@@ -369,6 +394,7 @@ docker compose up tests
 ```
 
 #### Using pytest directly
+
 For quick local testing without Docker:
 
 ```bash
@@ -379,19 +405,3 @@ pytest tests/
 
 Ensure that your Discord bot has the necessary permissions in your server, including the ability to read messages,
 send responses, and manage webhooks.
-## Environment Configuration
-
-The application is configured using environment variables. You can set these directly in your environment or use a `.env` file:
-
-1. Copy the example environment file:
-   ```bash
-   cp example.env .env
-   ```
-
-2. Edit `.env` and set your values:
-   - `BOT_TOKEN`: Your Discord bot token
-   - `CLIENT_ID`: Your Discord application client ID
-   - `DATABASE_URL`: PostgreSQL connection string (must use `postgresql+asyncpg://` protocol)
-
-Note: The `.env` file is gitignored to prevent accidental commits of sensitive information, but `example.env` is tracked
-to provide a template for new installations.
