@@ -5,23 +5,25 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
-# Configure Container Registry and lifecycle rules
+# Configure Container Registry
 resource "google_container_registry" "registry" {
   project  = var.project_id
   location = "US"
 }
 
-resource "google_storage_bucket_lifecycle_rule" "cleanup" {
-  bucket = google_container_registry.registry.id
+# Configure lifecycle rules on the GCR bucket
+resource "google_storage_bucket" "registry_bucket" {
+  name     = "${var.project_id}.artifacts.${var.project_id}.appspot.com"
+  location = "US"
+  project  = var.project_id
 
-  action {
-    type = "Delete"
-  }
-
-  condition {
-    age = var.image_retention_days
-    with_state = "LIVE"
-    matches_storage_class = ["STANDARD"]
+  lifecycle_rule {
+    condition {
+      age = var.image_retention_days
+    }
+    action {
+      type = "Delete"
+    }
   }
 }
 
