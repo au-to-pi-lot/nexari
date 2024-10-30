@@ -37,3 +37,9 @@ variable "terraform_service_account" {
   description = "The service account email used by Terraform"
   type        = string
 }
+
+variable "image_retention_days" {
+  description = "Number of days to retain container images"
+  type        = number
+  default     = 30
+}
