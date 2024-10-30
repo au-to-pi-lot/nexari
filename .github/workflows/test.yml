@@ -19,6 +19,11 @@ jobs:
         env:
           PYTEST_ADDOPTS: "--cov=src --cov-report=term-missing --cov-report=html"
 
+      - name: Copy coverage from container
+        run: |
+          container_id=$(docker ps -aq -f name=tests)
+          docker cp $container_id:/app/htmlcov ./htmlcov
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
