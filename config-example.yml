@@ -1,4 +1,0 @@
-# Discord bot configuration
-bot_token: your_discord_bot_token_here  # Get from https://discord.com/developers/applications
-client_id: your_discord_client_id_here  # Your Discord application's client ID
-database_url: postgresql+asyncpg://user:password@host:port/dbname  # Database connection string
