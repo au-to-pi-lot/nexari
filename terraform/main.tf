@@ -108,6 +108,10 @@ resource "google_cloud_run_v2_service" "default" {
   location = var.region
 
   template {
+    scaling {
+      max_instance_count = 1
+    }
+
     containers {
       image = "gcr.io/${var.project_id}/${var.service_name}:latest"
 
