@@ -25,19 +25,24 @@ jobs:
         working-directory: ./terraform
     steps:
       - uses: actions/checkout@v4
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Init
         run: terraform init
+
       - name: Extract Project ID and Service Account
         id: project
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
           echo "SERVICE_ACCOUNT=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.client_email')" >> $GITHUB_OUTPUT
+
       - name: Terraform Plan
         env:
           TF_VAR_project_id: ${{ steps.project.outputs.PROJECT_ID }}
@@ -45,6 +50,7 @@ jobs:
           TF_VAR_discord_token: ${{ secrets.DISCORD_TOKEN }}
           TF_VAR_discord_client_id: ${{ secrets.DISCORD_CLIENT_ID }}
         run: terraform plan
+
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !failure()
         env:
@@ -58,52 +64,65 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
+
       - name: Extract Project ID
         id: project
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
       - name: Build and Push Docker image
         run: |
           docker build -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
 
   test:
-    needs: [build]
+    needs: [ build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
+
       - name: Extract Project ID
         id: project
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
       - name: Pull Docker image
         run: docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+
       - name: Run tests with coverage
         run: |
           docker compose up --exit-code-from tests tests
         env:
           PYTEST_ADDOPTS: "--cov=src --cov-report=term-missing --cov-report=html"
           TEST_IMAGE: "gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}"
+
       - name: Copy coverage from container
         run: |
           container_id=$(docker ps -aq -f name=tests)
           docker cp $container_id:/app/htmlcov ./htmlcov
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
@@ -113,7 +132,7 @@ jobs:
           retention-days: 14
 
   deploy:
-    needs: [test, terraform]
+    needs: [ test, terraform ]
     if: |
       github.ref == 'refs/heads/main' && 
       github.event_name == 'push' &&
@@ -121,23 +140,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
       - name: Configure Docker for GCR
         run: gcloud auth configure-docker
+
       - name: Extract Project ID
         id: project
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
       - name: Tag latest image
         run: |
           docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+
       - name: Check for pending migrations
         id: check-migrations
         run: |
@@ -146,6 +171,7 @@ jobs:
             gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
             poetry run alembic current 2>/dev/null | poetry run alembic heads 2>/dev/null | diff - - >/dev/null 2>&1; echo $?)
           echo "has_migrations=$HAS_MIGRATIONS" >> $GITHUB_OUTPUT
+
       - name: Stop Cloud Run service
         id: stop-service
         if: steps.check-migrations.outputs.has_migrations != '0'
@@ -155,6 +181,7 @@ jobs:
           gcloud run services update nexari \
             --region=us-central1 \
             --no-traffic
+
       - name: Run database migrations
         id: migrations
         if: steps.check-migrations.outputs.has_migrations != '0'
@@ -164,6 +191,7 @@ jobs:
             -e DATABASE_URL="$(gcloud secrets versions access latest --secret='database-url')" \
             gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
             poetry run alembic upgrade head
+
       - name: Restore service on migration failure
         if: steps.check-migrations.outputs.has_migrations != '0' && steps.migrations.outcome == 'failure'
         run: |
@@ -172,6 +200,7 @@ jobs:
             --region=us-central1 \
             --to-revisions=${{ steps.stop-service.outputs.CURRENT_REVISION }}=100
           exit 1
+
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
