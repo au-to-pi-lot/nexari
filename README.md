@@ -379,3 +379,19 @@ pytest tests/
 
 Ensure that your Discord bot has the necessary permissions in your server, including the ability to read messages,
 send responses, and manage webhooks.
+## Environment Configuration
+
+The application is configured using environment variables. You can set these directly in your environment or use a `.env` file:
+
+1. Copy the example environment file:
+   ```bash
+   cp example.env .env
+   ```
+
+2. Edit `.env` and set your values:
+   - `BOT_TOKEN`: Your Discord bot token
+   - `CLIENT_ID`: Your Discord application client ID
+   - `DATABASE_URL`: PostgreSQL connection string (must use `postgresql+asyncpg://` protocol)
+
+Note: The `.env` file is gitignored to prevent accidental commits of sensitive information, but `example.env` is tracked
+to provide a template for new installations.
