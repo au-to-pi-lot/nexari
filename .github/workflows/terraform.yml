@@ -37,8 +37,14 @@ jobs:
     - name: Terraform Format
       run: terraform fmt -check
 
+    - name: Extract Project ID
+      id: project
+      run: |
+        echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
     - name: Terraform Plan
       env:
+        TF_VAR_project_id: ${{ steps.project.outputs.PROJECT_ID }}
         TF_VAR_discord_token: ${{ secrets.DISCORD_TOKEN }}
         TF_VAR_discord_client_id: ${{ secrets.DISCORD_CLIENT_ID }}
       run: terraform plan
@@ -46,6 +52,7 @@ jobs:
     - name: Terraform Apply
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
       env:
+        TF_VAR_project_id: ${{ steps.project.outputs.PROJECT_ID }}
         TF_VAR_discord_token: ${{ secrets.DISCORD_TOKEN }}
         TF_VAR_discord_client_id: ${{ secrets.DISCORD_CLIENT_ID }}
       run: terraform apply -auto-approve

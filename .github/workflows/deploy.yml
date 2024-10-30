@@ -30,14 +30,19 @@ jobs:
     - name: Configure Docker for GCR
       run: gcloud auth configure-docker
 
+    - name: Extract Project ID
+      id: project
+      run: |
+        echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
     - name: Build Docker image
-      run: docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/nexari:${{ github.sha }} .
+      run: docker build -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
 
     - name: Push Docker image
       run: |
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/nexari:${{ github.sha }}
-        docker tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ secrets.GCP_PROJECT_ID }}/nexari:latest
-        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/nexari:latest
+        docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+        docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+        docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
 
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v2

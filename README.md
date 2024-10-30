@@ -27,8 +27,6 @@ The following secrets need to be configured in your GitHub repository settings f
   - Access Google Container Registry
   - Manage IAM permissions
 
-- `GCP_PROJECT_ID`: Your Google Cloud project ID
-
 ### Required for Application Configuration
 - `DISCORD_TOKEN`: Your Discord bot token
 - `DISCORD_CLIENT_ID`: Your Discord application client ID
