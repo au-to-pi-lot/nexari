@@ -14,7 +14,7 @@ resource "google_storage_bucket_lifecycle_rule" "gcr_cleanup" {
   }
 
   condition {
-    age = var.image_retention_days
+    age        = var.image_retention_days
     with_state = "LIVE"
     matches_storage_class = ["STANDARD"]
     # Only affect container images, but not those tagged as latest
