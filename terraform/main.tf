@@ -7,6 +7,7 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
 
 # Configure GCR lifecycle rules
 resource "google_storage_bucket_lifecycle_rule" "gcr_cleanup" {
+  provider = google-beta
   bucket = "${var.project_id}.artifacts.${var.project_id}.appspot.com"
 
   action {
