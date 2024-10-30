@@ -17,6 +17,8 @@ permissions:
 jobs:
   terraform:
     if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main' && github.event_name == 'push' ||
       contains(github.event.head_commit.modified, 'terraform/') ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.changed_files, 'terraform/'))
     runs-on: ubuntu-latest
