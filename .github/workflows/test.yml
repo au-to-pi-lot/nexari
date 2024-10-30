@@ -8,9 +8,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: 'read'
-      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
 
@@ -35,29 +32,33 @@ jobs:
           path: htmlcov/
           retention-days: 14
 
-      # Only run these steps if tests passed and we're on main branch
+  build:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Google Auth
-        if: success() && github.ref == 'refs/heads/main'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
       - name: Set up Cloud SDK
-        if: success() && github.ref == 'refs/heads/main'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for GCR
-        if: success() && github.ref == 'refs/heads/main'
         run: gcloud auth configure-docker
 
       - name: Extract Project ID
-        if: success() && github.ref == 'refs/heads/main'
         id: project
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
 
       - name: Build and Push Docker image
-        if: success() && github.ref == 'refs/heads/main'
         run: |
           docker build -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
