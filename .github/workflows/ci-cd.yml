@@ -16,7 +16,9 @@ permissions:
 
 jobs:
   terraform:
-    if: ${{ contains(github.event.head_commit.modified, 'terraform/') }}
+    if: |
+      contains(github.event.head_commit.modified, 'terraform/') ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.changed_files, 'terraform/'))
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,7 +46,7 @@ jobs:
           TF_VAR_discord_client_id: ${{ secrets.DISCORD_CLIENT_ID }}
         run: terraform plan
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !failure()
         env:
           TF_VAR_project_id: ${{ steps.project.outputs.PROJECT_ID }}
           TF_VAR_terraform_service_account: ${{ steps.project.outputs.SERVICE_ACCOUNT }}
