@@ -5,15 +5,9 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
-# Configure Container Registry
-resource "google_container_registry" "registry" {
-  project  = var.project_id
-  location = "US"
-}
-
-# Configure lifecycle rules on the GCR bucket
+# Configure Container Registry storage bucket
 resource "google_storage_bucket" "registry_bucket" {
-  name     = "${var.project_id}.artifacts.${var.project_id}.appspot.com"
+  name     = "${var.project_id}_container_registry"
   location = "US"
   project  = var.project_id
 
@@ -25,6 +19,8 @@ resource "google_storage_bucket" "registry_bucket" {
       type = "Delete"
     }
   }
+
+  uniform_bucket_level_access = true
 }
 
 # Enable required APIs
