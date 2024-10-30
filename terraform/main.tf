@@ -140,7 +140,8 @@ resource "google_cloud_run_v2_service" "default" {
     }
 
     containers {
-      image = "gcr.io/${var.project_id}/${var.service_name}:latest"
+      # Use a minimal placeholder image for initial deployment
+      image = "gcr.io/cloudrun/hello"
 
       env {
         name = "DATABASE_URL"
@@ -174,5 +175,12 @@ resource "google_cloud_run_v2_service" "default" {
     }
 
     service_account = google_service_account.cloud_run_service_account.email
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].revision
+    ]
   }
 }
