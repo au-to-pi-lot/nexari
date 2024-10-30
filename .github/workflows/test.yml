@@ -5,9 +5,16 @@ on:
     branches: [ main ]
   pull_request:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      id-token: write
 
   test:
     needs: build
