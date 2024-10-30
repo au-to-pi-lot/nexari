@@ -113,8 +113,11 @@ jobs:
           retention-days: 14
 
   deploy:
-    needs: [test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [test, terraform]
+    if: |
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' &&
+      (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
