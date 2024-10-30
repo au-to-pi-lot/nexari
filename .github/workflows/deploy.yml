@@ -2,7 +2,7 @@ name: 'Build and Deploy'
 
 on:
   workflow_run:
-    workflows: ['Terraform']
+    workflows: ['Terraform', 'Test']
     types:
       - completed
     branches: [main]
@@ -35,19 +35,11 @@ jobs:
       run: |
         echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
 
-    - name: Build Docker image
-      run: docker build -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
-
-    - name: Push Docker image
+    - name: Tag latest image
       run: |
-        # Always push the SHA-tagged image
-        docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-        
-        # Only tag and push :latest if this is the head of main
-        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event.workflow_run.head_sha }}" == "${{ github.sha }}" ]]; then
-          docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
-          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
-        fi
+        docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+        docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+        docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
 
     # Stop the service before migrations
     - name: Stop Cloud Run service
