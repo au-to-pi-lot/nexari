@@ -42,6 +42,9 @@ resource "google_sql_user" "user" {
   password = random_password.db_password.result
 }
 
+# Get current client config
+data "google_client_config" "current" {}
+
 # Store database URL in Secret Manager
 resource "google_secret_manager_secret" "database_url" {
   secret_id = "database-url"
@@ -53,7 +56,11 @@ resource "google_secret_manager_secret" "database_url" {
 
 resource "google_secret_manager_secret_version" "database_url" {
   secret      = google_secret_manager_secret.database_url.id
-  secret_data = "postgresql://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.connection_name}/${google_sql_database.database.name}"
+  secret_data = replace(
+    "postgresql://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.connection_name}/${google_sql_database.database.name}",
+    "%",
+    "%%"
+  )
 }
 
 # Generate random database password
@@ -87,6 +94,19 @@ resource "google_secret_manager_secret" "discord_client_id" {
 resource "google_secret_manager_secret_version" "discord_client_id" {
   secret      = google_secret_manager_secret.discord_client_id.id
   secret_data = var.discord_client_id
+}
+
+# Allow Terraform service account to read secrets
+resource "google_secret_manager_secret_iam_member" "terraform_secret_access" {
+  for_each = toset([
+    google_secret_manager_secret.database_url.id,
+    google_secret_manager_secret.discord_token.id,
+    google_secret_manager_secret.discord_client_id.id,
+  ])
+
+  secret_id = each.key
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${data.google_client_config.current.service_account_email}"
 }
 
 # Create service account for Cloud Run
