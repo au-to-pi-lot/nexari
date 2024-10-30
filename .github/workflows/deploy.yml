@@ -45,13 +45,10 @@ jobs:
     - name: Check for pending migrations
       id: check-migrations
       run: |
-        # Build a temporary container to check migrations
-        docker build -t migration-runner .
-        
-        # Check if there are any pending migrations
+        # Use the image we just built to check migrations
         HAS_MIGRATIONS=$(docker run \
           -e DATABASE_URL="$(gcloud secrets versions access latest --secret='database-url')" \
-          migration-runner \
+          gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
           poetry run alembic current 2>/dev/null | poetry run alembic heads 2>/dev/null | diff - - >/dev/null 2>&1; echo $?)
         
         echo "has_migrations=$HAS_MIGRATIONS" >> $GITHUB_OUTPUT
@@ -77,7 +74,7 @@ jobs:
       run: |
         docker run \
           -e DATABASE_URL="$(gcloud secrets versions access latest --secret='database-url')" \
-          migration-runner \
+          gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
           poetry run alembic upgrade head
 
     # Restore service if migrations failed
