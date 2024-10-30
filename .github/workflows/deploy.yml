@@ -40,9 +40,14 @@ jobs:
 
     - name: Push Docker image
       run: |
+        # Always push the SHA-tagged image
         docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-        docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
-        docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+        
+        # Only tag and push :latest if this is the head of main
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event.workflow_run.head_sha }}" == "${{ github.sha }}" ]]; then
+          docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+        fi
 
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v2
