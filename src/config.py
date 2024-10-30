@@ -1,5 +1,4 @@
-import os
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
