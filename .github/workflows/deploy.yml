@@ -1,16 +1,18 @@
-name: 'Build and Deploy'
+name: 'Deploy'
 
 on:
-  workflow_run:
-    workflows: ['Terraform', 'Test', 'Build']
-    types:
-      - completed
-    branches: [main]
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/test.yml'
+      - '.github/workflows/terraform.yml'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: [terraform, test]
 
     permissions:
       contents: 'read'
