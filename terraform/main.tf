@@ -55,7 +55,7 @@ resource "google_secret_manager_secret" "database_url" {
 }
 
 resource "google_secret_manager_secret_version" "database_url" {
-  secret      = google_secret_manager_secret.database_url.id
+  secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
     "postgresql://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.connection_name}/${google_sql_database.database.name}",
     "%",
