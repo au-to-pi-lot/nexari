@@ -5,22 +5,23 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
-# Configure GCR lifecycle rules
-resource "google_storage_bucket_lifecycle_rule" "gcr_cleanup" {
-  provider = google-beta
-  bucket = "${var.project_id}.artifacts.${var.project_id}.appspot.com"
+# Configure Container Registry and lifecycle rules
+resource "google_container_registry" "registry" {
+  project  = var.project_id
+  location = "US"
+}
+
+resource "google_storage_bucket_lifecycle_rule" "cleanup" {
+  bucket = google_container_registry.registry.id
 
   action {
     type = "Delete"
   }
 
   condition {
-    age                   = var.image_retention_days
-    with_state            = "LIVE"
+    age = var.image_retention_days
+    with_state = "LIVE"
     matches_storage_class = ["STANDARD"]
-    # Only affect container images, but not those tagged as latest
-    matches_prefix     = ["container/images/"]
-    not_matches_prefix = ["container/images/nexari@sha256"]
   }
 }
 
