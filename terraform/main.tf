@@ -1,3 +1,10 @@
+# Grant Secret Manager access to Terraform service account
+resource "google_project_iam_member" "terraform_secretmanager_access" {
+  project = var.project_id
+  role    = "roles/secretmanager.admin"
+  member  = "serviceAccount:${var.terraform_service_account}"
+}
+
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
