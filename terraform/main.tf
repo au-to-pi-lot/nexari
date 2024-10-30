@@ -10,16 +10,6 @@ resource "google_storage_bucket" "registry_bucket" {
   name     = "artifacts.us.gcr.io"
   location = "US"
   project  = var.project_id
-
-  lifecycle_rule {
-    condition {
-      age = var.image_retention_days
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
   uniform_bucket_level_access = true
 }
 
