@@ -42,6 +42,20 @@ resource "google_sql_user" "user" {
   password = random_password.db_password.result
 }
 
+# Store database URL in Secret Manager
+resource "google_secret_manager_secret" "database_url" {
+  secret_id = "database-url"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "database_url" {
+  secret      = google_secret_manager_secret.database_url.id
+  secret_data = "postgresql://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.connection_name}/${google_sql_database.database.name}"
+}
+
 # Generate random database password
 resource "random_password" "db_password" {
   length  = 32
@@ -98,8 +112,13 @@ resource "google_cloud_run_v2_service" "default" {
       image = "gcr.io/${var.project_id}/${var.service_name}:latest"
 
       env {
-        name  = "DATABASE_URL"
-        value = "postgresql://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.connection_name}/${google_sql_database.database.name}"
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.database_url.secret_id
+            version = "latest"
+          }
+        }
       }
 
       env {

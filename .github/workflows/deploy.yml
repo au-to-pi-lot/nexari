@@ -49,9 +49,29 @@ jobs:
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
         fi
 
+    # Stop the service before migrations
+    - name: Stop Cloud Run service
+      run: |
+        gcloud run services update nexari \
+          --region=us-central1 \
+          --no-traffic
+
+    # Run database migrations
+    - name: Run database migrations
+      run: |
+        # Build a temporary container to run migrations
+        docker build -t migration-runner .
+        
+        # Run migrations using the same environment as Cloud Run
+        docker run \
+          -e DATABASE_URL="$(gcloud secrets versions access latest --secret='database-url')" \
+          migration-runner \
+          poetry run alembic upgrade head
+
+    # Deploy and route traffic to new version
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v2
       with:
         service: nexari
-        image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/nexari:${{ github.sha }}
+        image: gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
         region: us-central1
