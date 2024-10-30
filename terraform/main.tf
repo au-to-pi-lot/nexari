@@ -160,6 +160,15 @@ resource "google_cloud_run_v2_service" "default" {
     containers {
       # Use a minimal placeholder image for initial deployment
       image = "gcr.io/cloudrun/hello"
+      
+      startup_probe {
+        failure_threshold = 1
+        period_seconds   = 240
+        timeout_seconds  = 240
+        tcp_socket {
+          port = 8080
+        }
+      }
 
       env {
         name = "DATABASE_URL"
