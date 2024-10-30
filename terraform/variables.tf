@@ -32,3 +32,8 @@ variable "discord_client_id" {
   type        = string
   sensitive   = true
 }
+
+variable "terraform_service_account" {
+  description = "The service account email used by Terraform"
+  type        = string
+}

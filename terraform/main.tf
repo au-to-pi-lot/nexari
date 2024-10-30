@@ -106,7 +106,7 @@ resource "google_secret_manager_secret_iam_member" "terraform_secret_access" {
 
   secret_id = each.key
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${data.google_client_config.current.service_account_email}"
+  member    = "serviceAccount:${var.terraform_service_account}"
 }
 
 # Create service account for Cloud Run
