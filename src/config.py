@@ -1,19 +1,16 @@
-import yaml
-from pydantic import BaseModel, field_validator
+from pydantic_settings import BaseSettings
 
 
-class Config(BaseModel):
+class Config(BaseSettings):
     bot_token: str
     client_id: str
     database_url: str
 
-    # noinspection PyNestedDecorators
-    @field_validator("client_id", mode="before")
-    @classmethod
-    def transform_client_id_to_str(cls, value) -> str:
-        return str(value)
+    class Config:
+        env_prefix = ""
+        case_sensitive = False
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 
-with open("config.yml", "r") as config_file:
-    config_dict = yaml.safe_load(config_file)
-    config = Config(**config_dict)
+config = Config()

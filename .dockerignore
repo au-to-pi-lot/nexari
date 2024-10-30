@@ -1,0 +1,13 @@
+.git
+.github
+.pytest_cache
+__pycache__
+*.pyc
+.coverage
+.env
+venv
+/log/
+/avatars/
+/.aider.tags.cache.v3/
+/.aider.chat.history.md
+/.aider.input.history

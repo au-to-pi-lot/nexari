@@ -1,0 +1,26 @@
+services:
+  test-db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test_db
+    ports:
+      - "9876:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  tests:
+    image: ${TEST_IMAGE:-nexari-test}
+    build: 
+      context: .
+      target: development
+    command: poetry run pytest
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@test-db:9876/test_db
+      PYTEST_ADDOPTS: ${PYTEST_ADDOPTS:-"--cov=src --cov-report=term-missing --cov-report=html"}
+    depends_on:
+      test-db:
+        condition: service_healthy
