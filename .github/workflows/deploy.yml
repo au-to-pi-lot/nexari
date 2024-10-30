@@ -51,13 +51,20 @@ jobs:
 
     # Stop the service before migrations
     - name: Stop Cloud Run service
+      id: stop-service
       run: |
+        # Store current revision name for rollback
+        CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision)')
+        echo "CURRENT_REVISION=$CURRENT_REVISION" >> $GITHUB_OUTPUT
+        
         gcloud run services update nexari \
           --region=us-central1 \
           --no-traffic
 
-    # Run database migrations
+    # Run database migrations with error handling
     - name: Run database migrations
+      id: migrations
+      continue-on-error: true
       run: |
         # Build a temporary container to run migrations
         docker build -t migration-runner .
@@ -68,7 +75,17 @@ jobs:
           migration-runner \
           poetry run alembic upgrade head
 
-    # Deploy and route traffic to new version
+    # Restore service if migrations failed
+    - name: Restore service on migration failure
+      if: steps.migrations.outcome == 'failure'
+      run: |
+        echo "Database migrations failed. Restoring previous service version..."
+        gcloud run services update-traffic nexari \
+          --region=us-central1 \
+          --to-revisions=${{ steps.stop-service.outputs.CURRENT_REVISION }}=100
+        exit 1
+
+    # Only deploy if migrations succeeded
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v2
       with:
