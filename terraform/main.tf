@@ -7,7 +7,7 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
 
 # Configure Container Registry storage bucket
 resource "google_storage_bucket" "registry_bucket" {
-  name     = "artifacts.us.gcr.io"
+  name     = "artifacts.gcr.io"
   location = "US"
   project  = var.project_id
   uniform_bucket_level_access = true
