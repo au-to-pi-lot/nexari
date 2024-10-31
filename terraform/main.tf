@@ -5,13 +5,6 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
-# Configure Container Registry storage bucket
-resource "google_storage_bucket" "registry_bucket" {
-  name     = "artifacts.gcr.io"
-  location = "US"
-  project  = var.project_id
-  uniform_bucket_level_access = true
-}
 
 # Enable required APIs
 resource "google_project_service" "required_apis" {
