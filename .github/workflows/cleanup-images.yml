@@ -1,0 +1,55 @@
+name: Cleanup Container Images
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Run at midnight every Sunday
+  workflow_dispatch:  # Allow manual triggers
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Extract Project ID
+        id: project
+        run: |
+          echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
+
+      - name: List and delete old images
+        run: |
+          # Keep latest tag and 5 most recent images
+          echo "Finding old images to clean up..."
+          
+          # Get all image digests except latest tag and 5 most recent
+          DIGESTS=$(gcloud container images list-tags gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari \
+            --sort-by=~timestamp \
+            --format='get(digest)' \
+            --filter="NOT tags:latest" \
+            | tail -n +6)
+          
+          if [ -z "$DIGESTS" ]; then
+            echo "No old images found to clean up"
+            exit 0
+          fi
+          
+          echo "Found these old image digests:"
+          echo "$DIGESTS"
+          
+          # Delete each old image
+          echo "$DIGESTS" | while read -r DIGEST; do
+            if [ ! -z "$DIGEST" ]; then
+              echo "Deleting gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari@${DIGEST}"
+              gcloud container images delete -q "gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari@${DIGEST}"
+            fi
+          done
