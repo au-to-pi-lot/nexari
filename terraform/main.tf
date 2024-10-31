@@ -7,19 +7,9 @@ resource "google_project_iam_member" "terraform_secretmanager_access" {
 
 # Configure Container Registry storage bucket
 resource "google_storage_bucket" "registry_bucket" {
-  name     = "artifacts.${var.project_id}.appspot.com"
+  name     = "artifacts.gcr.io"
   location = "US"
   project  = var.project_id
-
-  lifecycle_rule {
-    condition {
-      age = var.image_retention_days
-    }
-    action {
-      type = "Delete"
-    }
-  }
-
   uniform_bucket_level_access = true
 }
 
