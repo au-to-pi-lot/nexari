@@ -28,13 +28,15 @@ jobs:
 
       - name: List and delete old images
         run: |
-          # Keep the latest tag and images newer than 30 days
-          echo "Finding images older than 30 days..."
+          # Keep latest tag and 5 most recent images
+          echo "Finding old images to clean up..."
           
-          # Get all image digests except 'latest' tag
+          # Get all image digests except latest tag and 5 most recent
           DIGESTS=$(gcloud container images list-tags gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari \
+            --sort-by=~timestamp \
             --format='get(digest)' \
-            --filter="NOT tags:latest AND timestamp.datetime < -P30D")
+            --filter="NOT tags:latest" \
+            | tail -n +6)
           
           if [ -z "$DIGESTS" ]; then
             echo "No old images found to clean up"
