@@ -11,6 +11,7 @@ resource "google_project_service" "required_apis" {
   for_each = toset([
     "run.googleapis.com",
     "containerregistry.googleapis.com",
+    "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com"
@@ -192,5 +193,28 @@ resource "google_cloud_run_v2_service" "default" {
       template[0].containers[0].image,
       template[0].revision
     ]
+  }
+}
+# Create Artifact Registry repository
+resource "google_artifact_registry_repository" "docker_repo" {
+  location      = var.region
+  repository_id = var.service_name
+  description   = "Docker repository for ${var.service_name}"
+  format        = "DOCKER"
+
+  cleanup_policies {
+    id     = "keep-minimum-versions"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 5
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-old-versions"
+    action = "DELETE"
+    condition {
+      older_than = "720h" # 30 days
+    }
   }
 }
