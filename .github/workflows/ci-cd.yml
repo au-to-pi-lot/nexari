@@ -114,7 +114,7 @@ jobs:
           retention-days: 14
 
   deploy:
-    needs: [ test, terraform ]
+    needs: [ test, terraform, build ]
     if: |
       github.ref == 'refs/heads/main' && 
       github.event_name == 'push' &&
