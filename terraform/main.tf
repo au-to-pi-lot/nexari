@@ -167,7 +167,7 @@ resource "google_cloud_run_v2_service" "default" {
       }
 
       env {
-        name = "DISCORD_TOKEN"
+        name = "BOT_TOKEN"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.discord_token.secret_id
@@ -177,7 +177,7 @@ resource "google_cloud_run_v2_service" "default" {
       }
 
       env {
-        name = "DISCORD_CLIENT_ID"
+        name = "CLIENT_ID"
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.discord_client_id.secret_id
