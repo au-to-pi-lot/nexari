@@ -1,7 +1,13 @@
-# Grant Secret Manager access to Terraform service account
-resource "google_project_iam_member" "terraform_secretmanager_access" {
+# Grant necessary permissions to Terraform service account
+resource "google_project_iam_member" "terraform_permissions" {
+  for_each = toset([
+    "roles/secretmanager.admin",
+    "roles/servicenetworking.networksAdmin",
+    "roles/compute.networkAdmin"
+  ])
+  
   project = var.project_id
-  role    = "roles/secretmanager.admin"
+  role    = each.key
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
@@ -15,7 +21,8 @@ resource "google_project_service" "required_apis" {
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com",
     "vpcaccess.googleapis.com",
-    "servicenetworking.googleapis.com"
+    "servicenetworking.googleapis.com",
+    "compute.googleapis.com"  # Required for VPC and networking operations
   ])
 
   service            = each.key
