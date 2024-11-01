@@ -3,31 +3,14 @@ import logging
 import logging.handlers
 import os
 import sys
-from aiohttp import web
 
-from config import config
 from src.commands import LLMCommands
+from src.config import config
 from src.event_handlers import register_event_handlers
+from src.health_check import start_health_check_server
 from src.services.discord_client import bot
 
 logger = logging.getLogger(__name__)
-
-
-async def health_check(request):
-    return web.Response(text="OK")
-
-
-async def start_health_check_server():
-    app = web.Application()
-    app.router.add_get("/", health_check)
-
-    port = int(os.getenv("PORT", "8080"))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
-
-    logger.info(f"Starting health check server on port {port}")
-    await site.start()
 
 
 async def main():

@@ -20,6 +20,8 @@ services:
     command: poetry run pytest
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@test-db:9876/test_db
+      BOT_TOKEN: ""
+      CLIENT_ID: ""
       PYTEST_ADDOPTS: ${PYTEST_ADDOPTS:-"--cov=src --cov-report=term-missing --cov-report=html"}
     depends_on:
       test-db:
