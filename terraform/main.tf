@@ -13,11 +13,38 @@ resource "google_project_service" "required_apis" {
     "containerregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "sqladmin.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "vpcaccess.googleapis.com"
   ])
 
   service            = each.key
   disable_on_destroy = false
+}
+
+# Create VPC network
+resource "google_compute_network" "vpc" {
+  name                    = "${var.service_name}-vpc"
+  auto_create_subnetworks = false
+}
+
+# Create subnet
+resource "google_compute_subnetwork" "subnet" {
+  name          = "${var.service_name}-subnet"
+  ip_cidr_range = "10.0.0.0/28"
+  network       = google_compute_network.vpc.id
+  region        = var.region
+}
+
+# Create VPC connector
+resource "google_vpc_access_connector" "connector" {
+  name          = "${var.service_name}-vpc-connector"
+  subnet {
+    name = google_compute_subnetwork.subnet.name
+  }
+  machine_type = "e2-micro"
+  min_instances = 2
+  max_instances = 3
+  region        = var.region
 }
 
 # Create Cloud SQL instance
@@ -32,9 +59,16 @@ resource "google_sql_database_instance" "instance" {
     backup_configuration {
       enabled = true
     }
+
+    ip_configuration {
+      ipv4_enabled    = true
+      private_network = google_compute_network.vpc.id
+    }
   }
 
   deletion_protection = true
+
+  depends_on = [google_compute_network.vpc]
 }
 
 # Create database
@@ -138,6 +172,11 @@ resource "google_cloud_run_v2_service" "default" {
   template {
     scaling {
       max_instance_count = 1
+    }
+
+    vpc_access {
+      connector = google_vpc_access_connector.connector.id
+      egress = "ALL_TRAFFIC"
     }
 
     containers {
