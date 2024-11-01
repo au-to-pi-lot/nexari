@@ -159,12 +159,6 @@ jobs:
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
 
-      - name: Tag latest image
-        run: |
-          docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-          docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
-          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
-
       - name: Check for pending migrations
         id: check-migrations
         run: |
@@ -209,3 +203,9 @@ jobs:
           service: nexari
           image: gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           region: us-central1
+
+      - name: Tag latest image
+        run: |
+          docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+          docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
