@@ -35,10 +35,13 @@ async def main():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(handle_exception)
 
+    await start_health_check_server()
+    logger.info("Health check server started")
+
     register_event_handlers(bot)
     await bot.add_cog(LLMCommands(bot))
     async with bot:
-        await asyncio.gather(bot.start(config.bot_token), start_health_check_server())
+        await bot.start(config.bot_token)
 
 
 if __name__ == "__main__":
