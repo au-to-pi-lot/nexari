@@ -1,7 +1,9 @@
 import asyncio
 import aiohttp
 import pytest
-from src.main import start_health_check_server
+
+from src.health_check import start_health_check_server
+
 
 @pytest.mark.asyncio
 async def test_health_check_server():
