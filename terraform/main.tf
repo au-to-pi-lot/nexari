@@ -14,7 +14,8 @@ resource "google_project_service" "required_apis" {
     "cloudbuild.googleapis.com",
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com",
-    "vpcaccess.googleapis.com"
+    "vpcaccess.googleapis.com",
+    "servicenetworking.googleapis.com"
   ])
 
   service            = each.key
@@ -25,6 +26,22 @@ resource "google_project_service" "required_apis" {
 resource "google_compute_network" "vpc" {
   name                    = "${var.service_name}-vpc"
   auto_create_subnetworks = false
+}
+
+# Reserve global internal address range for the peering
+resource "google_compute_global_address" "private_ip_address" {
+  name          = "${var.service_name}-private-ip"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.vpc.id
+}
+
+# Create VPC peering connection
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = google_compute_network.vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
 # Create subnet
@@ -68,7 +85,10 @@ resource "google_sql_database_instance" "instance" {
 
   deletion_protection = true
 
-  depends_on = [google_compute_network.vpc]
+  depends_on = [
+    google_compute_network.vpc,
+    google_service_networking_connection.private_vpc_connection
+  ]
 }
 
 # Create database
@@ -231,8 +251,12 @@ resource "google_cloud_run_v2_service" "default" {
 
   lifecycle {
     ignore_changes = [
+      client,
+      client_version,
       template[0].containers[0].image,
-      template[0].revision
+      template[0].revision,
+      template[0].labels.commit-sha,
+      template[0].labels.managed-by
     ]
   }
 }
