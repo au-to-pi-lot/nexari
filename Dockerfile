@@ -1,4 +1,4 @@
-FROM python:3.11.9-slim
+FROM python:3.11.9-slim as base
 
 WORKDIR /app
 
@@ -21,8 +21,22 @@ RUN poetry install --only-root
 # Set Python path to include src directory
 ENV PYTHONPATH=/app
 
+# Production stage
+FROM base as production
+
 # Expose the health check port
 EXPOSE 8080
 
 # Command to run the application
 CMD ["poetry", "run", "python", "-m", "src.main"]
+
+# Testing stage
+FROM base as development
+
+# Set test environment variables
+ENV BOT_TOKEN=""
+ENV CLIENT_ID=""
+ENV DATABASE_URL=""
+
+# Default to running tests
+CMD ["poetry", "run", "pytest"]
