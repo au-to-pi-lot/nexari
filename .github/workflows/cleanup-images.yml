@@ -50,6 +50,6 @@ jobs:
           echo "$DIGESTS" | while read -r DIGEST; do
             if [ ! -z "$DIGEST" ]; then
               echo "Deleting gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari@${DIGEST}"
-              gcloud container images delete -q "gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari@${DIGEST}"
+              gcloud container images delete -q --force-delete-tags "gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari@${DIGEST}"
             fi
           done
