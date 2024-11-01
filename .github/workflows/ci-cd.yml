@@ -85,7 +85,7 @@ jobs:
 
       - name: Build and Push Docker image
         run: |
-          docker build -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
+          docker build --target production -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
 
   test:
