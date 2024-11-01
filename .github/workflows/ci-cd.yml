@@ -197,12 +197,29 @@ jobs:
             --to-revisions=${{ steps.stop-service.outputs.CURRENT_REVISION }}=100
           exit 1
 
+      - name: Get current revision
+        id: current-revision
+        run: |
+          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision)')
+          echo "revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
+
       - name: Deploy to Cloud Run
+        id: deploy
+        continue-on-error: true
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: nexari
           image: gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           region: us-central1
+
+      - name: Rollback on failure
+        if: steps.deploy.outcome == 'failure'
+        run: |
+          echo "Deployment failed. Rolling back to previous revision..."
+          gcloud run services update-traffic nexari \
+            --region=us-central1 \
+            --to-revisions=${{ steps.current-revision.outputs.revision }}=100
+          exit 1
 
       - name: Tag latest image
         run: |
