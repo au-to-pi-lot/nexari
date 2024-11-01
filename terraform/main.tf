@@ -231,8 +231,12 @@ resource "google_cloud_run_v2_service" "default" {
 
   lifecycle {
     ignore_changes = [
+      client,
+      client_version,
       template[0].containers[0].image,
-      template[0].revision
+      template[0].revision,
+      template[0].labels.commit-sha,
+      template[0].labels.managed-by
     ]
   }
 }
