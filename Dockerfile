@@ -1,4 +1,4 @@
-FROM python:3.11.9-slim as base
+FROM python:3.11.9-slim AS base
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN poetry install --only-root
 ENV PYTHONPATH=/app
 
 # Production stage
-FROM base as production
+FROM base AS production
 
 # Expose the health check port
 EXPOSE 8080
@@ -31,7 +31,7 @@ EXPOSE 8080
 CMD ["poetry", "run", "python", "-m", "src.main"]
 
 # Testing stage
-FROM base as development
+FROM base AS development
 
 # Set test environment variables
 ENV BOT_TOKEN=""
