@@ -180,7 +180,7 @@ jobs:
       - name: Get current revision
         id: current-revision
         run: |
-          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision.name)')
+          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevisionName)')
           if [ -z "$CURRENT_REVISION" ]; then
             echo "No current revision found, this might be the first deployment"
             exit 1
