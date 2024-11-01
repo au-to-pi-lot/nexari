@@ -180,7 +180,12 @@ jobs:
       - name: Get current revision
         id: current-revision
         run: |
-          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision)')
+          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision.name)')
+          if [ -z "$CURRENT_REVISION" ]; then
+            echo "No current revision found, this might be the first deployment"
+            exit 1
+          fi
+          echo "Current revision: $CURRENT_REVISION"
           echo "revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
 
       - name: Deploy to Cloud Run
@@ -193,12 +198,17 @@ jobs:
           region: us-central1
 
       - name: Rollback on failure
-        if: steps.deploy.outcome == 'failure'
+        if: steps.deploy.outcome == 'failure' && steps.current-revision.outcome == 'success'
         run: |
           echo "Deployment failed. Rolling back to previous revision..."
-          gcloud run services update-traffic nexari \
-            --region=us-central1 \
-            --to-revisions=${{ steps.current-revision.outputs.revision }}=100
+          PREVIOUS_REVISION="${{ steps.current-revision.outputs.revision }}"
+          if [ -n "$PREVIOUS_REVISION" ]; then
+            gcloud run services update-traffic nexari \
+              --region=us-central1 \
+              --to-revisions=$PREVIOUS_REVISION=100
+          else
+            echo "No previous revision to roll back to"
+          fi
           exit 1
 
       - name: Tag latest image
