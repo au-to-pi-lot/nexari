@@ -88,42 +88,17 @@ jobs:
           # Build and push production image
           docker build --target production -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} .
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-          
-          # Build and push development image for testing
-          docker build --target development -t gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}-dev .
-          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}-dev
 
   test:
-    needs: [ build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Google Auth
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker
-
-      - name: Extract Project ID
-        id: project
-        run: |
-          echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
-
-      - name: Pull Docker image
-        run: docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
 
       - name: Run tests with coverage
         run: |
           docker compose up --exit-code-from tests tests
         env:
           PYTEST_ADDOPTS: "--cov=src --cov-report=term-missing --cov-report=html"
-          TEST_IMAGE: "gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}-dev"
 
       - name: Copy coverage from container
         run: |
