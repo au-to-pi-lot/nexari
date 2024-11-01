@@ -145,9 +145,10 @@ resource "google_cloud_run_v2_service" "default" {
       image = "gcr.io/cloudrun/hello"
 
       startup_probe {
-        failure_threshold = 1
-        period_seconds    = 240
-        timeout_seconds   = 240
+        initial_delay_seconds = 1
+        failure_threshold     = 3
+        period_seconds        = 10
+        timeout_seconds       = 1
         http_get {
           path = "/"
           port = 8080
