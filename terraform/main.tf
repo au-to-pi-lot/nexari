@@ -2,8 +2,6 @@
 resource "google_project_iam_member" "terraform_permissions" {
   for_each = toset([
     "roles/secretmanager.admin",
-    "roles/servicenetworking.networksAdmin",
-    "roles/compute.networkAdmin",
     "roles/servicenetworking.serviceAgent"
   ])
   
