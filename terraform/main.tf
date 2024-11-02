@@ -2,13 +2,26 @@
 resource "google_project_iam_member" "terraform_permissions" {
   for_each = toset([
     "roles/secretmanager.admin",
-    "roles/servicenetworking.networksAdmin",
-    "roles/compute.networkAdmin"
+    "roles/servicenetworking.serviceAgent"
   ])
   
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:${var.terraform_service_account}"
+}
+
+# Enable the Service Networking connection
+resource "google_project_service_identity" "servicenetworking" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "servicenetworking.googleapis.com"
+}
+
+# Grant the Service Networking service agent the necessary permissions
+resource "google_project_iam_member" "servicenetworking_agent" {
+  project = var.project_id
+  role    = "roles/servicenetworking.serviceAgent"
+  member  = "serviceAccount:${google_project_service_identity.servicenetworking.email}"
 }
 
 
