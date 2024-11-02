@@ -196,7 +196,7 @@ jobs:
           service: nexari
           image: gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           region: us-central1
-          flags: --traffic=100
+          revision_traffic: LATEST=100
 
       - name: Rollback on failure
         if: steps.deploy.outcome == 'failure' && steps.current-revision.outcome == 'success'
