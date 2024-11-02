@@ -4,7 +4,7 @@ resource "google_project_iam_member" "terraform_permissions" {
     "roles/secretmanager.admin",
     "roles/servicenetworking.serviceAgent"
   ])
-  
+
   project = var.project_id
   role    = each.key
   member  = "serviceAccount:${var.terraform_service_account}"
@@ -59,8 +59,8 @@ resource "google_compute_global_address" "private_ip_address" {
 
 # Create VPC peering connection
 resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = google_compute_network.vpc.id
-  service                 = "servicenetworking.googleapis.com"
+  network = google_compute_network.vpc.id
+  service = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
@@ -74,11 +74,11 @@ resource "google_compute_subnetwork" "subnet" {
 
 # Create VPC connector
 resource "google_vpc_access_connector" "connector" {
-  name          = "${var.service_name}-vpc-connector"
+  name = "${var.service_name}-vpc-connector"
   subnet {
     name = google_compute_subnetwork.subnet.name
   }
-  machine_type = "e2-micro"
+  machine_type  = "e2-micro"
   min_instances = 2
   max_instances = 3
   region        = var.region
@@ -216,7 +216,7 @@ resource "google_cloud_run_v2_service" "default" {
 
     vpc_access {
       connector = google_vpc_access_connector.connector.id
-      egress = "ALL_TRAFFIC"
+      egress    = "ALL_TRAFFIC"
     }
 
     containers {
@@ -224,10 +224,10 @@ resource "google_cloud_run_v2_service" "default" {
       image = "gcr.io/cloudrun/hello"
 
       startup_probe {
-        initial_delay_seconds = 1
-        failure_threshold     = 3
-        period_seconds        = 10
-        timeout_seconds       = 1
+        initial_delay_seconds = 5    # Give more time before first check
+        failure_threshold = 5    # Allow more retry attempts
+        period_seconds  = 10
+        timeout_seconds = 2     # Give each probe more time to respond
         http_get {
           path = "/"
           port = 8080
