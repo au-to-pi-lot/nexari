@@ -5,19 +5,6 @@ resource "google_project_iam_member" "terraform_permissions" {
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
-# Enable the Service Networking connection
-resource "google_project_service_identity" "servicenetworking" {
-  provider = google-beta
-  project  = var.project_id
-  service  = "servicenetworking.googleapis.com"
-}
-
-# Grant the Service Networking service agent the necessary permissions
-resource "google_project_iam_member" "servicenetworking_agent" {
-  project = var.project_id
-  role    = "roles/servicenetworking.serviceAgent"
-  member  = "serviceAccount:${google_project_service_identity.servicenetworking.email}"
-}
 
 
 # Enable required APIs
@@ -27,7 +14,6 @@ resource "google_project_service" "required_apis" {
     "containerregistry.googleapis.com", # Required for GCR
     "sqladmin.googleapis.com", # Required for Cloud SQL
     "secretmanager.googleapis.com", # Required for Secret Manager
-    "servicenetworking.googleapis.com", # Required for Cloud SQL networking
     "compute.googleapis.com"        # Required for networking operations
   ])
 
