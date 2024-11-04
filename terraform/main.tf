@@ -2,10 +2,7 @@
 locals {
   infrastructure_roles = toset([
     "roles/secretmanager.admin",
-    "roles/compute.networkAdmin",     # Required for VPC operations
-    "roles/compute.networkViewer",    # Required for network.get operations
-    "roles/servicenetworking.networksAdmin",  # Required for service networking operations
-    "roles/servicemanagement.admin",  # Required for managing service networking connections
+    "roles/compute.admin"
   ])
 }
 
