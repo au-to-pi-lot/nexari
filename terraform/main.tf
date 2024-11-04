@@ -1,12 +1,7 @@
 # Grant necessary permissions to Terraform service account
 resource "google_project_iam_member" "terraform_permissions" {
-  for_each = toset([
-    "roles/secretmanager.admin",
-    "roles/servicenetworking.serviceAgent"
-  ])
-
   project = var.project_id
-  role    = each.key
+  role    = "roles/secretmanager.admin"
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
@@ -28,61 +23,18 @@ resource "google_project_iam_member" "servicenetworking_agent" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com",
-    "containerregistry.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "sqladmin.googleapis.com",
-    "secretmanager.googleapis.com",
-    "vpcaccess.googleapis.com",
-    "servicenetworking.googleapis.com",
-    "compute.googleapis.com"  # Required for VPC and networking operations
+    "run.googleapis.com", # Required for Cloud Run
+    "containerregistry.googleapis.com", # Required for GCR
+    "sqladmin.googleapis.com", # Required for Cloud SQL
+    "secretmanager.googleapis.com", # Required for Secret Manager
+    "servicenetworking.googleapis.com", # Required for Cloud SQL networking
+    "compute.googleapis.com"        # Required for networking operations
   ])
 
   service            = each.key
   disable_on_destroy = false
 }
 
-# Create VPC network
-resource "google_compute_network" "vpc" {
-  name                    = "${var.service_name}-vpc"
-  auto_create_subnetworks = false
-}
-
-# Reserve global internal address range for the peering
-resource "google_compute_global_address" "private_ip_address" {
-  name          = "${var.service_name}-private-ip"
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  prefix_length = 16
-  network       = google_compute_network.vpc.id
-}
-
-# Create VPC peering connection
-resource "google_service_networking_connection" "private_vpc_connection" {
-  network = google_compute_network.vpc.id
-  service = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
-}
-
-# Create subnet
-resource "google_compute_subnetwork" "subnet" {
-  name          = "${var.service_name}-subnet"
-  ip_cidr_range = "10.0.0.0/28"
-  network       = google_compute_network.vpc.id
-  region        = var.region
-}
-
-# Create VPC connector
-resource "google_vpc_access_connector" "connector" {
-  name = "${var.service_name}-vpc-connector"
-  subnet {
-    name = google_compute_subnetwork.subnet.name
-  }
-  machine_type  = "e2-micro"
-  min_instances = 2
-  max_instances = 3
-  region        = var.region
-}
 
 # Create Cloud SQL instance
 resource "google_sql_database_instance" "instance" {
@@ -98,17 +50,12 @@ resource "google_sql_database_instance" "instance" {
     }
 
     ip_configuration {
-      ipv4_enabled    = true
-      private_network = google_compute_network.vpc.id
+      ipv4_enabled = true
     }
   }
 
   deletion_protection = true
 
-  depends_on = [
-    google_compute_network.vpc,
-    google_service_networking_connection.private_vpc_connection
-  ]
 }
 
 # Create database
@@ -139,7 +86,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.ip_address.0.ip_address}:5432/${google_sql_database.database.name}",
+    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@/${google_sql_database.database.name}?host=/cloudsql/${google_sql_database_instance.instance.connection_name}",
     "%",
     "%%"
   )
@@ -214,14 +161,21 @@ resource "google_cloud_run_v2_service" "default" {
       max_instance_count = 1
     }
 
-    vpc_access {
-      connector = google_vpc_access_connector.connector.id
-      egress    = "ALL_TRAFFIC"
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.instance.connection_name]
+      }
     }
 
     containers {
       # Use a minimal placeholder image for initial deployment
       image = "gcr.io/cloudrun/hello"
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
 
       startup_probe {
         initial_delay_seconds = 5    # Give more time before first check
@@ -233,7 +187,6 @@ resource "google_cloud_run_v2_service" "default" {
           port = 8080
         }
       }
-
 
       env {
         name = "DATABASE_URL"
