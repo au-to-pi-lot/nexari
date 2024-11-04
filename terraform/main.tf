@@ -47,24 +47,31 @@ resource "google_sql_database_instance" "instance" {
     
     backup_configuration {
       enabled                        = true
-      point_in_time_recovery_enabled = true  # Default GCP setting
-      start_time                     = "02:00"  # Default backup window
-      transaction_log_retention_days = 7     # Default retention
+      point_in_time_recovery_enabled = false
+      start_time                     = "04:00"
+      transaction_log_retention_days = 7
       backup_retention_settings {
-        retained_backups = 7         # Default retention
+        retained_backups = 7
         retention_unit   = "COUNT"
       }
     }
 
     ip_configuration {
-      ipv4_enabled = true
-      require_ssl  = false          # Make explicit
+      ipv4_enabled    = true
+      require_ssl     = false
+      private_network = "projects/${var.project_id}/global/networks/nexari-vpc"
+      enable_private_path_for_google_cloud_services = false
     }
 
-    availability_type = "ZONAL"     # Default for db-f1-micro
-    disk_autoresize   = true        # Default GCP setting
-    disk_size         = 10          # Default size in GB
-    disk_type         = "PD_SSD"    # Default disk type
+    location_preference {
+      zone = "${var.region}-c"
+    }
+
+    deletion_protection_enabled = false
+    availability_type = "ZONAL"
+    disk_autoresize   = true
+    disk_size         = 10
+    disk_type         = "PD_SSD"
   }
 
   deletion_protection = true
