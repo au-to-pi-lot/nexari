@@ -37,7 +37,8 @@ resource "google_project_service" "required_apis" {
     "containerregistry.googleapis.com", # Required for GCR
     "sqladmin.googleapis.com", # Required for Cloud SQL
     "secretmanager.googleapis.com", # Required for Secret Manager
-    "compute.googleapis.com"        # Required for networking operations
+    "compute.googleapis.com",        # Required for networking operations
+
   ])
 
   service            = each.key
@@ -81,7 +82,7 @@ resource "google_sql_database_instance" "instance" {
     disk_type         = "PD_SSD"
   }
 
-  deletion_protection = false
+  deletion_protection = true
 
 }
 
@@ -113,7 +114,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@/${google_sql_database.database.name}?host=/cloudsql/${google_sql_database_instance.instance.connection_name}",
+    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}/${google_sql_database.database.name}?host=/cloudsql/${google_sql_database_instance.instance.connection_name}",
     "%",
     "%%"
   )
