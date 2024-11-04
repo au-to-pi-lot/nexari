@@ -42,47 +42,6 @@ resource "google_project_service" "required_apis" {
   disable_on_destroy = false
 }
 
-# Create VPC network
-resource "google_compute_network" "vpc" {
-  name                    = "${var.service_name}-vpc"
-  auto_create_subnetworks = false
-}
-
-# Reserve global internal address range for the peering
-resource "google_compute_global_address" "private_ip_address" {
-  name          = "${var.service_name}-private-ip"
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  prefix_length = 16
-  network       = google_compute_network.vpc.id
-}
-
-# Create VPC peering connection
-resource "google_service_networking_connection" "private_vpc_connection" {
-  network = google_compute_network.vpc.id
-  service = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
-}
-
-# Create subnet
-resource "google_compute_subnetwork" "subnet" {
-  name          = "${var.service_name}-subnet"
-  ip_cidr_range = "10.0.0.0/28"
-  network       = google_compute_network.vpc.id
-  region        = var.region
-}
-
-# Create VPC connector
-resource "google_vpc_access_connector" "connector" {
-  name = "${var.service_name}-vpc-connector"
-  subnet {
-    name = google_compute_subnetwork.subnet.name
-  }
-  machine_type  = "e2-micro"
-  min_instances = 2
-  max_instances = 3
-  region        = var.region
-}
 
 # Create Cloud SQL instance
 resource "google_sql_database_instance" "instance" {
@@ -98,17 +57,12 @@ resource "google_sql_database_instance" "instance" {
     }
 
     ip_configuration {
-      ipv4_enabled    = true
-      private_network = google_compute_network.vpc.id
+      ipv4_enabled = true
     }
   }
 
   deletion_protection = true
 
-  depends_on = [
-    google_compute_network.vpc,
-    google_service_networking_connection.private_vpc_connection
-  ]
 }
 
 # Create database
@@ -139,7 +93,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.ip_address.0.ip_address}:5432/${google_sql_database.database.name}",
+    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@/${google_sql_database.database.name}?host=/cloudsql/${google_sql_database_instance.instance.connection_name}",
     "%",
     "%%"
   )
@@ -214,10 +168,12 @@ resource "google_cloud_run_v2_service" "default" {
       max_instance_count = 1
     }
 
-    vpc_access {
-      connector = google_vpc_access_connector.connector.id
-      egress    = "ALL_TRAFFIC"
-    }
+    # Add Cloud SQL connection
+    containers {
+      # Use a minimal placeholder image for initial deployment
+      image = "gcr.io/cloudrun/hello"
+
+      cloud_sql_instances = [google_sql_database_instance.instance.connection_name]
 
     containers {
       # Use a minimal placeholder image for initial deployment
