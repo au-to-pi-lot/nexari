@@ -180,10 +180,16 @@ resource "google_compute_instance" "bot" {
     }
   }
 
+  # Create static IP address
+  resource "google_compute_address" "static_ip" {
+    name = "${var.service_name}-static-ip"
+    region = var.region
+  }
+
   network_interface {
     network = "default"
     access_config {
-      // Ephemeral public IP
+      nat_ip = google_compute_address.static_ip.address
     }
   }
 

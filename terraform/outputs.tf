@@ -1,6 +1,6 @@
 output "instance_ip" {
-  value = google_compute_instance.bot.network_interface[0].access_config[0].nat_ip
-  description = "The public IP of the Discord bot instance"
+  value = google_compute_address.static_ip.address
+  description = "The static IP address of the Discord bot instance"
 }
 
 output "database_connection" {
