@@ -161,9 +161,14 @@ resource "google_service_account" "cloud_run_service_account" {
 }
 
 # Grant necessary permissions
-resource "google_project_iam_member" "secret_accessor" {
+resource "google_project_iam_member" "cloud_run_permissions" {
+  for_each = toset([
+    "roles/secretmanager.secretAccessor",
+    "roles/cloudsql.client"  # Required for Cloud SQL connection
+  ])
+  
   project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
+  role    = each.value
   member  = "serviceAccount:${google_service_account.cloud_run_service_account.email}"
 }
 
