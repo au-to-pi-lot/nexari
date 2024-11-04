@@ -18,6 +18,18 @@ resource "google_project_iam_member" "ci_permissions" {
   member  = "serviceAccount:${var.ci_service_account}"
 }
 
+# Allow CI service account to read secrets
+resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
+  for_each = toset([
+    google_secret_manager_secret.database_url.id,
+    google_secret_manager_secret.discord_token.id,
+    google_secret_manager_secret.discord_client_id.id,
+  ])
+
+  secret_id = each.key
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.ci_service_account}"
+}
 
 
 # Enable required APIs
