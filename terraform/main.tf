@@ -37,7 +37,8 @@ resource "google_project_service" "required_apis" {
     "containerregistry.googleapis.com", # Required for GCR
     "sqladmin.googleapis.com", # Required for Cloud SQL
     "secretmanager.googleapis.com", # Required for Secret Manager
-    "compute.googleapis.com"        # Required for networking operations
+    "compute.googleapis.com",        # Required for networking operations
+
   ])
 
   service            = each.key
@@ -81,7 +82,7 @@ resource "google_sql_database_instance" "instance" {
     disk_type         = "PD_SSD"
   }
 
-  deletion_protection = false
+  deletion_protection = true
 
 }
 
