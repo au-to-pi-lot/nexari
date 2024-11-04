@@ -143,18 +143,6 @@ resource "google_secret_manager_secret_version" "discord_client_id" {
   secret_data = var.discord_client_id
 }
 
-# Allow Terraform service account to read secrets
-resource "google_secret_manager_secret_iam_member" "terraform_secret_access" {
-  for_each = toset([
-    google_secret_manager_secret.database_url.id,
-    google_secret_manager_secret.discord_token.id,
-    google_secret_manager_secret.discord_client_id.id,
-  ])
-
-  secret_id = each.key
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${var.terraform_service_account}"
-}
 
 # Create service account for Cloud Run
 resource "google_service_account" "cloud_run_service_account" {
