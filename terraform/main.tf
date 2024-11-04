@@ -59,8 +59,6 @@ resource "google_sql_database_instance" "instance" {
     ip_configuration {
       ipv4_enabled    = true
       require_ssl     = false
-      private_network = "projects/${var.project_id}/global/networks/nexari-vpc"
-      enable_private_path_for_google_cloud_services = false
     }
 
     location_preference {
@@ -74,7 +72,7 @@ resource "google_sql_database_instance" "instance" {
     disk_type         = "PD_SSD"
   }
 
-  deletion_protection = true
+  deletion_protection = false
 
 }
 
