@@ -38,3 +38,8 @@ variable "terraform_service_account" {
   type        = string
 }
 
+variable "ci_service_account" {
+  description = "The service account email used by CI/CD pipeline"
+  type        = string
+}
+

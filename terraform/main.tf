@@ -1,16 +1,30 @@
-# Grant necessary permissions to Terraform service account
-resource "google_project_iam_member" "terraform_permissions" {
-  for_each = toset([
+# Define required roles for infrastructure management
+locals {
+  infrastructure_roles = toset([
     "roles/secretmanager.admin",
     "roles/compute.networkAdmin",     # Required for VPC operations
     "roles/compute.networkViewer",    # Required for network.get operations
     "roles/servicenetworking.networksAdmin",  # Required for service networking operations
     "roles/servicemanagement.admin",  # Required for managing service networking connections
   ])
+}
+
+# Grant permissions to Terraform service account
+resource "google_project_iam_member" "terraform_permissions" {
+  for_each = local.infrastructure_roles
   
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${var.terraform_service_account}"
+}
+
+# Grant permissions to CI service account
+resource "google_project_iam_member" "ci_permissions" {
+  for_each = local.infrastructure_roles
+  
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${var.ci_service_account}"
 }
 
 
