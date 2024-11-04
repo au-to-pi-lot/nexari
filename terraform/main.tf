@@ -44,17 +44,35 @@ resource "google_sql_database_instance" "instance" {
 
   settings {
     tier = var.database_instance_tier
-
+    
     backup_configuration {
-      enabled = true
+      enabled                        = true
+      point_in_time_recovery_enabled = false
+      start_time                     = "04:00"
+      transaction_log_retention_days = 7
+      backup_retention_settings {
+        retained_backups = 7
+        retention_unit   = "COUNT"
+      }
     }
 
     ip_configuration {
-      ipv4_enabled = true
+      ipv4_enabled    = true
+      require_ssl     = false
     }
+
+    location_preference {
+      zone = "${var.region}-c"
+    }
+
+    deletion_protection_enabled = false
+    availability_type = "ZONAL"
+    disk_autoresize   = true
+    disk_size         = 10
+    disk_type         = "PD_SSD"
   }
 
-  deletion_protection = true
+  deletion_protection = false
 
 }
 
