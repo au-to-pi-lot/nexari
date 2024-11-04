@@ -168,16 +168,11 @@ resource "google_cloud_run_v2_service" "default" {
       max_instance_count = 1
     }
 
-    # Add Cloud SQL connection
     containers {
       # Use a minimal placeholder image for initial deployment
       image = "gcr.io/cloudrun/hello"
 
       cloud_sql_instances = [google_sql_database_instance.instance.connection_name]
-
-    containers {
-      # Use a minimal placeholder image for initial deployment
-      image = "gcr.io/cloudrun/hello"
 
       startup_probe {
         initial_delay_seconds = 5    # Give more time before first check
@@ -189,7 +184,6 @@ resource "google_cloud_run_v2_service" "default" {
           port = 8080
         }
       }
-
 
       env {
         name = "DATABASE_URL"
