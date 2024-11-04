@@ -1,5 +1,6 @@
-output "cloud_run_url" {
-  value = google_cloud_run_v2_service.default.uri
+output "instance_ip" {
+  value = google_compute_instance.bot.network_interface[0].access_config[0].nat_ip
+  description = "The public IP of the Discord bot instance"
 }
 
 output "database_connection" {
