@@ -33,11 +33,6 @@ variable "discord_client_id" {
   sensitive   = true
 }
 
-variable "terraform_service_account" {
-  description = "The service account email used by Terraform"
-  type        = string
-}
-
 variable "ci_service_account" {
   description = "The service account email used by CI/CD pipeline"
   type        = string

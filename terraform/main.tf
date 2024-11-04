@@ -9,15 +9,6 @@ locals {
   ])
 }
 
-# Grant permissions to Terraform service account
-resource "google_project_iam_member" "terraform_permissions" {
-  for_each = local.infrastructure_roles
-  
-  project = var.project_id
-  role    = each.value
-  member  = "serviceAccount:${var.terraform_service_account}"
-}
-
 # Grant permissions to CI service account
 resource "google_project_iam_member" "ci_permissions" {
   for_each = local.infrastructure_roles

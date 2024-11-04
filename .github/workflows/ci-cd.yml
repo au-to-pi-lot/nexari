@@ -48,7 +48,6 @@ jobs:
       - name: Terraform Plan
         env:
           TF_VAR_project_id: ${{ steps.project.outputs.PROJECT_ID }}
-          TF_VAR_terraform_service_account: ${{ steps.project.outputs.SERVICE_ACCOUNT }}
           TF_VAR_ci_service_account: ${{ steps.project.outputs.SERVICE_ACCOUNT }}
           TF_VAR_discord_token: ${{ secrets.DISCORD_TOKEN }}
           TF_VAR_discord_client_id: ${{ secrets.DISCORD_CLIENT_ID }}
@@ -58,7 +57,6 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && !failure()
         env:
           TF_VAR_project_id: ${{ steps.project.outputs.PROJECT_ID }}
-          TF_VAR_terraform_service_account: ${{ steps.project.outputs.SERVICE_ACCOUNT }}
           TF_VAR_ci_service_account: ${{ steps.project.outputs.SERVICE_ACCOUNT }}
           TF_VAR_discord_token: ${{ secrets.DISCORD_TOKEN }}
           TF_VAR_discord_client_id: ${{ secrets.DISCORD_CLIENT_ID }}
