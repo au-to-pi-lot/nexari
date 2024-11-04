@@ -1,12 +1,7 @@
 # Grant necessary permissions to Terraform service account
 resource "google_project_iam_member" "terraform_permissions" {
-  for_each = toset([
-    "roles/secretmanager.admin",
-    "roles/servicenetworking.serviceAgent"
-  ])
-
   project = var.project_id
-  role    = each.key
+  role    = "roles/secretmanager.admin"
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
