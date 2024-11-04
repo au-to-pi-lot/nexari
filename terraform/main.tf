@@ -4,7 +4,8 @@ resource "google_project_iam_member" "terraform_permissions" {
     "roles/secretmanager.admin",
     "roles/compute.networkAdmin",     # Required for VPC operations
     "roles/compute.networkViewer",    # Required for network.get operations
-    "roles/servicenetworking.networksAdmin"  # Required for service networking operations
+    "roles/servicenetworking.networksAdmin",  # Required for service networking operations
+    "roles/servicemanagement.admin",  # Required for managing service networking connections
   ])
   
   project = var.project_id
