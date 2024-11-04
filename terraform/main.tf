@@ -193,9 +193,6 @@ resource "google_cloud_run_v2_service" "default" {
         mount_path = "/cloudsql"
       }
 
-      # Add Cloud SQL connection
-      cloud_sql_instances = [google_sql_database_instance.instance.connection_name]
-
       startup_probe {
         initial_delay_seconds = 5    # Give more time before first check
         failure_threshold = 5    # Allow more retry attempts
