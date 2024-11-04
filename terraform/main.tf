@@ -1,7 +1,12 @@
 # Grant necessary permissions to Terraform service account
 resource "google_project_iam_member" "terraform_permissions" {
+  for_each = toset([
+    "roles/secretmanager.admin",
+    "roles/compute.networkAdmin",  # Required for VPC operations
+  ])
+  
   project = var.project_id
-  role    = "roles/secretmanager.admin"
+  role    = each.value
   member  = "serviceAccount:${var.terraform_service_account}"
 }
 
