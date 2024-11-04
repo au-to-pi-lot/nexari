@@ -2,7 +2,8 @@
 locals {
   infrastructure_roles = toset([
     "roles/secretmanager.admin",
-    "roles/compute.admin"
+    "roles/compute.admin",
+    "roles/compute.networkUser"
   ])
 }
 
