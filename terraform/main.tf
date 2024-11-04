@@ -23,14 +23,12 @@ resource "google_project_iam_member" "servicenetworking_agent" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com",
-    "containerregistry.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "sqladmin.googleapis.com",
-    "secretmanager.googleapis.com",
-    "vpcaccess.googleapis.com",
-    "servicenetworking.googleapis.com",
-    "compute.googleapis.com"  # Required for VPC and networking operations
+    "run.googleapis.com",           # Required for Cloud Run
+    "containerregistry.googleapis.com", # Required for GCR
+    "sqladmin.googleapis.com",      # Required for Cloud SQL
+    "secretmanager.googleapis.com", # Required for Secret Manager
+    "servicenetworking.googleapis.com", # Required for Cloud SQL networking
+    "compute.googleapis.com"        # Required for networking operations
   ])
 
   service            = each.key
