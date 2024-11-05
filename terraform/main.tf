@@ -208,7 +208,9 @@ resource "google_compute_instance" "bot" {
 
   metadata = {
     enable-oslogin = "TRUE"
-    user-data = templatefile("${path.module}/startup-script.tpl", {
+  }
+
+  metadata_startup_script = templatefile("${path.module}/startup-script.tpl", {
       project_id           = var.project_id
       region               = var.region
       service_name         = var.service_name
@@ -217,16 +219,8 @@ resource "google_compute_instance" "bot" {
       discord_client_id    = data.google_secret_manager_secret_version.discord_client_id.secret_data
       active_container_tag = data.google_secret_manager_secret_version.active_container_tag.secret_data
     })
-  }
 
   allow_stopping_for_update = true
-
-  lifecycle {
-    replace_triggered_by = [
-      # Force replacement when startup script changes
-      google_compute_instance.bot.metadata["user-data"]
-    ]
-  }
 }
 
 # Rename service account for GCE
