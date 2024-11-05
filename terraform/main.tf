@@ -188,15 +188,22 @@ resource "google_compute_instance" "bot" {
   metadata = {
     enable-oslogin = "TRUE"
     user-data = templatefile("${path.module}/startup-script.tpl", {
-      project_id   = var.project_id
-      region       = var.region
-      service_name = var.service_name
+      project_id           = var.project_id
+      region               = var.region
+      service_name         = var.service_name
+      database_url         = data.google_secret_manager_secret_version.database_url.secret_data
+      discord_token        = data.google_secret_manager_secret_version.discord_token.secret_data
+      discord_client_id    = data.google_secret_manager_secret_version.discord_client_id.secret_data
+      active_container_tag = data.google_secret_manager_secret_version.active_container_tag.secret_data
     })
-    # Add a hash of the startup script content to force recreation when it changes
     startup-script-hash = md5(templatefile("${path.module}/startup-script.tpl", {
-      project_id   = var.project_id
-      region       = var.region
-      service_name = var.service_name
+      project_id           = var.project_id
+      region               = var.region
+      service_name         = var.service_name
+      database_url         = data.google_secret_manager_secret_version.database_url.secret_data
+      discord_token        = data.google_secret_manager_secret_version.discord_token.secret_data
+      discord_client_id    = data.google_secret_manager_secret_version.discord_client_id.secret_data
+      active_container_tag = data.google_secret_manager_secret_version.active_container_tag.secret_data
     }))
   }
 
