@@ -201,9 +201,6 @@ resource "google_compute_instance" "bot" {
     })
   }
 
-  # Ensure instance is recreated when startup script changes
-  metadata_startup_script = file("${path.module}/startup-script.sh")
-
   allow_stopping_for_update = true
 }
 
