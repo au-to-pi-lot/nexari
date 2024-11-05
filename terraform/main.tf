@@ -229,13 +229,6 @@ resource "google_compute_instance" "bot" {
   }
 
   allow_stopping_for_update = true
-
-  depends_on = [
-    google_secret_manager_secret_version.database_url,
-    google_secret_manager_secret_version.discord_token,
-    google_secret_manager_secret_version.discord_client_id,
-    google_secret_manager_secret_version.active_container_tag
-  ]
 }
 
 # Rename service account for GCE
