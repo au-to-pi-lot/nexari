@@ -10,7 +10,7 @@ locals {
 # Grant permissions to CI service account
 resource "google_project_iam_member" "ci_permissions" {
   for_each = local.infrastructure_roles
-  
+
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${var.ci_service_account}"
@@ -33,11 +33,11 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com", # Required for Cloud Run
+    "run.googleapis.com",               # Required for Cloud Run
     "containerregistry.googleapis.com", # Required for GCR
-    "sqladmin.googleapis.com", # Required for Cloud SQL
-    "secretmanager.googleapis.com", # Required for Secret Manager
-    "compute.googleapis.com",        # Required for networking operations
+    "sqladmin.googleapis.com",          # Required for Cloud SQL
+    "secretmanager.googleapis.com",     # Required for Secret Manager
+    "compute.googleapis.com",           # Required for networking operations
 
   ])
 
@@ -54,7 +54,7 @@ resource "google_sql_database_instance" "instance" {
 
   settings {
     tier = var.database_instance_tier
-    
+
     backup_configuration {
       enabled                        = true
       point_in_time_recovery_enabled = false
@@ -68,7 +68,7 @@ resource "google_sql_database_instance" "instance" {
 
     ip_configuration {
       ipv4_enabled    = true
-      private_network = null  # Explicitly remove private network configuration
+      private_network = null # Explicitly remove private network configuration
     }
 
     location_preference {
@@ -76,10 +76,10 @@ resource "google_sql_database_instance" "instance" {
     }
 
     deletion_protection_enabled = false
-    availability_type = "ZONAL"
-    disk_autoresize   = true
-    disk_size         = 10
-    disk_type         = "PD_SSD"
+    availability_type           = "ZONAL"
+    disk_autoresize             = true
+    disk_size                   = 10
+    disk_type                   = "PD_SSD"
   }
 
   deletion_protection = true
@@ -167,6 +167,12 @@ resource "google_project_iam_member" "secret_accessor" {
   member  = "serviceAccount:${google_service_account.cloud_run_service_account.email}"
 }
 
+# Create static IP address
+resource "google_compute_address" "static_ip" {
+  name   = "${var.service_name}-static-ip"
+  region = var.region
+}
+
 # Create GCE instance
 resource "google_compute_instance" "bot" {
   name         = var.service_name
@@ -178,12 +184,6 @@ resource "google_compute_instance" "bot" {
       image = "cos-cloud/cos-stable"
       size  = 20
     }
-  }
-
-  # Create static IP address
-  resource "google_compute_address" "static_ip" {
-    name = "${var.service_name}-static-ip"
-    region = var.region
   }
 
   network_interface {
@@ -202,9 +202,9 @@ resource "google_compute_instance" "bot" {
   metadata = {
     enable-oslogin = "TRUE"
     user-data = templatefile("${path.module}/startup-script.tpl", {
-      project_id    = var.project_id
-      region        = var.region
-      service_name  = var.service_name
+      project_id   = var.project_id
+      region       = var.region
+      service_name = var.service_name
     })
   }
 

@@ -188,15 +188,17 @@ jobs:
           echo "Current revision: $CURRENT_REVISION"
           echo "revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Cloud Run
+      - name: Update GCE instance
         id: deploy
         continue-on-error: true
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: nexari
-          image: gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-          region: us-central1
-          revision_traffic: LATEST=100
+        run: |
+          # Pull and tag the new image
+          docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+          docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+          
+          # Restart the bot service to pick up new image
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
 
       - name: Rollback on failure
         if: steps.deploy.outcome == 'failure' && steps.current-revision.outcome == 'success'
