@@ -233,3 +233,16 @@ resource "google_project_iam_member" "cloudsql_client" {
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.bot_service_account.email}"
 }
+
+# Secret to store current active container tag
+resource "google_secret_manager_secret" "active_container_tag" {
+  secret_id = "active-container-tag"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "active_container_tag" {
+  secret      = google_secret_manager_secret.active_container_tag.id
+  secret_data = "latest"  # Default to latest
+}
