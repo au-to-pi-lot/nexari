@@ -119,6 +119,27 @@ resource "google_secret_manager_secret_version" "database_url" {
   )
 }
 
+# Data sources for reading secrets
+data "google_secret_manager_secret_version" "database_url" {
+  secret = google_secret_manager_secret.database_url.id
+  version = "latest"
+}
+
+data "google_secret_manager_secret_version" "discord_token" {
+  secret = google_secret_manager_secret.discord_token.id
+  version = "latest"
+}
+
+data "google_secret_manager_secret_version" "discord_client_id" {
+  secret = google_secret_manager_secret.discord_client_id.id
+  version = "latest"
+}
+
+data "google_secret_manager_secret_version" "active_container_tag" {
+  secret = google_secret_manager_secret.active_container_tag.id
+  version = "latest"
+}
+
 # Generate random database password
 resource "random_password" "db_password" {
   length  = 32
