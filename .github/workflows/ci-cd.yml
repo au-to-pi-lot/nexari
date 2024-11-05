@@ -188,31 +188,49 @@ jobs:
           echo "Current revision: $CURRENT_REVISION"
           echo "revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
 
-      - name: Deploy to Cloud Run
+      - name: Update GCE instance
         id: deploy
         continue-on-error: true
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: nexari
-          image: gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-          region: us-central1
-          revision_traffic: LATEST=100
+        run: |
+          # Store current tag from secret for potential rollback
+          CURRENT_TAG=$(gcloud secrets versions access latest --secret=active-container-tag)
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+          # Push new image with specific tag
+          docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+          
+          # Update the active tag secret
+          echo "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
+          
+          # Restart the bot service to pick up new image
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
+          
+          # Wait and check if service is healthy
+          sleep 30
+          if ! gcloud compute ssh nexari --zone=us-central1-c --command='systemctl is-active discord-bot.service'; then
+            echo "::error::Service failed to start properly"
+            exit 1
+          fi
 
       - name: Rollback on failure
-        if: steps.deploy.outcome == 'failure' && steps.current-revision.outcome == 'success'
+        if: steps.deploy.outcome == 'failure'
         run: |
-          echo "Deployment failed. Rolling back to previous revision..."
-          PREVIOUS_REVISION="${{ steps.current-revision.outputs.revision }}"
-          if [ -n "$PREVIOUS_REVISION" ]; then
-            gcloud run services update-traffic nexari \
-              --region=us-central1 \
-              --to-revisions=$PREVIOUS_REVISION=100
+          echo "Deployment failed. Rolling back to previous version..."
+          PREVIOUS_TAG="${{ steps.deploy.outputs.current_tag }}"
+          if [ -n "$PREVIOUS_TAG" ]; then
+            # Restore previous tag in secret
+            echo "$PREVIOUS_TAG" | gcloud secrets versions add active-container-tag --data-file=-
+            # Restart service to pick up old tag
+            gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
+            echo "Rolled back to $PREVIOUS_TAG"
           else
-            echo "No previous revision to roll back to"
+            echo "No previous tag found to roll back to"
           fi
           exit 1
 
-      - name: Tag latest image
+      - name: Tag latest on success
+        if: steps.deploy.outcome == 'success'
         run: |
           docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest

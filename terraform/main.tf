@@ -10,7 +10,7 @@ locals {
 # Grant permissions to CI service account
 resource "google_project_iam_member" "ci_permissions" {
   for_each = local.infrastructure_roles
-  
+
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${var.ci_service_account}"
@@ -33,11 +33,11 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com", # Required for Cloud Run
+    "run.googleapis.com",               # Required for Cloud Run
     "containerregistry.googleapis.com", # Required for GCR
-    "sqladmin.googleapis.com", # Required for Cloud SQL
-    "secretmanager.googleapis.com", # Required for Secret Manager
-    "compute.googleapis.com",        # Required for networking operations
+    "sqladmin.googleapis.com",          # Required for Cloud SQL
+    "secretmanager.googleapis.com",     # Required for Secret Manager
+    "compute.googleapis.com",           # Required for networking operations
 
   ])
 
@@ -54,7 +54,7 @@ resource "google_sql_database_instance" "instance" {
 
   settings {
     tier = var.database_instance_tier
-    
+
     backup_configuration {
       enabled                        = true
       point_in_time_recovery_enabled = false
@@ -68,7 +68,7 @@ resource "google_sql_database_instance" "instance" {
 
     ip_configuration {
       ipv4_enabled    = true
-      private_network = null  # Explicitly remove private network configuration
+      private_network = null # Explicitly remove private network configuration
     }
 
     location_preference {
@@ -76,10 +76,10 @@ resource "google_sql_database_instance" "instance" {
     }
 
     deletion_protection_enabled = false
-    availability_type = "ZONAL"
-    disk_autoresize   = true
-    disk_size         = 10
-    disk_type         = "PD_SSD"
+    availability_type           = "ZONAL"
+    disk_autoresize             = true
+    disk_size                   = 10
+    disk_type                   = "PD_SSD"
   }
 
   deletion_protection = true
@@ -167,85 +167,82 @@ resource "google_project_iam_member" "secret_accessor" {
   member  = "serviceAccount:${google_service_account.cloud_run_service_account.email}"
 }
 
-# Cloud Run service
-resource "google_cloud_run_v2_service" "default" {
-  name     = var.service_name
-  location = var.region
+# Create static IP address
+resource "google_compute_address" "static_ip" {
+  name   = "${var.service_name}-static-ip"
+  region = var.region
+}
 
-  template {
-    scaling {
-      max_instance_count = 1
+# Create GCE instance
+resource "google_compute_instance" "bot" {
+  name         = var.service_name
+  machine_type = var.machine_type
+  zone         = "${var.region}-c"
+
+  boot_disk {
+    initialize_params {
+      image = "cos-cloud/cos-stable"
+      size  = 20
     }
-
-    volumes {
-      name = "cloudsql"
-      cloud_sql_instance {
-        instances = [google_sql_database_instance.instance.connection_name]
-      }
-    }
-
-    containers {
-      # Use a minimal placeholder image for initial deployment
-      image = "gcr.io/cloudrun/hello"
-
-      volume_mounts {
-        name       = "cloudsql"
-        mount_path = "/cloudsql"
-      }
-
-      startup_probe {
-        initial_delay_seconds = 5    # Give more time before first check
-        failure_threshold = 5    # Allow more retry attempts
-        period_seconds  = 10
-        timeout_seconds = 2     # Give each probe more time to respond
-        http_get {
-          path = "/"
-          port = 8080
-        }
-      }
-
-      env {
-        name = "DATABASE_URL"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.database_url.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "BOT_TOKEN"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.discord_token.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "CLIENT_ID"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.discord_client_id.secret_id
-            version = "latest"
-          }
-        }
-      }
-    }
-
-    service_account = google_service_account.cloud_run_service_account.email
   }
 
-  lifecycle {
-    ignore_changes = [
-      client,
-      client_version,
-      template[0].containers[0].image,
-      template[0].revision,
-      template[0].labels.commit-sha,
-      template[0].labels.managed-by
-    ]
+  network_interface {
+    network = "default"
+    access_config {
+      nat_ip = google_compute_address.static_ip.address
+    }
   }
+
+  # Allow instance to access cloud APIs
+  service_account {
+    email  = google_service_account.bot_service_account.email
+    scopes = ["cloud-platform"]
+  }
+
+  metadata = {
+    enable-oslogin = "TRUE"
+    user-data = templatefile("${path.module}/startup-script.tpl", {
+      project_id   = var.project_id
+      region       = var.region
+      service_name = var.service_name
+    })
+  }
+
+  # Ensure instance is recreated when startup script changes
+  metadata_startup_script = file("${path.module}/startup-script.sh")
+
+  allow_stopping_for_update = true
+}
+
+# Rename service account for GCE
+resource "google_service_account" "bot_service_account" {
+  account_id   = "${var.service_name}-sa"
+  display_name = "Service Account for ${var.service_name}"
+}
+
+# Grant necessary permissions
+resource "google_project_iam_member" "secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.bot_service_account.email}"
+}
+
+# Add Cloud SQL access
+resource "google_project_iam_member" "cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.bot_service_account.email}"
+}
+
+# Secret to store current active container tag
+resource "google_secret_manager_secret" "active_container_tag" {
+  secret_id = "active-container-tag"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "active_container_tag" {
+  secret      = google_secret_manager_secret.active_container_tag.id
+  secret_data = "latest"  # Default to latest
 }
