@@ -154,12 +154,6 @@ resource "google_secret_manager_secret_version" "discord_client_id" {
 }
 
 
-# Create service account for Cloud Run
-resource "google_service_account" "cloud_run_service_account" {
-  account_id   = "${var.service_name}-sa"
-  display_name = "Service Account for ${var.service_name}"
-}
-
 # Create static IP address
 resource "google_compute_address" "static_ip" {
   name   = "${var.service_name}-static-ip"
