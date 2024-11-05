@@ -33,7 +33,6 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com",               # Required for Cloud Run
     "containerregistry.googleapis.com", # Required for GCR
     "sqladmin.googleapis.com",          # Required for Cloud SQL
     "secretmanager.googleapis.com",     # Required for Secret Manager
