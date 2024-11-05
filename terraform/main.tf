@@ -187,13 +187,12 @@ resource "google_compute_instance" "bot" {
 
   metadata = {
     enable-oslogin = "TRUE"
+    user-data = templatefile("${path.module}/startup-script.tpl", {
+      project_id   = var.project_id
+      region       = var.region
+      service_name = var.service_name
+    })
   }
-
-  metadata_startup_script = templatefile("${path.module}/startup-script.tpl", {
-    project_id   = var.project_id
-    region       = var.region
-    service_name = var.service_name
-  })
 
   allow_stopping_for_update = true
 }
