@@ -224,7 +224,7 @@ resource "google_compute_instance" "bot" {
   lifecycle {
     replace_triggered_by = [
       # Force replacement when startup script changes
-      bot.metadata.user-data
+      google_compute_instance.bot.metadata["user-data"]
     ]
   }
 }
