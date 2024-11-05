@@ -33,7 +33,6 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
-    "run.googleapis.com",               # Required for Cloud Run
     "containerregistry.googleapis.com", # Required for GCR
     "sqladmin.googleapis.com",          # Required for Cloud SQL
     "secretmanager.googleapis.com",     # Required for Secret Manager
@@ -153,12 +152,6 @@ resource "google_secret_manager_secret_version" "discord_client_id" {
   secret_data = var.discord_client_id
 }
 
-
-# Create service account for Cloud Run
-resource "google_service_account" "cloud_run_service_account" {
-  account_id   = "${var.service_name}-sa"
-  display_name = "Service Account for ${var.service_name}"
-}
 
 # Create static IP address
 resource "google_compute_address" "static_ip" {
