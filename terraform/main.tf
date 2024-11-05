@@ -160,13 +160,6 @@ resource "google_service_account" "cloud_run_service_account" {
   display_name = "Service Account for ${var.service_name}"
 }
 
-# Grant necessary permissions
-resource "google_project_iam_member" "secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.cloud_run_service_account.email}"
-}
-
 # Create static IP address
 resource "google_compute_address" "static_ip" {
   name   = "${var.service_name}-static-ip"
@@ -207,9 +200,6 @@ resource "google_compute_instance" "bot" {
       service_name = var.service_name
     })
   }
-
-  # Ensure instance is recreated when startup script changes
-  metadata_startup_script = file("${path.module}/startup-script.sh")
 
   allow_stopping_for_update = true
 }
