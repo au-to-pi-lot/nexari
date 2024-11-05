@@ -15,10 +15,10 @@ write_files:
     ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
     ExecStart=/bin/bash -c 'docker run --rm \
       --name discord-bot \
-      -e DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)" \
-      -e BOT_TOKEN="$(gcloud secrets versions access latest --secret=discord-token)" \
-      -e CLIENT_ID="$(gcloud secrets versions access latest --secret=discord-client-id)" \
-      gcr.io/${project_id}/${service_name}:$(gcloud secrets versions access latest --secret=active-container-tag)'
+      -e DATABASE_URL="${database_url}" \
+      -e BOT_TOKEN="${bot_token}" \
+      -e CLIENT_ID="${client_id}" \
+      gcr.io/${project_id}/${service_name}:${active_container_tag}'
     ExecStop=/usr/bin/docker stop discord-bot
     Restart=always
     RestartSec=10
