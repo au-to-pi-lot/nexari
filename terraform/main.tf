@@ -34,9 +34,9 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 resource "google_project_service" "required_apis" {
   for_each = toset([
     "containerregistry.googleapis.com", # Required for GCR
-    "sqladmin.googleapis.com",          # Required for Cloud SQL
-    "secretmanager.googleapis.com",     # Required for Secret Manager
-    "compute.googleapis.com",           # Required for networking operations
+    "sqladmin.googleapis.com", # Required for Cloud SQL
+    "secretmanager.googleapis.com", # Required for Secret Manager
+    "compute.googleapis.com", # Required for networking operations
 
   ])
 
@@ -181,19 +181,24 @@ resource "google_compute_instance" "bot" {
 
   # Allow instance to access cloud APIs
   service_account {
-    email  = google_service_account.bot_service_account.email
+    email = google_service_account.bot_service_account.email
     scopes = ["cloud-platform"]
   }
 
   metadata = {
     enable-oslogin = "TRUE"
+    user-data = templatefile("${path.module}/startup-script.tpl", {
+      project_id   = var.project_id
+      region       = var.region
+      service_name = var.service_name
+    })
+    # Add a hash of the startup script content to force recreation when it changes
+    startup-script-hash = md5(templatefile("${path.module}/startup-script.tpl", {
+      project_id   = var.project_id
+      region       = var.region
+      service_name = var.service_name
+    }))
   }
-
-  metadata_startup_script = templatefile("${path.module}/startup-script.tpl", {
-    project_id   = var.project_id
-    region       = var.region
-    service_name = var.service_name
-  })
 
   allow_stopping_for_update = true
 }
