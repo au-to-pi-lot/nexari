@@ -147,15 +147,11 @@ jobs:
             poetry run alembic current 2>/dev/null | poetry run alembic heads 2>/dev/null | diff - - >/dev/null 2>&1; echo $?)
           echo "has_migrations=$HAS_MIGRATIONS" >> $GITHUB_OUTPUT
 
-      - name: Stop Cloud Run service
+      - name: Stop bot service for migrations
         id: stop-service
         if: steps.check-migrations.outputs.has_migrations != '0'
         run: |
-          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevision)')
-          echo "CURRENT_REVISION=$CURRENT_REVISION" >> $GITHUB_OUTPUT
-          gcloud run services update nexari \
-            --region=us-central1 \
-            --no-traffic
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl stop discord-bot.service'
 
       - name: Run database migrations
         id: migrations
@@ -167,27 +163,14 @@ jobs:
             gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
             poetry run alembic upgrade head
 
-      - name: Restore service on migration failure
+      - name: Restart bot service after failed migrations
         if: steps.check-migrations.outputs.has_migrations != '0' && steps.migrations.outcome == 'failure'
         run: |
-          echo "Database migrations failed. Restoring previous service version..."
-          gcloud run services update-traffic nexari \
-            --region=us-central1 \
-            --to-revisions=${{ steps.stop-service.outputs.CURRENT_REVISION }}=100
+          echo "Database migrations failed. Restarting service with previous version..."
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl start discord-bot.service'
           exit 1
 
-      - name: Get current revision
-        id: current-revision
-        run: |
-          CURRENT_REVISION=$(gcloud run services describe nexari --region=us-central1 --format='value(status.latestReadyRevisionName)')
-          if [ -z "$CURRENT_REVISION" ]; then
-            echo "No current revision found, this might be the first deployment"
-            exit 1
-          fi
-          echo "Current revision: $CURRENT_REVISION"
-          echo "revision=$CURRENT_REVISION" >> $GITHUB_OUTPUT
-
-      - name: Update GCE instance
+      - name: Deploy to GCE instance
         id: deploy
         continue-on-error: true
         run: |
@@ -228,9 +211,10 @@ jobs:
           fi
           exit 1
 
-      - name: Tag latest on success
+      - name: Tag and push latest on success
         if: steps.deploy.outcome == 'success'
         run: |
           docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
           docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest
+          echo "Deployment successful!"
