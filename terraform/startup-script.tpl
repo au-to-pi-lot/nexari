@@ -16,8 +16,8 @@ write_files:
     ExecStart=/bin/bash -c 'docker run --rm \
       --name discord-bot \
       -e DATABASE_URL="${database_url}" \
-      -e BOT_TOKEN="${bot_token}" \
-      -e CLIENT_ID="${client_id}" \
+      -e BOT_TOKEN="${discord_token}" \
+      -e CLIENT_ID="${discord_client_id}" \
       gcr.io/${project_id}/${service_name}:${active_container_tag}'
     ExecStop=/usr/bin/docker stop discord-bot
     Restart=always
