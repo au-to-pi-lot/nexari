@@ -9,6 +9,7 @@ Requires=docker.service
 [Service]
 Environment="HOME=/home/chronos"
 ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
+ExecStartPre=/usr/bin/docker pull gcr.io/${project_id}/${service_name}:${chomp(active_container_tag)}
 ExecStart=/bin/bash -c 'docker run --rm \
   --name discord-bot \
   -e DATABASE_URL="${database_url}" \
