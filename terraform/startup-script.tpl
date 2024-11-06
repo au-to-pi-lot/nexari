@@ -3,9 +3,9 @@
 # Pull the Cloud SDK image
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
 
-# Create local bin directory and wrapper script for gcloud
-mkdir -p /usr/local/bin
-cat > /usr/local/bin/gcloud << 'EOF'
+# Create toolbox bin directory and wrapper script for gcloud
+mkdir -p /var/lib/toolbox/bin
+cat > /var/lib/toolbox/bin/gcloud << 'EOF'
 #!/bin/bash
 docker run --rm \
   -v /var/lib/gcloud:/root/.config \
@@ -15,7 +15,14 @@ docker run --rm \
   gcloud "$@"
 EOF
 
-chmod +x /usr/local/bin/gcloud
+chmod +x /var/lib/toolbox/bin/gcloud
+
+# Add toolbox bin to PATH for all users
+cat > /etc/profile.d/toolbox-path.sh << 'EOF'
+export PATH=$PATH:/var/lib/toolbox/bin
+EOF
+chmod +x /etc/profile.d/toolbox-path.sh
+source /etc/profile.d/toolbox-path.sh
 
 # Authenticate and configure Docker
 gcloud auth activate-service-account --no-user-output-enabled
