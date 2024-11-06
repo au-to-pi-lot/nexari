@@ -10,16 +10,6 @@ rm google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
 # Configure gcloud auth with service account
 gcloud auth configure-docker
 
-# Configure docker credential helper for GCR
-mkdir -p /home/chronos/.docker
-cat > /home/chronos/.docker/config.json << 'EOF'
-{
-  "credHelpers": {
-    "gcr.io": "gcr"
-  }
-}
-EOF
-chown -R chronos:chronos /home/chronos/.docker
 
 # Create systemd service file
 cat > /etc/systemd/system/discord-bot.service << 'EOF'
