@@ -3,6 +3,13 @@
 # Pull the Cloud SDK image
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
 
+# Configure Docker authentication using Cloud SDK
+docker run --rm \
+  -v /home/chronos/.docker:/root/.docker \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
+  gcloud auth configure-docker -q
+
 # Create systemd service file
 cat > /etc/systemd/system/discord-bot.service << 'EOF'
 [Unit]
