@@ -3,30 +3,17 @@
 # Pull the Cloud SDK image
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
 
-# Create toolbox bin directory and wrapper script for gcloud
-mkdir -p /var/lib/toolbox/bin
-cat > /var/lib/toolbox/bin/gcloud << 'EOF'
-#!/bin/bash
+# Authenticate and configure Docker using the container directly
 docker run --rm \
-  -v /var/lib/gcloud:/root/.config \
-  -v /var/lib/docker/gcloud:/root/.docker \
   --network host \
   gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
-  gcloud "$@"
-EOF
+  gcloud auth activate-service-account --no-user-output-enabled
 
-chmod +x /var/lib/toolbox/bin/gcloud
-
-# Add toolbox bin to PATH for all users
-cat > /etc/profile.d/toolbox-path.sh << 'EOF'
-export PATH=$PATH:/var/lib/toolbox/bin
-EOF
-chmod +x /etc/profile.d/toolbox-path.sh
-source /etc/profile.d/toolbox-path.sh
-
-# Authenticate and configure Docker
-gcloud auth activate-service-account --no-user-output-enabled
-gcloud auth configure-docker
+docker run --rm \
+  --network host \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
+  gcloud auth configure-docker
 
 # Create systemd service file
 cat > /etc/systemd/system/discord-bot.service << 'EOF'
