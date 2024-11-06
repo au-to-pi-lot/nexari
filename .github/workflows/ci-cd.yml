@@ -198,16 +198,8 @@ jobs:
           PREVIOUS_TAG="${{ steps.deploy.outputs.current_tag }}"
           if [ -n "$PREVIOUS_TAG" ]; then
             # Restore previous tag in secret
-          
-            # Pull and save image to tar
-            docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${PREVIOUS_TAG}
-            docker save gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${PREVIOUS_TAG} > image.tar
+            echo "$PREVIOUS_TAG" | gcloud secrets versions add active-container-tag --data-file=-
             
-            # Copy tar to instance and load it
-            gcloud compute scp image.tar nexari:~/ --zone=us-central1-c
-            gcloud compute ssh nexari --zone=us-central1-c --command='sudo docker load < image.tar'
-            gcloud compute ssh nexari --zone=us-central1-c --command='sudo docker tag gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${PREVIOUS_TAG} gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest'
-          
             # Restart service to pick up old tag
             gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
             echo "Rolled back to $PREVIOUS_TAG"
