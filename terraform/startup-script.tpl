@@ -1,16 +1,24 @@
 #! /bin/bash
 
-# Install and configure gcloud SDK
-curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
-tar -xf google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
-./google-cloud-sdk/install.sh --quiet
-ln -s /home/chronos/google-cloud-sdk/bin/gcloud /usr/local/bin/gcloud
-rm google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
+# Pull the Cloud SDK image
+docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
 
-# Configure gcloud auth with service account
+# Create wrapper script for gcloud using the container
+cat > /usr/local/bin/gcloud << 'EOF'
+#!/bin/bash
+docker run --rm \
+  -v /home/chronos/.config:/root/.config \
+  -v /home/chronos/.docker:/root/.docker \
+  --network host \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:latest \
+  gcloud "$@"
+EOF
+
+chmod +x /usr/local/bin/gcloud
+
+# Authenticate and configure Docker
 gcloud auth activate-service-account --no-user-output-enabled
 gcloud auth configure-docker
-
 
 # Create systemd service file
 cat > /etc/systemd/system/discord-bot.service << 'EOF'
