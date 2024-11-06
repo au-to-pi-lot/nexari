@@ -7,8 +7,7 @@ tar -xf google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
 ln -s /home/chronos/google-cloud-sdk/bin/gcloud /usr/local/bin/gcloud
 rm google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
 
-# Configure gcloud auth with service account
-gcloud auth activate-service-account --use-compute-metadata
+# Configure gcloud auth with service account (using default compute credentials)
 gcloud auth configure-docker
 
 
