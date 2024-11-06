@@ -177,53 +177,36 @@ resource "google_secret_manager_secret_version" "discord_client_id" {
 }
 
 
-# Create static IP address
-resource "google_compute_address" "static_ip" {
-  name   = "${var.service_name}-static-ip"
-  region = var.region
+# Create GKE Autopilot cluster
+resource "google_container_cluster" "primary" {
+  name     = "${var.service_name}-cluster"
+  location = "${var.region}-c"  # Zonal cluster
+
+  # Enable Autopilot mode
+  enable_autopilot = true
+
+  # Use release channel for auto-upgrades
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  # Workload Identity configuration
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+
+  # Network configuration
+  network    = "default"
+  subnetwork = "default"
 }
 
-# Create GCE instance
-resource "google_compute_instance" "bot" {
-  name         = var.service_name
-  machine_type = var.machine_type
-  zone         = "${var.region}-c"
-
-  boot_disk {
-    initialize_params {
-      image = "ubuntu-2404-noble-amd64-v20241004"
-      size  = 20
-    }
-  }
-
-  network_interface {
-    network = "default"
-    access_config {
-      nat_ip = google_compute_address.static_ip.address
-    }
-  }
-
-  # Allow instance to access cloud APIs
-  service_account {
-    email = google_service_account.bot_service_account.email
-    scopes = ["cloud-platform"]
-  }
-
-  metadata = {
-    enable-oslogin = "TRUE"
-  }
-
-  metadata_startup_script = templatefile("${path.module}/startup-script.tpl", {
-      project_id           = var.project_id
-      region               = var.region
-      service_name         = var.service_name
-      database_url         = data.google_secret_manager_secret_version.database_url.secret_data
-      discord_token        = data.google_secret_manager_secret_version.discord_token.secret_data
-      discord_client_id    = data.google_secret_manager_secret_version.discord_client_id.secret_data
-      active_container_tag = data.google_secret_manager_secret_version.active_container_tag.secret_data
-    })
-
-  allow_stopping_for_update = true
+# Configure Workload Identity for the bot
+resource "google_service_account_iam_binding" "workload_identity_binding" {
+  service_account_id = google_service_account.bot_service_account.name
+  role               = "roles/iam.workloadIdentityUser"
+  members = [
+    "serviceAccount:${var.project_id}.svc.id.goog[default/bot-sa]"
+  ]
 }
 
 # Rename service account for GCE
@@ -232,12 +215,12 @@ resource "google_service_account" "bot_service_account" {
   display_name = "Service Account for ${var.service_name}"
 }
 
-# Grant necessary permissions to the VM service account
-resource "google_project_iam_member" "vm_permissions" {
+# Grant necessary permissions to the bot service account
+resource "google_project_iam_member" "bot_permissions" {
   for_each = toset([
     "roles/secretmanager.secretAccessor",
     "roles/cloudsql.client",
-    "roles/storage.objectViewer"  # For accessing Container Registry
+    "roles/artifactregistry.reader"  # For accessing Container Registry
   ])
   
   project = var.project_id
