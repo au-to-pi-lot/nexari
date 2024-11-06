@@ -1,5 +1,9 @@
 #! /bin/bash
 
+# Create required directories
+mkdir -p /home/chronos/.config /home/chronos/.docker
+chown -R chronos:chronos /home/chronos/.config /home/chronos/.docker
+
 # Pull the Cloud SDK image
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
 
