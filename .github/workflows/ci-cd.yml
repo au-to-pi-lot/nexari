@@ -177,10 +177,14 @@ jobs:
           # Store current tag from secret for potential rollback
           CURRENT_TAG=$(gcloud secrets versions access latest --secret=active-container-tag)
           echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
-
-          # Push new image with specific tag
+          
+          # Pull and save image to tar
           docker pull gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
-          docker push gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
+          docker save gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} > image.tar
+          
+          # Copy tar to instance and load it
+          gcloud compute scp image.tar nexari:~/ --zone=us-central1-c
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo docker load < image.tar'
           
           # Update the active tag secret
           echo "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
