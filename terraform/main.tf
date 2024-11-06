@@ -232,6 +232,9 @@ resource "null_resource" "wait_for_startup" {
 
   provisioner "local-exec" {
     command = <<EOT
+      # Authenticate using workload identity federation
+      echo '${data.google_client_config.current.access_token}' | gcloud auth activate-access-token
+      
       timeout=300
       until gcloud compute ssh ${var.service_name} --zone=${var.region}-c --command='test -f /etc/systemd/system/discord-bot.service'; do
         if [ $timeout -le 0 ]; then
