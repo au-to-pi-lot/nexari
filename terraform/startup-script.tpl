@@ -10,6 +10,8 @@ docker run --rm \
   gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
   gcloud auth configure-docker -q
 
+chown -R chronos:chronos /home/chronos/.docker
+
 # Create systemd service file
 cat > /etc/systemd/system/discord-bot.service << 'EOF'
 [Unit]
