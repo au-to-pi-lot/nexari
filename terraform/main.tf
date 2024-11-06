@@ -226,30 +226,6 @@ resource "google_compute_instance" "bot" {
   allow_stopping_for_update = true
 }
 
-# Wait for startup script to complete
-resource "null_resource" "wait_for_startup" {
-  depends_on = [google_compute_instance.bot]
-
-  provisioner "local-exec" {
-    command = <<EOT
-      # Authenticate using workload identity federation
-      echo '${data.google_client_config.current.access_token}' | gcloud auth activate-access-token
-      
-      timeout=300
-      until gcloud compute ssh ${var.service_name} --zone=${var.region}-c --command='test -f /etc/systemd/system/discord-bot.service'; do
-        if [ $timeout -le 0 ]; then
-          echo "Timeout waiting for startup script to complete"
-          exit 1
-        fi
-        echo "Waiting for startup script to complete... ($timeout seconds remaining)"
-        sleep 5
-        timeout=$((timeout-5))
-      done
-      echo "Startup script completed"
-    EOT
-  }
-}
-
 # Rename service account for GCE
 resource "google_service_account" "bot_service_account" {
   account_id   = "${var.service_name}-sa"

@@ -181,6 +181,19 @@ jobs:
           # Update the active tag secret
           echo -n "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
           
+          # Make sure service file exists
+          timeout=300
+          until gcloud compute ssh ${var.service_name} --zone=${var.region}-c --command='test -f /etc/systemd/system/discord-bot.service'; do
+            if [ $timeout -le 0 ]; then
+              echo "Timeout waiting for startup script to complete"
+              exit 1
+            fi
+            echo "Waiting for startup script to complete... ($timeout seconds remaining)"
+            sleep 5
+            timeout=$((timeout-5))
+          done
+          echo "Startup script completed"
+          
           # Just restart the service - it will pull the latest image
           gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
           
