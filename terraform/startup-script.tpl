@@ -1,11 +1,7 @@
 #! /bin/bash
 
-# Create required directories
-mkdir -p /var/lib/gcloud /var/lib/docker/gcloud
-chmod 755 /var/lib/gcloud /var/lib/docker/gcloud
-
 # Pull the Cloud SDK image
-docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
+docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
 
 # Create wrapper script for gcloud using the container
 cat > /usr/bin/gcloud << 'EOF'
@@ -14,7 +10,7 @@ docker run --rm \
   -v /var/lib/gcloud:/root/.config \
   -v /var/lib/docker/gcloud:/root/.docker \
   --network host \
-  gcr.io/google.com/cloudsdktool/google-cloud-cli:latest \
+  gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
   gcloud "$@"
 EOF
 
