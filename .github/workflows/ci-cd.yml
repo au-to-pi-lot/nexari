@@ -138,6 +138,12 @@ jobs:
         run: |
           echo "PROJECT_ID=$(echo '${{ secrets.GCP_SA_KEY }}' | jq -r '.project_id')" >> $GITHUB_OUTPUT
 
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v1
+        with:
+          cluster_name: nexari-cluster
+          location: us-central1-c
+
       - name: Check for pending migrations
         id: check-migrations
         run: |
@@ -147,11 +153,12 @@ jobs:
             poetry run alembic current 2>/dev/null | poetry run alembic heads 2>/dev/null | diff - - >/dev/null 2>&1; echo $?)
           echo "has_migrations=$HAS_MIGRATIONS" >> $GITHUB_OUTPUT
 
-      - name: Stop bot service for migrations
-        id: stop-service
+      - name: Scale down deployment for migrations
         if: steps.check-migrations.outputs.has_migrations != '0'
         run: |
-          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl stop discord-bot.service'
+          kubectl scale deployment discord-bot --replicas=0
+          # Wait for pods to terminate
+          kubectl wait --for=delete pod -l app=discord-bot --timeout=60s
 
       - name: Run database migrations
         id: migrations
@@ -163,58 +170,33 @@ jobs:
             gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
             poetry run alembic upgrade head
 
-      - name: Restart bot service after failed migrations
-        if: steps.check-migrations.outputs.has_migrations != '0' && steps.migrations.outcome == 'failure'
-        run: |
-          echo "Database migrations failed. Restarting service with previous version..."
-          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl start discord-bot.service'
-          exit 1
-
-      - name: Deploy to GCE instance
+      - name: Deploy to GKE
         id: deploy
-        continue-on-error: true
         run: |
-          # Store current tag from secret for potential rollback
-          CURRENT_TAG=$(gcloud secrets versions access latest --secret=active-container-tag)
+          # Store current tag for potential rollback
+          CURRENT_TAG=$(kubectl get deployment discord-bot -o=jsonpath='{.spec.template.spec.containers[0].image}' | cut -d ':' -f2)
           echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+
+          # Update deployment with new image
+          kubectl set image deployment/discord-bot discord-bot=gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
           
-          # Update the active tag secret
-          echo -n "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
-          
-          # Make sure service file exists
-          timeout=300
-          until gcloud compute ssh nexari --zone=us-central1-c --command='test -f /etc/systemd/system/discord-bot.service'; do
-            if [ $timeout -le 0 ]; then
-              echo "Timeout waiting for startup script to complete"
-              exit 1
-            fi
-            echo "Waiting for startup script to complete... ($timeout seconds remaining)"
-            sleep 5
-            timeout=$((timeout-5))
-          done
-          echo "Startup script completed"
-          
-          # Just restart the service - it will pull the latest image
-          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
-          
-          # Wait and check if service is healthy
-          sleep 30
-          if ! gcloud compute ssh nexari --zone=us-central1-c --command='systemctl is-active discord-bot.service'; then
-            echo "::error::Service failed to start properly"
+          # Scale back up if was scaled down for migrations
+          kubectl scale deployment discord-bot --replicas=1
+
+          # Wait for rollout to complete
+          if ! kubectl rollout status deployment/discord-bot --timeout=300s; then
+            echo "::error::Deployment failed to roll out"
             exit 1
           fi
 
       - name: Rollback on failure
-        if: steps.deploy.outcome == 'failure'
+        if: failure()
         run: |
-          echo "Deployment failed. Rolling back to previous version..."
+          echo "Deployment failed. Rolling back..."
           PREVIOUS_TAG="${{ steps.deploy.outputs.current_tag }}"
           if [ -n "$PREVIOUS_TAG" ]; then
-            # Restore previous tag in secret
-            echo -n "$PREVIOUS_TAG" | gcloud secrets versions add active-container-tag --data-file=-
-            
-            # Restart service to pick up old tag
-            gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
+            kubectl set image deployment/discord-bot discord-bot=gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:$PREVIOUS_TAG
+            kubectl rollout undo deployment/discord-bot
             echo "Rolled back to $PREVIOUS_TAG"
           else
             echo "No previous tag found to roll back to"
