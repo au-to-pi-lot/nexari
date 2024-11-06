@@ -4,11 +4,19 @@
 mkdir -p /var/lib/docker/auth
 chmod 755 /var/lib/docker/auth
 
-# Configure Docker authentication using Cloud SDK in a way that persists
-docker run --rm \
-  -v /var/lib/docker/auth:/root/.docker \
-  gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
-  gcloud auth configure-docker -q
+# Create Docker credential helper config
+cat > /var/lib/docker/auth/config.json << 'EOF'
+{
+  "credHelpers": {
+    "gcr.io": "gcloud",
+    "us.gcr.io": "gcloud", 
+    "eu.gcr.io": "gcloud",
+    "asia.gcr.io": "gcloud",
+    "staging-k8s.gcr.io": "gcloud",
+    "marketplace.gcr.io": "gcloud"
+  }
+}
+EOF
 
 # Make docker use the persistent auth config
 mkdir -p /home/chronos/.docker
