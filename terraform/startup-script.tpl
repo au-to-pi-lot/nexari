@@ -1,5 +1,9 @@
 #! /bin/bash
 
+# Configure docker to use gcloud credentials
+gcloud auth configure-docker -q
+
+# Create systemd service file
 cat > /etc/systemd/system/discord-bot.service << 'EOF'
 [Unit]
 Description=Discord Bot Service
@@ -8,12 +12,12 @@ Requires=docker.service
 
 [Service]
 Environment="HOME=/home/chronos"
-ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
+ExecStartPre=/usr/bin/docker pull gcr.io/${project_id}/${service_name}:latest
 ExecStart=/bin/bash -c 'docker run --rm \
   --name discord-bot \
-  -e DATABASE_URL="${database_url}" \
-  -e BOT_TOKEN="${discord_token}" \
-  -e CLIENT_ID="${discord_client_id}" \
+  -e DATABASE_URL="$(gcloud secrets versions access latest --secret=database-url)" \
+  -e BOT_TOKEN="$(gcloud secrets versions access latest --secret=discord-token)" \
+  -e CLIENT_ID="$(gcloud secrets versions access latest --secret=discord-client-id)" \
   gcr.io/${project_id}/${service_name}:latest'
 ExecStop=/usr/bin/docker stop discord-bot
 Restart=always
@@ -25,6 +29,7 @@ Group=chronos
 WantedBy=multi-user.target
 EOF
 
+# Enable and start the service
 systemctl daemon-reload
 systemctl enable discord-bot.service
 systemctl start discord-bot.service
