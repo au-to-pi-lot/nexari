@@ -1,15 +1,18 @@
 #! /bin/bash
 
-# Pull the Cloud SDK image
-docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
+# Create persistent directory for docker config
+mkdir -p /var/lib/docker/auth
+chmod 755 /var/lib/docker/auth
 
-# Configure Docker authentication using Cloud SDK
+# Configure Docker authentication using Cloud SDK in a way that persists
 docker run --rm \
-  -v /home/chronos/.docker:/root/.docker \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /var/lib/docker/auth:/root/.docker \
   gcr.io/google.com/cloudsdktool/google-cloud-cli:stable \
   gcloud auth configure-docker -q
 
+# Make docker use the persistent auth config
+mkdir -p /home/chronos/.docker
+ln -sf /var/lib/docker/auth/config.json /home/chronos/.docker/config.json
 chown -R chronos:chronos /home/chronos/.docker
 
 # Create systemd service file
