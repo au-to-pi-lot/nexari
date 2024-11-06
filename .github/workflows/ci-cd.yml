@@ -190,8 +190,34 @@ jobs:
           # Update the active tag secret
           echo "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
           
-          # Restart the bot service to pick up new image
-          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
+          # Update service file with latest secrets and restart
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo bash -c "cat > /etc/systemd/system/discord-bot.service << EOF
+[Unit]
+Description=Discord Bot Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Environment=\"HOME=/home/chronos\"
+ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
+ExecStart=/bin/bash -c '\''docker run --rm \
+  --name discord-bot \
+  -e DATABASE_URL=\"$(gcloud secrets versions access latest --secret=database-url)\" \
+  -e BOT_TOKEN=\"$(gcloud secrets versions access latest --secret=discord-token)\" \
+  -e CLIENT_ID=\"$(gcloud secrets versions access latest --secret=discord-client-id)\" \
+  gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest'\''
+ExecStop=/usr/bin/docker stop discord-bot
+Restart=always
+RestartSec=10
+User=chronos
+Group=chronos
+
+[Install]
+WantedBy=multi-user.target
+EOF"'
+
+          # Reload systemd and restart service
+          gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl daemon-reload && sudo systemctl restart discord-bot.service'
           
           # Wait and check if service is healthy
           sleep 30
