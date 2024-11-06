@@ -3,8 +3,9 @@
 # Pull the Cloud SDK image
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:stable
 
-# Create wrapper script for gcloud using the container
-cat > /usr/bin/gcloud << 'EOF'
+# Create local bin directory and wrapper script for gcloud
+mkdir -p /usr/local/bin
+cat > /usr/local/bin/gcloud << 'EOF'
 #!/bin/bash
 docker run --rm \
   -v /var/lib/gcloud:/root/.config \
@@ -14,7 +15,7 @@ docker run --rm \
   gcloud "$@"
 EOF
 
-chmod +x /usr/bin/gcloud
+chmod +x /usr/local/bin/gcloud
 
 # Authenticate and configure Docker
 gcloud auth activate-service-account --no-user-output-enabled
