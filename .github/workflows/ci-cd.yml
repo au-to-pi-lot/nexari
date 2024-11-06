@@ -183,7 +183,7 @@ jobs:
           
           # Make sure service file exists
           timeout=300
-          until gcloud compute ssh ${var.service_name} --zone=${var.region}-c --command='test -f /etc/systemd/system/discord-bot.service'; do
+          until gcloud compute ssh nexari --zone=us-central1-c --command='test -f /etc/systemd/system/discord-bot.service'; do
             if [ $timeout -le 0 ]; then
               echo "Timeout waiting for startup script to complete"
               exit 1
