@@ -179,7 +179,7 @@ jobs:
           echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
           
           # Update the active tag secret
-          echo "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
+          echo -n "${{ github.sha }}" | gcloud secrets versions add active-container-tag --data-file=-
           
           # Just restart the service - it will pull the latest image
           gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
@@ -198,7 +198,7 @@ jobs:
           PREVIOUS_TAG="${{ steps.deploy.outputs.current_tag }}"
           if [ -n "$PREVIOUS_TAG" ]; then
             # Restore previous tag in secret
-            echo "$PREVIOUS_TAG" | gcloud secrets versions add active-container-tag --data-file=-
+            echo -n "$PREVIOUS_TAG" | gcloud secrets versions add active-container-tag --data-file=-
             
             # Restart service to pick up old tag
             gcloud compute ssh nexari --zone=us-central1-c --command='sudo systemctl restart discord-bot.service'
