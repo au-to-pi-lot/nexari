@@ -1,8 +1,8 @@
 #! /bin/bash
 
 # Create required directories
-mkdir -p /home/chronos/.config /home/chronos/.docker
-chown -R chronos:chronos /home/chronos/.config /home/chronos/.docker
+mkdir -p /var/lib/gcloud /var/lib/docker/gcloud
+chmod 755 /var/lib/gcloud /var/lib/docker/gcloud
 
 # Pull the Cloud SDK image
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
@@ -11,8 +11,8 @@ docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
 cat > /usr/bin/gcloud << 'EOF'
 #!/bin/bash
 docker run --rm \
-  -v /home/chronos/.config:/root/.config \
-  -v /home/chronos/.docker:/root/.docker \
+  -v /var/lib/gcloud:/root/.config \
+  -v /var/lib/docker/gcloud:/root/.docker \
   --network host \
   gcr.io/google.com/cloudsdktool/google-cloud-cli:latest \
   gcloud "$@"
