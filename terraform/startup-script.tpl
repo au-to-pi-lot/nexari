@@ -1,11 +1,14 @@
 #! /bin/bash
 
-# Install gcloud SDK
+# Install and configure gcloud SDK
 curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
 tar -xf google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
 ./google-cloud-sdk/install.sh --quiet
 ln -s /home/chronos/google-cloud-sdk/bin/gcloud /usr/local/bin/gcloud
 rm google-cloud-sdk-458.0.1-linux-x86_64.tar.gz
+
+# Configure gcloud auth with service account
+gcloud auth configure-docker
 
 # Configure docker credential helper for GCR
 mkdir -p /home/chronos/.docker
