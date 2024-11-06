@@ -14,7 +14,7 @@ ExecStart=/bin/bash -c 'docker run --rm \
   -e DATABASE_URL="${database_url}" \
   -e BOT_TOKEN="${discord_token}" \
   -e CLIENT_ID="${discord_client_id}" \
-  gcr.io/${project_id}/${service_name}:${chomp(active_container_tag)}'
+  gcr.io/${project_id}/${service_name}:latest'
 ExecStop=/usr/bin/docker stop discord-bot
 Restart=always
 RestartSec=10
