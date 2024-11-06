@@ -192,29 +192,29 @@ jobs:
           
           # Create service file content and upload it
           cat > discord-bot.service << EOF
-[Unit]
-Description=Discord Bot Service
-After=docker.service
-Requires=docker.service
-
-[Service]
-Environment="HOME=/home/chronos"
-ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
-ExecStart=/bin/bash -c 'docker run --rm \\
-  --name discord-bot \\
-  -e DATABASE_URL="\$(gcloud secrets versions access latest --secret=database-url)" \\
-  -e BOT_TOKEN="\$(gcloud secrets versions access latest --secret=discord-token)" \\
-  -e CLIENT_ID="\$(gcloud secrets versions access latest --secret=discord-client-id)" \\
-  gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest'
-ExecStop=/usr/bin/docker stop discord-bot
-Restart=always
-RestartSec=10
-User=chronos
-Group=chronos
-
-[Install]
-WantedBy=multi-user.target
-EOF
+          [Unit]
+          Description=Discord Bot Service
+          After=docker.service
+          Requires=docker.service
+          
+          [Service]
+          Environment="HOME=/home/chronos"
+          ExecStartPre=/usr/bin/docker-credential-gcr configure-docker
+          ExecStart=/bin/bash -c 'docker run --rm \\
+            --name discord-bot \\
+            -e DATABASE_URL="\$(gcloud secrets versions access latest --secret=database-url)" \\
+            -e BOT_TOKEN="\$(gcloud secrets versions access latest --secret=discord-token)" \\
+            -e CLIENT_ID="\$(gcloud secrets versions access latest --secret=discord-client-id)" \\
+            gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:latest'
+          ExecStop=/usr/bin/docker stop discord-bot
+          Restart=always
+          RestartSec=10
+          User=chronos
+          Group=chronos
+          
+          [Install]
+          WantedBy=multi-user.target
+          EOF
 
           # Copy service file to instance
           gcloud compute scp discord-bot.service nexari:~/discord-bot.service --zone=us-central1-c
