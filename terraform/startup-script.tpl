@@ -4,7 +4,7 @@
 docker pull gcr.io/google.com/cloudsdktool/google-cloud-cli:latest
 
 # Create wrapper script for gcloud using the container
-cat > /usr/local/bin/gcloud << 'EOF'
+cat > /usr/bin/gcloud << 'EOF'
 #!/bin/bash
 docker run --rm \
   -v /home/chronos/.config:/root/.config \
@@ -14,7 +14,7 @@ docker run --rm \
   gcloud "$@"
 EOF
 
-chmod +x /usr/local/bin/gcloud
+chmod +x /usr/bin/gcloud
 
 # Authenticate and configure Docker
 gcloud auth activate-service-account --no-user-output-enabled
