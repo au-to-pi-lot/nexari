@@ -191,7 +191,7 @@ resource "google_compute_instance" "bot" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2404-lts"
+      image = "ubuntu-2404-noble-amd64-v20241004"
       size  = 20
     }
   }
