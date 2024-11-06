@@ -232,17 +232,16 @@ resource "google_service_account" "bot_service_account" {
   display_name = "Service Account for ${var.service_name}"
 }
 
-# Grant necessary permissions
-resource "google_project_iam_member" "secret_accessor" {
+# Grant necessary permissions to the VM service account
+resource "google_project_iam_member" "vm_permissions" {
+  for_each = toset([
+    "roles/secretmanager.secretAccessor",
+    "roles/cloudsql.client",
+    "roles/storage.objectViewer"  # For accessing Container Registry
+  ])
+  
   project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.bot_service_account.email}"
-}
-
-# Add Cloud SQL access
-resource "google_project_iam_member" "cloudsql_client" {
-  project = var.project_id
-  role    = "roles/cloudsql.client"
+  role    = each.value
   member  = "serviceAccount:${google_service_account.bot_service_account.email}"
 }
 
