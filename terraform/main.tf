@@ -240,10 +240,10 @@ resource "google_service_account_iam_binding" "workload_identity_binding" {
   ]
 }
 
-# Rename service account for GCE
+# Service account for the bot workload
 resource "google_service_account" "bot_service_account" {
-  account_id   = "${var.service_name}-sa"
-  display_name = "Service Account for ${var.service_name}"
+  account_id   = "${var.service_name}-workload"
+  display_name = "Workload Service Account for ${var.service_name}"
 }
 
 # Grant necessary permissions to the bot service account
