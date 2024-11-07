@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: discord-bot-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: discord-bot
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  # Allow Discord WebSocket (gateway.discord.gg)
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - port: 443
+      protocol: TCP
+  # Allow Discord HTTPS API
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - port: 443
+      protocol: TCP
+  # Allow DNS resolution
+  - to:
+    ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+  # Allow Cloud SQL
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - port: 5432
+      protocol: TCP

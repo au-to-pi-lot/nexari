@@ -43,3 +43,12 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 1000
+        # Add readiness probe for websocket connection
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "nc -z gateway.discord.gg 443"
+          initialDelaySeconds: 5
+          periodSeconds: 10
