@@ -9,6 +9,11 @@ spec:
   policyTypes:
   - Ingress
   - Egress
+  ingress:
+  # Allow inbound HTTPS traffic
+  - ports:
+    - port: 8080
+      protocol: TCP
   egress:
   # Allow Discord WebSocket (gateway.discord.gg)
   - to:
