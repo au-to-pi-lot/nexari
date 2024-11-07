@@ -229,6 +229,7 @@ resource "google_container_cluster" "primary" {
   network    = google_compute_network.vpc_network.name
   subnetwork = google_compute_network.vpc_network.name
 
+  deletion_protection = false
 }
 
 # Configure Workload Identity for the bot
