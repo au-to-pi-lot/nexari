@@ -2,7 +2,9 @@
 locals {
   infrastructure_roles = toset([
     "roles/secretmanager.admin",
-    "roles/container.admin"
+    "roles/container.admin",
+    "roles/servicenetworking.networksAdmin",
+    "roles/compute.networkAdmin"
   ])
 }
 
@@ -54,6 +56,7 @@ resource "google_project_service" "required_apis" {
     "compute.googleapis.com", # Required for networking operations
     "vpcaccess.googleapis.com", # Required for VPC access
     "container.googleapis.com", # Required for GKE
+    "servicenetworking.googleapis.com", # Required for VPC peering
   ])
 
   service            = each.key
@@ -63,6 +66,7 @@ resource "google_project_service" "required_apis" {
 
 # Create Cloud SQL instance
 resource "google_sql_database_instance" "instance" {
+  depends_on = [google_service_networking_connection.private_vpc_connection]
   name             = "${var.service_name}-db"
   database_version = "POSTGRES_15"
   region           = var.region
