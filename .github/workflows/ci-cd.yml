@@ -178,10 +178,27 @@ jobs:
             gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }} \
             poetry run alembic upgrade head
 
+      - name: Create Kubernetes Secrets
+        run: |
+          # Fetch secrets from Secret Manager
+          DATABASE_URL=$(gcloud secrets versions access latest --secret='database-url')
+          DATABASE_CONNECTION=$(gcloud secrets versions access latest --secret='database-connection')
+          DISCORD_TOKEN=$(gcloud secrets versions access latest --secret='discord-token')
+          DISCORD_CLIENT_ID=$(gcloud secrets versions access latest --secret='discord-client-id')
+          
+          # Create or update Kubernetes secret
+          kubectl create secret generic bot-secrets \
+            --from-literal=database-url="$DATABASE_URL" \
+            --from-literal=database-connection="$DATABASE_CONNECTION" \
+            --from-literal=discord-token="$DISCORD_TOKEN" \
+            --from-literal=discord-client-id="$DISCORD_CLIENT_ID" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy to GKE
         id: deploy
         run: |
           # Apply Kubernetes configurations
+          export bot_service_account_email=$(gcloud iam service-accounts list --filter="displayName:Service Account for nexari" --format="value(email)")
           envsubst < kubernetes/serviceaccount.yaml | kubectl apply -f -
           kubectl apply -f kubernetes/network-policies.yaml
           
