@@ -17,14 +17,14 @@ resource "google_project_iam_member" "ci_permissions" {
 
 # Allow CI service account to read secrets
 resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
-  for_each = toset([
-    google_secret_manager_secret.database_url.id,
-    google_secret_manager_secret.discord_token.id,
-    google_secret_manager_secret.discord_client_id.id,
-    google_secret_manager_secret.database_connection.id,
-  ])
+  for_each = {
+    database_url = google_secret_manager_secret.database_url.id
+    discord_token = google_secret_manager_secret.discord_token.id
+    discord_client_id = google_secret_manager_secret.discord_client_id.id
+    database_connection = google_secret_manager_secret.database_connection.id
+  }
 
-  secret_id = each.key
+  secret_id = each.value
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${var.ci_service_account}"
 }
