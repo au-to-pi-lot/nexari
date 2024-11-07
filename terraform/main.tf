@@ -21,6 +21,7 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
     google_secret_manager_secret.database_url.id,
     google_secret_manager_secret.discord_token.id,
     google_secret_manager_secret.discord_client_id.id,
+    google_secret_manager_secret.database_connection.id,
   ])
 
   secret_id = each.key
@@ -228,6 +229,19 @@ resource "google_project_iam_member" "bot_permissions" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.bot_service_account.email}"
+}
+
+# Store Cloud SQL connection name in Secret Manager
+resource "google_secret_manager_secret" "database_connection" {
+  secret_id = "database-connection"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "database_connection" {
+  secret      = google_secret_manager_secret.database_connection.id
+  secret_data = google_sql_database_instance.instance.connection_name
 }
 
 # Secret to store current active container tag

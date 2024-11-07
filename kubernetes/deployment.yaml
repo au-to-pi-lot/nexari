@@ -20,7 +20,13 @@ spec:
           - "--structured-logs"
           - "--address=127.0.0.1"
           - "--port=5432"
-          - "${database_connection}"
+          - "$(DATABASE_CONNECTION)"
+        env:
+        - name: DATABASE_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: database-connection
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000
