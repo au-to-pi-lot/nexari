@@ -2,8 +2,7 @@
 locals {
   infrastructure_roles = toset([
     "roles/secretmanager.admin",
-    "roles/compute.admin",
-    "roles/compute.networkUser"
+    "roles/container.admin"
   ])
 }
 
@@ -67,10 +66,6 @@ resource "google_sql_database_instance" "instance" {
 
     ip_configuration {
       ipv4_enabled = true
-      authorized_networks {
-        name  = "allow-bot-instance"
-        value = google_compute_address.static_ip.address
-      }
     }
 
     location_preference {
