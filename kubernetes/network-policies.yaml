@@ -10,9 +10,9 @@ spec:
   - Ingress
   - Egress
   ingress:
-  # Allow inbound HTTPS traffic
+  # Allow inbound HTTPS traffic to container port 8080 (health checks)
   - ports:
-    - port: 8080
+    - port: 8080  # Container/pod port
       protocol: TCP
   egress:
   # Allow Discord WebSocket and HTTPS API connections
