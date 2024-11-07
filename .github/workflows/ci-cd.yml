@@ -198,7 +198,7 @@ jobs:
         id: deploy
         run: |
           # Apply Kubernetes configurations
-          export workload_service_account_email=$(gcloud iam service-accounts list --filter="account_id:nexari-workload" --format="value(email)")
+          export workload_service_account_email=$(gcloud iam service-accounts list --filter="displayName:Workload Service Account for nexari" --format="value(email)")
           envsubst < kubernetes/serviceaccount.yaml | kubectl apply -f -
           kubectl apply -f kubernetes/network-policies.yaml
           
