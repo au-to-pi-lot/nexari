@@ -15,14 +15,7 @@ spec:
     - port: 8080
       protocol: TCP
   egress:
-  # Allow Discord WebSocket (gateway.discord.gg)
-  - to:
-    - ipBlock:
-        cidr: 0.0.0.0/0
-    ports:
-    - port: 443
-      protocol: TCP
-  # Allow Discord HTTPS API
+  # Allow Discord WebSocket and HTTPS API connections
   - to:
     - ipBlock:
         cidr: 0.0.0.0/0
