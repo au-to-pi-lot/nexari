@@ -233,21 +233,21 @@ resource "google_container_cluster" "primary" {
 # Configure Workload Identity for the bot
 resource "google_service_account_iam_binding" "workload_identity_binding" {
   depends_on = [google_container_cluster.primary]
-  service_account_id = google_service_account.bot_service_account.name
+  service_account_id = google_service_account.workload_service_account.name
   role               = "roles/iam.workloadIdentityUser"
   members = [
     "serviceAccount:${var.project_id}.svc.id.goog[default/bot-sa]"
   ]
 }
 
-# Rename service account for GCE
-resource "google_service_account" "bot_service_account" {
-  account_id   = "${var.service_name}-sa"
-  display_name = "Service Account for ${var.service_name}"
+# Service account for the bot workload
+resource "google_service_account" "workload_service_account" {
+  account_id   = "${var.service_name}-workload"
+  display_name = "Workload Service Account for ${var.service_name}"
 }
 
-# Grant necessary permissions to the bot service account
-resource "google_project_iam_member" "bot_permissions" {
+# Grant necessary permissions to the bot workload service account
+resource "google_project_iam_member" "workload_permissions" {
   for_each = toset([
     "roles/secretmanager.secretAccessor",
     "roles/cloudsql.client",
@@ -256,7 +256,7 @@ resource "google_project_iam_member" "bot_permissions" {
   
   project = var.project_id
   role    = each.value
-  member  = "serviceAccount:${google_service_account.bot_service_account.email}"
+  member  = "serviceAccount:${google_service_account.workload_service_account.email}"
 }
 
 # Store Cloud SQL connection name in Secret Manager
