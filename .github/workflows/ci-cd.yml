@@ -150,7 +150,7 @@ jobs:
         uses: google-github-actions/get-gke-credentials@v1
         with:
           cluster_name: nexari-cluster
-          location: us-central1-c
+          location: us-central1
 
       - name: Check for pending migrations
         id: check-migrations

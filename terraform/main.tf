@@ -30,6 +30,21 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 }
 
 
+# Configure VPC peering for Cloud SQL
+resource "google_compute_global_address" "private_ip_address" {
+  name          = "private-ip-address"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = "default"
+}
+
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = "default"
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+}
+
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
@@ -68,7 +83,7 @@ resource "google_sql_database_instance" "instance" {
 
     ip_configuration {
       ipv4_enabled = false
-      require_ssl  = true
+      ssl_mode = "ENCRYPTED_ONLY"
       private_network = "projects/${var.project_id}/global/networks/default"
     }
 
@@ -184,7 +199,7 @@ resource "google_secret_manager_secret_version" "discord_client_id" {
 resource "google_container_cluster" "primary" {
   depends_on = [google_project_service.required_apis]
   name     = "${var.service_name}-cluster"
-  location = "${var.region}-c"  # Zonal cluster
+  location = var.region  # Regional cluster
 
   # Enable Autopilot mode
   enable_autopilot = true
