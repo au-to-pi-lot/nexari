@@ -125,21 +125,25 @@ resource "google_secret_manager_secret_version" "database_url" {
 data "google_secret_manager_secret_version" "database_url" {
   secret  = google_secret_manager_secret.database_url.id
   version = "latest"
+  depends_on = [google_secret_manager_secret_version.database_url]
 }
 
 data "google_secret_manager_secret_version" "discord_token" {
   secret  = google_secret_manager_secret.discord_token.id
   version = "latest"
+  depends_on = [google_secret_manager_secret_version.discord_token]
 }
 
 data "google_secret_manager_secret_version" "discord_client_id" {
   secret  = google_secret_manager_secret.discord_client_id.id
   version = "latest"
+  depends_on = [google_secret_manager_secret_version.discord_client_id]
 }
 
 data "google_secret_manager_secret_version" "active_container_tag" {
   secret  = google_secret_manager_secret.active_container_tag.id
   version = "latest"
+  depends_on = [google_secret_manager_secret_version.active_container_tag]
 }
 
 # Generate random database password
