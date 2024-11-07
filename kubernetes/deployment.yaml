@@ -66,12 +66,16 @@ spec:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 1000
-        # Add readiness probe for websocket connection
+        # Health check probes
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
         readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "nc -z gateway.discord.gg 443"
-          initialDelaySeconds: 5
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 15
           periodSeconds: 10

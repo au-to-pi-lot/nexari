@@ -35,7 +35,7 @@ async def main():
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(handle_exception)
 
-    await start_health_check_server()
+    await start_health_check_server(bot)
     logger.info("Health check server started")
 
     register_event_handlers(bot)
