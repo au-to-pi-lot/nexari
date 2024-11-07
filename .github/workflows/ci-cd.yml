@@ -181,9 +181,19 @@ jobs:
       - name: Deploy to GKE
         id: deploy
         run: |
-          # Store current tag for potential rollback
-          CURRENT_TAG=$(kubectl get deployment discord-bot -o=jsonpath='{.spec.template.spec.containers[0].image}' | cut -d ':' -f2)
-          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          # Apply Kubernetes configurations
+          envsubst < kubernetes/serviceaccount.yaml | kubectl apply -f -
+          kubectl apply -f kubernetes/network-policies.yaml
+          
+          # Replace variables and apply deployment
+          export project_id=${{ steps.project.outputs.PROJECT_ID }}
+          envsubst < kubernetes/deployment.yaml | kubectl apply -f -
+          
+          # Store current tag for potential rollback (if deployment exists)
+          if kubectl get deployment discord-bot &>/dev/null; then
+            CURRENT_TAG=$(kubectl get deployment discord-bot -o=jsonpath='{.spec.template.spec.containers[0].image}' | cut -d ':' -f2)
+            echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          fi
 
           # Update deployment with new image
           kubectl set image deployment/discord-bot discord-bot=gcr.io/${{ steps.project.outputs.PROJECT_ID }}/nexari:${{ github.sha }}
