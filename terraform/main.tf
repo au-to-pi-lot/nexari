@@ -6,7 +6,6 @@ locals {
     "roles/servicenetworking.networksAdmin",
     "roles/compute.networkAdmin",
     "roles/servicenetworking.serviceAgent",
-    "roles/servicenetworking.serviceAgent",
     "roles/servicemanagement.serviceAgent"
   ])
 }
