@@ -196,11 +196,6 @@ resource "google_container_cluster" "primary" {
   network    = "default"
   subnetwork = "default"
 
-  # Enable network policy
-  network_policy {
-    enabled = true
-    provider = "CALICO"
-  }
 }
 
 # Configure Workload Identity for the bot
