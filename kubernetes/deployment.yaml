@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discord-bot
+  template:
+    metadata:
+      labels:
+        app: discord-bot
+    spec:
+      serviceAccountName: bot-sa
+      containers:
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.1
+        args:
+          - "--structured-logs"
+          - "--address=127.0.0.1"
+          - "--port=5432"
+          - "$(DATABASE_CONNECTION)"
+        env:
+        - name: DATABASE_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: database-connection
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+      - name: discord-bot
+        image: gcr.io/${project_id}/nexari:latest
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: database-url
+        - name: BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: discord-token
+        - name: CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: bot-secrets
+              key: discord-client-id
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+        # Add readiness probe for websocket connection
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "nc -z gateway.discord.gg 443"
+          initialDelaySeconds: 5
+          periodSeconds: 10

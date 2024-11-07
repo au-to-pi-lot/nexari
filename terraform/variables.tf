@@ -21,11 +21,6 @@ variable "database_instance_tier" {
   default     = "db-f1-micro"
 }
 
-variable "machine_type" {
-  description = "The machine type for the GCE instance"
-  type        = string
-  default     = "e2-micro"
-}
 
 variable "discord_token" {
   description = "Discord Bot Token"
