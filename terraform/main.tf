@@ -37,7 +37,8 @@ resource "google_project_service" "required_apis" {
     "sqladmin.googleapis.com", # Required for Cloud SQL
     "secretmanager.googleapis.com", # Required for Secret Manager
     "compute.googleapis.com", # Required for networking operations
-
+    "vpcaccess.googleapis.com", # Required for VPC access
+    "container.googleapis.com", # Required for GKE
   ])
 
   service            = each.key
@@ -68,6 +69,7 @@ resource "google_sql_database_instance" "instance" {
     ip_configuration {
       ipv4_enabled = false
       require_ssl  = true
+      private_network = "projects/${var.project_id}/global/networks/default"
     }
 
     location_preference {
@@ -176,6 +178,7 @@ resource "google_secret_manager_secret_version" "discord_client_id" {
 
 # Create GKE Autopilot cluster
 resource "google_container_cluster" "primary" {
+  depends_on = [google_project_service.required_apis]
   name     = "${var.service_name}-cluster"
   location = "${var.region}-c"  # Zonal cluster
 
@@ -200,6 +203,7 @@ resource "google_container_cluster" "primary" {
 
 # Configure Workload Identity for the bot
 resource "google_service_account_iam_binding" "workload_identity_binding" {
+  depends_on = [google_container_cluster.primary]
   service_account_id = google_service_account.bot_service_account.name
   role               = "roles/iam.workloadIdentityUser"
   members = [
