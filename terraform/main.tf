@@ -34,18 +34,24 @@ resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
 
 
 # Configure VPC peering for Cloud SQL
+# Create VPC network
+resource "google_compute_network" "vpc_network" {
+  name                    = "vpc-network"
+  auto_create_subnetworks = true
+}
+
 resource "google_compute_global_address" "private_ip_address" {
   name          = "private-ip-address"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16
-  network       = "default"
+  network       = google_compute_network.vpc_network.id
 }
 
 resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = "default"
+  network                 = google_compute_network.vpc_network.id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.address]
+  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
 # Enable required APIs
@@ -89,7 +95,7 @@ resource "google_sql_database_instance" "instance" {
     ip_configuration {
       ipv4_enabled = false
       ssl_mode = "ENCRYPTED_ONLY"
-      private_network = "projects/${var.project_id}/global/networks/default"
+      private_network = google_compute_network.vpc_network.id
     }
 
     location_preference {
@@ -220,8 +226,8 @@ resource "google_container_cluster" "primary" {
   }
 
   # Network configuration
-  network    = "default"
-  subnetwork = "default"
+  network    = google_compute_network.vpc_network.name
+  subnetwork = google_compute_network.vpc_network.name
 
 }
 
