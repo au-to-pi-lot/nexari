@@ -65,7 +65,8 @@ resource "google_sql_database_instance" "instance" {
     }
 
     ip_configuration {
-      ipv4_enabled = true
+      ipv4_enabled = false
+      require_ssl  = true
     }
 
     location_preference {
@@ -111,7 +112,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@${google_sql_database_instance.instance.public_ip_address}/${google_sql_database.database.name}",
+    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@127.0.0.1/${google_sql_database.database.name}",
     "%",
     "%%"
   )

@@ -14,6 +14,23 @@ spec:
     spec:
       serviceAccountName: bot-sa
       containers:
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.1
+        args:
+          - "--structured-logs"
+          - "--address=127.0.0.1"
+          - "--port=5432"
+          - "${database_connection}"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
       - name: discord-bot
         image: gcr.io/${project_id}/nexari:latest
         resources:

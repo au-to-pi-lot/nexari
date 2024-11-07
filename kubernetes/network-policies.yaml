@@ -29,10 +29,3 @@ spec:
       protocol: UDP
     - port: 53
       protocol: TCP
-  # Allow Cloud SQL
-  - to:
-    - ipBlock:
-        cidr: 0.0.0.0/0
-    ports:
-    - port: 5432
-      protocol: TCP
