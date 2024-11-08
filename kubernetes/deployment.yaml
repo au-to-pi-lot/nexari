@@ -21,6 +21,7 @@ spec:
           - "--address=127.0.0.1"
           - "--port=5432"
           - "--auto-iam-authn"
+          - "--private-ip"
           - "$(DATABASE_CONNECTION)?port=5432"
         env:
         - name: DATABASE_CONNECTION
