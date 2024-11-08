@@ -36,12 +36,16 @@ spec:
     ports:
       - protocol: TCP
         port: 80
-  # Allow Cloud SQL proxy to access Google APIs
+  # Allow Cloud SQL proxy to access Google APIs and Cloud SQL instance
   - to:
       - ipBlock:
           cidr: 199.36.153.8/30  # Restricted Google API access for Cloud SQL Admin API
       - ipBlock:
           cidr: 199.36.153.4/30  # Restricted Google API access for Cloud SQL Admin API
+      - ipBlock:
+          cidr: 10.0.0.0/8  # VPC network range for private Cloud SQL connection
     ports:
       - protocol: TCP
         port: 443
+      - protocol: TCP
+        port: 3307
