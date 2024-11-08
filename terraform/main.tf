@@ -21,9 +21,9 @@ resource "google_project_iam_member" "ci_permissions" {
 # Allow CI service account to read secrets
 resource "google_secret_manager_secret_iam_member" "ci_secret_access" {
   for_each = {
-    database_url = google_secret_manager_secret.database_url.id
-    discord_token = google_secret_manager_secret.discord_token.id
-    discord_client_id = google_secret_manager_secret.discord_client_id.id
+    database_url        = google_secret_manager_secret.database_url.id
+    discord_token       = google_secret_manager_secret.discord_token.id
+    discord_client_id   = google_secret_manager_secret.discord_client_id.id
     database_connection = google_secret_manager_secret.database_connection.id
   }
 
@@ -49,24 +49,24 @@ resource "google_compute_global_address" "private_ip_address" {
 }
 
 resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = google_compute_network.vpc_network.id
-  service                 = "servicenetworking.googleapis.com"
+  network = google_compute_network.vpc_network.id
+  service = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
 # Allow GKE pods to access Cloud SQL
 resource "google_compute_firewall" "allow_cloudsql_private" {
-  name        = "allow-cloudsql-private"
-  network     = google_compute_network.vpc_network.name
-  direction   = "INGRESS"
-  priority    = 1000
-  
+  name      = "allow-cloudsql-private"
+  network   = google_compute_network.vpc_network.name
+  direction = "INGRESS"
+  priority  = 1000
+
   source_ranges = ["10.127.0.0/17"]  # GKE pods CIDR range
-  target_tags   = []  # Empty list means all instances in the network
-  
+  target_tags = []  # Empty list means all instances in the network
+
   allow {
     protocol = "tcp"
-    ports    = ["5432", "3307"]
+    ports = ["5432", "3307"]
   }
 
   description = "Allow GKE pods to access Cloud SQL"
@@ -112,7 +112,7 @@ resource "google_sql_database_instance" "instance" {
 
     ip_configuration {
       ipv4_enabled = true  # Enable IPv4 for local connections
-      ssl_mode = "ENCRYPTED_ONLY"
+      ssl_mode        = "ENCRYPTED_ONLY"
       private_network = google_compute_network.vpc_network.id
     }
 
@@ -125,6 +125,11 @@ resource "google_sql_database_instance" "instance" {
     disk_autoresize             = true
     disk_size                   = 10
     disk_type                   = "PD_SSD"
+
+    database_flags {
+      name  = "cloudsql_iam_authentication"
+      value = "on"
+    }
   }
 
   deletion_protection = true
@@ -139,7 +144,7 @@ resource "google_sql_database" "database" {
 
 # Create database user
 resource "google_sql_user" "user" {
-  name     = trimsuffix(google_service_account.workload_service_account.email, ".gserviceaccount.com")
+  name = trimsuffix(google_service_account.workload_service_account.email, ".gserviceaccount.com")
   instance = google_sql_database_instance.instance.name
   type     = "CLOUD_IAM_SERVICE_ACCOUNT"
 }
@@ -271,7 +276,7 @@ resource "google_project_iam_member" "workload_permissions" {
     "roles/cloudsql.client",
     "roles/artifactregistry.reader"  # For accessing Container Registry
   ])
-  
+
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.workload_service_account.email}"
