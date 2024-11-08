@@ -44,23 +44,12 @@ spec:
     ports:
       - protocol: TCP
         port: 988
-  # Allow Cloud SQL proxy to access Google APIs and Cloud SQL
+  # Allow Cloud SQL proxy to access Google APIs
   - to:
       - ipBlock:
-          cidr: 199.36.153.8/30  # Restricted Google API access
+          cidr: 199.36.153.8/30  # Restricted Google API access for Cloud SQL Admin API
       - ipBlock:
-          cidr: 199.36.153.4/30  # Restricted Google API access
+          cidr: 199.36.153.4/30  # Restricted Google API access for Cloud SQL Admin API
     ports:
       - protocol: TCP
         port: 443
-  # Allow access to Google's DNS servers
-  - to:
-      - ipBlock:
-          cidr: 8.8.8.8/32
-      - ipBlock:
-          cidr: 8.8.4.4/32
-    ports:
-      - protocol: UDP
-        port: 53
-      - protocol: TCP
-        port: 53
