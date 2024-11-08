@@ -7,45 +7,48 @@ spec:
     matchLabels:
       app: discord-bot
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
   ingress:
-  # Allow inbound HTTPS traffic to container port 8080 (health checks)
-  - ports:
-    - port: 8080  # Container/pod port
-      protocol: TCP
+    # Allow inbound HTTPS traffic to container port 8080 (health checks)
+    - ports:
+        - port: 8080  # Container/pod port
+          protocol: TCP
   egress:
-  # Allow Discord WebSocket and HTTPS API connections
-  - to:
-    - ipBlock:
-        cidr: 0.0.0.0/0
-    ports:
-    - port: 443
-      protocol: TCP
-  # Allow DNS resolution
-  - to:
-    ports:
-    - port: 53
-      protocol: UDP
-    - port: 53
-      protocol: TCP
-  # Allow GKE metadata server access
-  - to:
-      - ipBlock:
-          cidr: 169.254.169.254/32  # Google Cloud metadata server
-    ports:
-      - protocol: TCP
-        port: 80
-  # Allow Cloud SQL proxy to access Google APIs and Cloud SQL instance
-  - to:
-      - ipBlock:
-          cidr: 199.36.153.8/30  # Restricted Google API access for Cloud SQL Admin API
-      - ipBlock:
-          cidr: 199.36.153.4/30  # Restricted Google API access for Cloud SQL Admin API
-      - ipBlock:
-          cidr: 10.0.0.0/8  # VPC network range for private Cloud SQL connection
-    ports:
-      - protocol: TCP
-        port: 443
-      - protocol: TCP
-        port: 3307
+    # Allow Discord WebSocket and HTTPS API connections
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP
+    # Allow DNS resolution
+    - to:
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow GKE metadata server access
+    - to:
+        - ipBlock:
+            cidr: 169.254.169.254/32  # Google Cloud metadata server
+      ports:
+        - protocol: TCP
+          port: 80
+    # Allow Cloud SQL proxy to access Google APIs and Cloud SQL instance
+    - to:
+        - ipBlock:
+            cidr: 199.36.153.8/30  # Restricted Google API access for Cloud SQL Admin API
+        - ipBlock:
+            cidr: 199.36.153.4/30  # Restricted Google API access for Cloud SQL Admin API
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow access to Cloud SQL
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8  # VPC network range for private Cloud SQL connection
+      ports:
+        - protocol: TCP
+          port: 3307
