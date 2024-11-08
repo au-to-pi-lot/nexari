@@ -66,7 +66,7 @@ resource "google_compute_firewall" "allow_cloudsql_private" {
   
   allow {
     protocol = "tcp"
-    ports    = ["5432"]
+    ports    = ["5432", "3307"]
   }
 
   description = "Allow GKE pods to access Cloud SQL"
