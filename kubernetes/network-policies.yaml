@@ -29,3 +29,19 @@ spec:
       protocol: UDP
     - port: 53
       protocol: TCP
+  # Allow GKE metadata server access
+  - to:
+      - ipBlock:
+          cidr: 169.254.169.254/32  # Google Cloud metadata server
+    ports:
+      - protocol: TCP
+        port: 80
+  # Allow Cloud SQL proxy to access Google APIs
+  - to:
+      - ipBlock:
+          cidr: 199.36.153.8/30  # Restricted Google API access for Cloud SQL Admin API
+      - ipBlock:
+          cidr: 199.36.153.4/30  # Restricted Google API access for Cloud SQL Admin API
+    ports:
+      - protocol: TCP
+        port: 443
