@@ -20,6 +20,7 @@ spec:
           - "--structured-logs"
           - "--address=127.0.0.1"
           - "--port=5432"
+          - "--auto-iam-authn"
           - "$(DATABASE_CONNECTION)"
         env:
         - name: DATABASE_CONNECTION
