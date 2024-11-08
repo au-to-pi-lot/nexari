@@ -93,7 +93,7 @@ resource "google_sql_database_instance" "instance" {
     }
 
     ip_configuration {
-      ipv4_enabled = false
+      ipv4_enabled = true  # Enable IPv4 for local connections
       ssl_mode = "ENCRYPTED_ONLY"
       private_network = google_compute_network.vpc_network.id
     }
