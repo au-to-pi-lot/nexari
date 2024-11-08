@@ -141,7 +141,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}@127.0.0.1/${google_sql_database.database.name}?sslmode=verify-ca",
+    "postgresql+asyncpg://${google_sql_user.user.name}@127.0.0.1/${google_sql_database.database.name}?ssl=true",
     "%",
     "%%"
   )
