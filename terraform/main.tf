@@ -142,11 +142,24 @@ resource "google_sql_database" "database" {
   instance = google_sql_database_instance.instance.name
 }
 
-# Create database user
+# Create database user and grant permissions
 resource "google_sql_user" "user" {
   name = trimsuffix(google_service_account.workload_service_account.email, ".gserviceaccount.com")
   instance = google_sql_database_instance.instance.name
   type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+}
+
+# Grant necessary database roles to the IAM user
+resource "google_project_iam_member" "cloudsql_instance_user" {
+  project = var.project_id
+  role    = "roles/cloudsql.instanceUser"
+  member  = "serviceAccount:${google_service_account.workload_service_account.email}"
+}
+
+resource "google_project_iam_member" "cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.workload_service_account.email}"
 }
 
 # Get current client config
