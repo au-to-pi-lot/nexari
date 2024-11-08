@@ -36,12 +36,6 @@ spec:
     ports:
       - protocol: TCP
         port: 80
-  - to:
-      - ipBlock:
-          cidr: 127.0.0.1/32  # For GKE versions prior to 1.21.0-gke.1000
-    ports:
-      - protocol: TCP
-        port: 988
   # Allow Cloud SQL proxy to access Google APIs
   - to:
       - ipBlock:
