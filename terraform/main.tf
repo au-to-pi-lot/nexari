@@ -142,11 +142,36 @@ resource "google_sql_database" "database" {
   instance = google_sql_database_instance.instance.name
 }
 
-# Create database user and grant permissions
-resource "google_sql_user" "user" {
+# Create database users and grant permissions
+resource "google_sql_user" "iam_user" {
   name = trimsuffix(google_service_account.workload_service_account.email, ".gserviceaccount.com")
   instance = google_sql_database_instance.instance.name
   type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+}
+
+# Create admin user with password
+resource "random_password" "db_admin_password" {
+  length  = 32
+  special = true
+}
+
+resource "google_sql_user" "admin_user" {
+  name     = "admin"
+  instance = google_sql_database_instance.instance.name
+  password = random_password.db_admin_password.result
+}
+
+# Store admin password in Secret Manager
+resource "google_secret_manager_secret" "db_admin_password" {
+  secret_id = "db-admin-password"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "db_admin_password" {
+  secret      = google_secret_manager_secret.db_admin_password.id
+  secret_data = random_password.db_admin_password.result
 }
 
 # Grant necessary database roles to the IAM user
