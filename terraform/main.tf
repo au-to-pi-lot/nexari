@@ -121,10 +121,9 @@ resource "google_sql_database" "database" {
 
 # Create database user
 resource "google_sql_user" "user" {
-  name     = google_service_account.workload_service_account.email
+  name     = trimsuffix(google_service_account.workload_service_account.email, ".gserviceaccount.com")
   instance = google_sql_database_instance.instance.name
   type     = "CLOUD_IAM_SERVICE_ACCOUNT"
-  password = null
 }
 
 # Get current client config
