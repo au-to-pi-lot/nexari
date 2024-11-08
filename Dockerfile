@@ -1,10 +1,20 @@
 FROM python:3.11.9-slim AS base
 
+# Create non-root user
+RUN useradd -m -u 1000 bot
+
 WORKDIR /app
 
-# Install poetry
+# Install poetry and configure it
 RUN pip install poetry \
-    && poetry config virtualenvs.create false
+    && poetry config virtualenvs.create false \
+    && poetry config cache-dir /app/.cache
+
+# Set ownership for app directory
+RUN chown -R bot:bot /app
+
+# Switch to non-root user
+USER bot
 
 # Copy dependency files first
 COPY pyproject.toml poetry.lock ./
