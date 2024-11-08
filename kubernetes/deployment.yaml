@@ -20,7 +20,6 @@ spec:
           - "--structured-logs"
           - "--address=127.0.0.1"
           - "--port=5432"
-          - "--credentials-file=/var/run/secrets/kubernetes.io/serviceaccount/token"
           - "$(DATABASE_CONNECTION)"
         env:
         - name: DATABASE_CONNECTION
@@ -28,8 +27,6 @@ spec:
             secretKeyRef:
               name: bot-secrets
               key: database-connection
-        - name: GOOGLE_APPLICATION_CREDENTIALS
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000
