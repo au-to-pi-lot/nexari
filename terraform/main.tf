@@ -54,6 +54,24 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
 }
 
+# Allow GKE pods to access Cloud SQL
+resource "google_compute_firewall" "allow_cloudsql_private" {
+  name        = "allow-cloudsql-private"
+  network     = google_compute_network.vpc_network.name
+  direction   = "INGRESS"
+  priority    = 1000
+  
+  source_ranges = ["10.127.0.0/17"]  # GKE pods CIDR range
+  target_tags   = []  # Empty list means all instances in the network
+  
+  allow {
+    protocol = "tcp"
+    ports    = ["5432"]
+  }
+
+  description = "Allow GKE pods to access Cloud SQL"
+}
+
 # Enable required APIs
 resource "google_project_service" "required_apis" {
   for_each = toset([
