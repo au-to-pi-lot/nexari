@@ -123,7 +123,8 @@ resource "google_sql_database" "database" {
 resource "google_sql_user" "user" {
   name     = var.service_name
   instance = google_sql_database_instance.instance.name
-  password = random_password.db_password.result
+  type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+  password = null
 }
 
 # Get current client config
@@ -141,7 +142,7 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@127.0.0.1/${google_sql_database.database.name}",
+    "postgresql+asyncpg://${google_sql_user.user.name}:${random_password.db_password.result}@127.0.0.1/${google_sql_database.database.name}?sslmode=verify-ca",
     "%",
     "%%"
   )
