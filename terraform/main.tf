@@ -201,11 +201,7 @@ resource "google_secret_manager_secret" "database_url" {
 
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
-  secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.iam_user.name}@127.0.0.1/${google_sql_database.database.name}",
-    "%",
-    "%%"
-  )
+  secret_data = "postgresql+asyncpg://${google_sql_user.iam_user.name}@127.0.0.1/${google_sql_database.database.name}",
 }
 
 # Store database URL in Secret Manager
