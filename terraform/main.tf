@@ -142,11 +142,36 @@ resource "google_sql_database" "database" {
   instance = google_sql_database_instance.instance.name
 }
 
-# Create database user and grant permissions
-resource "google_sql_user" "user" {
+# Create database users and grant permissions
+resource "google_sql_user" "iam_user" {
   name = trimsuffix(google_service_account.workload_service_account.email, ".gserviceaccount.com")
   instance = google_sql_database_instance.instance.name
   type     = "CLOUD_IAM_SERVICE_ACCOUNT"
+}
+
+# Create admin user with password
+resource "random_password" "db_admin_password" {
+  length  = 32
+  special = true
+}
+
+resource "google_sql_user" "admin_user" {
+  name     = "admin"
+  instance = google_sql_database_instance.instance.name
+  password = random_password.db_admin_password.result
+}
+
+# Store admin password in Secret Manager
+resource "google_secret_manager_secret" "db_admin_password" {
+  secret_id = "db-admin-password"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "db_admin_password" {
+  secret      = google_secret_manager_secret.db_admin_password.id
+  secret_data = random_password.db_admin_password.result
 }
 
 # Grant necessary database roles to the IAM user
@@ -177,7 +202,25 @@ resource "google_secret_manager_secret" "database_url" {
 resource "google_secret_manager_secret_version" "database_url" {
   secret = google_secret_manager_secret.database_url.id
   secret_data = replace(
-    "postgresql+asyncpg://${google_sql_user.user.name}@127.0.0.1/${google_sql_database.database.name}",
+    "postgresql+asyncpg://${google_sql_user.iam_user.name}@127.0.0.1/${google_sql_database.database.name}",
+    "%",
+    "%%"
+  )
+}
+
+# Store database URL in Secret Manager
+resource "google_secret_manager_secret" "admin_database_url" {
+  secret_id = "admin-database-url"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_version" "admin_database_url" {
+  secret = google_secret_manager_secret.database_url.id
+  secret_data = replace(
+    "postgresql://${google_sql_user.admin_user.name}:${random_password.db_admin_password.result}@${google_sql_database_instance.instance.ip_address.0.ip_address}/${google_sql_database.database.name}",
     "%",
     "%%"
   )
@@ -206,12 +249,6 @@ data "google_secret_manager_secret_version" "active_container_tag" {
   secret  = google_secret_manager_secret.active_container_tag.id
   version = "latest"
   depends_on = [google_secret_manager_secret_version.active_container_tag]
-}
-
-# Generate random database password
-resource "random_password" "db_password" {
-  length  = 32
-  special = true
 }
 
 # Create Secret Manager secrets
