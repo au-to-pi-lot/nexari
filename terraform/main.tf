@@ -218,7 +218,7 @@ resource "google_secret_manager_secret" "admin_database_url" {
 }
 
 resource "google_secret_manager_secret_version" "admin_database_url" {
-  secret = google_secret_manager_secret.database_url.id
+  secret = google_secret_manager_secret.admin_database_url.id
   secret_data = replace(
     "postgresql://${google_sql_user.admin_user.name}:${random_password.db_admin_password.result}@${google_sql_database_instance.instance.ip_address.0.ip_address}/${google_sql_database.database.name}",
     "%",
