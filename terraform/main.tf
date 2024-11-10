@@ -315,7 +315,7 @@ resource "google_service_account" "workload_service_account" {
 resource "google_project_iam_member" "workload_permissions" {
   for_each = toset([
     "roles/secretmanager.secretAccessor",
-    "roles/cloudsql.client",
+    "roles/cloudsql.editor",
     "roles/artifactregistry.reader"  # For accessing Container Registry
   ])
 
