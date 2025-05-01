@@ -4,8 +4,6 @@ A multi-head Discord chatbot using discord.py and LiteLLM. Multiple LLM agents a
 via webhooks, and agents will respond to conversation naturally without the need to explicitly
 mention or reply to them.
 
-You can try out interacting with this chatbot in the
-[Kaleidoscope Discord](https://discord.gg/t6qTwTBv4s).
 
 ## Prerequisites
 
